@@ -3,9 +3,86 @@ require 'nokogiri'
 require 'nori'
 require './print.rb'
 require 'open3'
-require 'programr'
+require 'net/http'
+require 'json'
 require 'getoptlong'
 require 'thwait'
+
+# Ollama API client for LLM integration
+class OllamaClient
+  def initialize(host = 'localhost', port = 11434, model = 'llama2', system_prompt = nil)
+    @host = host
+    @port = port
+    @model = model
+    @base_url = "http://#{@host}:#{@port}"
+    @system_prompt = system_prompt || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+  end
+
+  def generate_response(message, context = '')
+    begin
+      uri = URI("#{@base_url}/api/generate")
+      
+      # Create a system prompt that makes the bot act like a helpful assistant
+      system_prompt = @system_prompt
+      
+      # Combine context and message
+      full_prompt = if context.empty?
+        "#{system_prompt}\n\nUser: #{message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nContext: #{context}\n\nUser: #{message}\nAssistant:"
+      end
+
+      request_body = {
+        model: @model,
+        prompt: full_prompt,
+        stream: false,
+        options: {
+          temperature: 0.7,
+          top_p: 0.9,
+          max_tokens: 150
+        }
+      }
+
+      http = Net::HTTP.new(@host, @port)
+      http.open_timeout = 10
+      http.read_timeout = 300
+
+      request = Net::HTTP::Post.new(uri)
+      request['Content-Type'] = 'application/json'
+      request.body = request_body.to_json
+
+      response = http.request(request)
+      
+      if response.code == '200'
+        result = JSON.parse(response.body)
+        return result['response'].strip
+      else
+        Print.err "Ollama API error: #{response.code} - #{response.body}"
+        return nil
+      end
+    rescue => e
+      Print.err "Error calling Ollama API: #{e.message}"
+      return nil
+    end
+  end
+
+  def test_connection
+    begin
+      uri = URI("#{@base_url}/api/tags")
+      http = Net::HTTP.new(@host, @port)
+      http.open_timeout = 5
+      http.read_timeout = 10
+      
+      request = Net::HTTP::Get.new(uri)
+      response = http.request(request)
+      
+      return response.code == '200'
+    rescue => e
+      Print.err "Cannot connect to Ollama: #{e.message}"
+      return false
+    end
+  end
+end
 
 def update_bot_state(bot_name, bots, current_attack)
   bots[bot_name]['current_attack'] = current_attack
@@ -108,8 +185,20 @@ def read_bots (irc_server_ip_address)
 
       chatbot_rules = hackerbot.at_xpath('AIML_chatbot_rules').text
       Print.debug "Loading chatbot ai from #{chatbot_rules}"
-      bots[bot_name]['chat_ai'] = ProgramR::Facade.new
-      bots[bot_name]['chat_ai'].learn([chatbot_rules])
+      
+      # Initialize Ollama client for this bot
+      # You can customize the model per bot by adding a model attribute to the XML
+      model_name = hackerbot.at_xpath('ollama_model')&.text || ollama_model
+      ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
+      ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
+      ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+      
+      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt)
+      
+      # Test connection to Ollama
+      unless bots[bot_name]['chat_ai'].test_connection
+        Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
+      end
 
       get_shell = hackerbot.at_xpath('get_shell').text
       Print.debug get_shell
@@ -285,20 +374,21 @@ def read_bots (irc_server_ip_address)
           }
         end
 
-        # fallback to AIML ALICE chatbot responses
+        # fallback to Ollama LLM responses
         on :message do |m|
 
           # Only process messages not related to controlling attacks
           if m.message !~ /hello|help|next|previous|list|^(goto|attack) [0-9]|(the answer is|answer)/
             reaction = ''
             begin
-              reaction = bots[bot_name]['chat_ai'].get_reaction(m.message.gsub /([^a-z0-9\- ]+)/i, '')
+              # Use Ollama to generate a response
+              reaction = bots[bot_name]['chat_ai'].generate_response(m.message)
             rescue Exception => e
               puts e.message
               puts e.backtrace.inspect
               reaction = ''
             end
-            if reaction != ''
+            if reaction != '' && reaction != nil
               m.reply reaction
             else
               if m.message.include?('?')
@@ -485,7 +575,7 @@ def start_bots(bots)
 end
 
 def usage
-  Print.std 'ruby hackerbot.rb [--irc-server host]'
+  Print.std 'ruby hackerbot.rb [--irc-server host] [--ollama-host host] [--ollama-port port] [--ollama-model model]'
 end
 
 # -- main --
@@ -500,6 +590,9 @@ irc_server_ip_address = 'localhost'
 opts = GetoptLong.new(
     [ '--help', '-h', GetoptLong::NO_ARGUMENT ],
     [ '--irc-server', '-i', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--ollama-host', '-o', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--ollama-port', '-p', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--ollama-model', '-m', GetoptLong::REQUIRED_ARGUMENT ],
 )
 
 # process option arguments
@@ -510,6 +603,12 @@ opts.each do |opt, arg|
       usage
     when '--irc-server'
       irc_server_ip_address = arg;
+    when '--ollama-host'
+      ollama_host = arg;
+    when '--ollama-port'
+      ollama_port = arg.to_i;
+    when '--ollama-model'
+      ollama_model = arg;
     else
       Print.err "Argument not valid: #{arg}"
       usage

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hackerbot>
+  <name>ExampleBot</name>
+  
+  <!-- Ollama configuration - these are optional and will use command line defaults if not specified -->
+  <ollama_model>llama2</ollama_model>
+  <ollama_host>localhost</ollama_host>
+  <ollama_port>11434</ollama_port>
+  
+  <!-- Legacy AIML field - kept for compatibility but no longer used -->
+  <AIML_chatbot_rules>config/AIML/</AIML_chatbot_rules>
+  
+  <get_shell>false</get_shell>
+  
+  <messages>
+    <greeting>Hello! I'm an AI assistant powered by Ollama. How can I help you today?</greeting>
+    <help>I can help you with various tasks. Just ask me anything!</help>
+    <next>Moving to the next attack...</next>
+    <previous>Going back to the previous attack...</previous>
+    <goto>Jumping to attack...</goto>
+    <invalid>That's not a valid attack number.</invalid>
+    <correct_answer>Correct! Well done!</correct_answer>
+    <incorrect_answer>That's not quite right. Try again!</incorrect_answer>
+    <no_quiz>There's no quiz for this attack.</no_quiz>
+    <say_answer>Please provide your answer.</say_answer>
+    <first_attack>This is already the first attack.</first_attack>
+    <last_attack>This is the final attack.</last_attack>
+    <getting_shell>Getting shell access...</getting_shell>
+    <got_shell>Shell access obtained!</got_shell>
+    <shell_fail_message>Failed to get shell access.</shell_fail_message>
+    <repeat>Ready for the next command.</repeat>
+    <non_answer>I'm not sure how to answer that question.</non_answer>
+  </messages>
+  
+  <attacks>
+    <attack>
+      <prompt>This is an example attack. Ask me anything!</prompt>
+      <post_command>echo "Hello from the attack!"</post_command>
+      <condition>
+        <output_matches>Hello from the attack!</output_matches>
+        <message>Great! The command executed successfully.</message>
+        <trigger_next_attack>true</trigger_next_attack>
+      </condition>
+    </attack>
+  </attacks>
+</hackerbot> 

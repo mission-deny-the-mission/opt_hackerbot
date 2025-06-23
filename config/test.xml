@@ -5,6 +5,11 @@
 
 	<name>Hackerbot</name>
 
+	<ollama_model>gemma3:1b</ollama_model>
+	<ollama_host>localhost</ollama_host>
+	<ollama_port>11434</ollama_port>
+	<system_prompt>You are a helpful cybersecurity training assistant. You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical.</system_prompt>
+
 	<AIML_chatbot_rules>config/AIML</AIML_chatbot_rules>
 
 	<!--Method for gaining shell access, can be overwritten per-attack-->
