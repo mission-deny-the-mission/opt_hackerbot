@@ -16,21 +16,72 @@ class OllamaClient
     @model = model
     @base_url = "http://#{@host}:#{@port}"
     @system_prompt = system_prompt || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+    @chat_history = []
+    @user_chat_histories = {}
+    @max_history_length = 10  # Keep last 10 exchanges
   end
 
-  def generate_response(message, context = '')
+  def add_to_history(user_message, assistant_response, user_id = nil)
+    if user_id
+      # Per-user history
+      @user_chat_histories[user_id] ||= []
+      @user_chat_histories[user_id] << { user: user_message, assistant: assistant_response }
+      # Keep only the last max_history_length exchanges
+      if @user_chat_histories[user_id].length > @max_history_length
+        @user_chat_histories[user_id] = @user_chat_histories[user_id].last(@max_history_length)
+      end
+    else
+      # Global history (for backward compatibility)
+      @chat_history << { user: user_message, assistant: assistant_response }
+      # Keep only the last max_history_length exchanges
+      if @chat_history.length > @max_history_length
+        @chat_history = @chat_history.last(@max_history_length)
+      end
+    end
+  end
+
+  def get_chat_context(user_id = nil)
+    if user_id && @user_chat_histories[user_id]
+      history = @user_chat_histories[user_id]
+    else
+      history = @chat_history
+    end
+    
+    return '' if history.empty?
+    
+    context_parts = history.map do |exchange|
+      "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+    end
+    
+    context_parts.join("\n\n")
+  end
+
+  def clear_user_history(user_id)
+    @user_chat_histories.delete(user_id) if user_id
+  end
+
+  def generate_response(message, context = '', user_id = nil)
     begin
       uri = URI("#{@base_url}/api/generate")
       
       # Create a system prompt that makes the bot act like a helpful assistant
       system_prompt = @system_prompt
       
-      # Combine context and message
-      full_prompt = if context.empty?
+      # Get chat history context for the specific user
+      chat_context = get_chat_context(user_id)
+      
+      # Combine context, chat history, and message
+      full_prompt = if context.empty? && chat_context.empty?
         "#{system_prompt}\n\nUser: #{message}\nAssistant:"
-      else
+      elsif context.empty?
+        "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{message}\nAssistant:"
+      elsif chat_context.empty?
         "#{system_prompt}\n\nContext: #{context}\n\nUser: #{message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{message}\nAssistant:"
       end
+
+      puts full_prompt
 
       request_body = {
         model: @model,
@@ -39,7 +90,8 @@ class OllamaClient
         options: {
           temperature: 0.7,
           top_p: 0.9,
-          max_tokens: 150
+          max_tokens: 150,
+          num_thread: 8
         }
       }
 
@@ -55,7 +107,12 @@ class OllamaClient
       
       if response.code == '200'
         result = JSON.parse(response.body)
-        return result['response'].strip
+        response_text = result['response'].strip
+        
+        # Add this exchange to chat history for the specific user
+        add_to_history(message, response_text, user_id)
+        
+        return response_text
       else
         Print.err "Ollama API error: #{response.code} - #{response.body}"
         return nil
@@ -217,6 +274,9 @@ def read_bots (irc_server_ip_address)
 
       Print.debug bots[bot_name]['attacks'].to_s
 
+      # Initialize per-user chat history storage
+      bots[bot_name]['user_chat_history'] = {}
+
       bots[bot_name]['bot'] = Cinch::Bot.new do
         configure do |c|
           c.nick = bot_name
@@ -374,15 +434,41 @@ def read_bots (irc_server_ip_address)
           }
         end
 
+        on :message, 'clear_history' do |m|
+          user_id = m.user.nick
+          bots[bot_name]['chat_ai'].clear_user_history(user_id)
+          m.reply "Chat history cleared for #{user_id}."
+        end
+
+        on :message, 'show_history' do |m|
+          user_id = m.user.nick
+          chat_context = bots[bot_name]['chat_ai'].get_chat_context(user_id)
+          if chat_context.empty?
+            m.reply "No chat history found for #{user_id}."
+          else
+            m.reply "Chat history for #{user_id}:"
+            m.reply chat_context
+          end
+        end
+
         # fallback to Ollama LLM responses
         on :message do |m|
 
           # Only process messages not related to controlling attacks
-          if m.message !~ /hello|help|next|previous|list|^(goto|attack) [0-9]|(the answer is|answer)/
+          if m.message !~ /hello|help|next|previous|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
             reaction = ''
             begin
-              # Use Ollama to generate a response
-              reaction = bots[bot_name]['chat_ai'].generate_response(m.message)
+              # Use Ollama to generate a response with user-specific chat history
+              user_id = m.user.nick
+              
+              # Add current attack context if available
+              current_attack = bots[bot_name]['current_attack']
+              attack_context = ''
+              if current_attack < bots[bot_name]['attacks'].length
+                attack_context = "Current attack (#{current_attack + 1}): #{bots[bot_name]['attacks'][current_attack]['prompt']}"
+              end
+              
+              reaction = bots[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
             rescue Exception => e
               puts e.message
               puts e.backtrace.inspect
