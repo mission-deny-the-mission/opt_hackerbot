@@ -1,25 +1,28 @@
 # Hackerbot with Ollama Integration
 
-This version of Hackerbot has been updated to use Ollama LLM instead of the ALICE AIML chatbot for natural language responses.
+This version of Hackerbot has been updated to use Ollama LLM for natural language responses.
 
-## Changes Made
+## Key Changes
 
 1. **Replaced ALICE with Ollama**: Removed dependency on `programr` gem and ALICE AIML files
-2. **Added OllamaClient class**: New HTTP client for communicating with Ollama API
+2. **Added OllamaClient class**: Handles communication with Ollama API
 3. **Updated message handling**: Now uses Ollama's generate API instead of AIML pattern matching
-4. **Added configuration options**: Support for customizing Ollama host, port, and model per bot
+4. **Per-user chat history**: Each user gets their own conversation context
+5. **Configurable models**: Each bot can use different Ollama models
+6. **System prompts**: Customizable system prompts per bot
 
 ## Requirements
 
-- Ruby with standard libraries (no additional gems needed)
-- Ollama running locally or remotely
-- A compatible LLM model installed in Ollama (default: llama2)
+- Ruby (tested with 2.7+)
+- Ollama installed and running locally (or accessible via network)
+- Required gems: `ircinch`, `nokogiri`, `nori`, `net/http`, `json`, `getoptlong`, `thwait`
 
 ## Installation
 
-1. Install Ollama: https://ollama.ai/
-2. Pull a model: `ollama pull llama2`
+1. Install Ollama from https://ollama.ai/
+2. Pull a model: `ollama pull llama2` (or any other model)
 3. Start Ollama: `ollama serve`
+4. Install Ruby dependencies: `gem install ircinch nokogiri nori`
 
 ## Usage
 
@@ -37,67 +40,93 @@ ruby hackerbot.rb --ollama-host localhost --ollama-port 11434 --ollama-model lla
 - `--irc-server host`: IRC server address (default: localhost)
 - `--ollama-host host`: Ollama server host (default: localhost)
 - `--ollama-port port`: Ollama server port (default: 11434)
-- `--ollama-model model`: Ollama model name (default: llama2)
+- `--ollama-model model`: Default Ollama model (default: llama2)
 
 ## Configuration
 
-### Per-Bot Configuration
-You can configure Ollama settings per bot in the XML configuration:
+Bot configurations are defined in XML files in the `config/` directory. Each bot can have its own Ollama settings:
 
 ```xml
 <hackerbot>
   <name>MyBot</name>
+  
+  <!-- Ollama configuration (optional - uses command line defaults if not specified) -->
   <ollama_model>llama2</ollama_model>
   <ollama_host>localhost</ollama_host>
   <ollama_port>11434</ollama_port>
-  <!-- ... other configuration ... -->
+  <system_prompt>You are a helpful cybersecurity training assistant.</system_prompt>
+  
+  <get_shell>false</get_shell>
+  
+  <messages>
+    <greeting>Hello! I'm an AI assistant powered by Ollama.</greeting>
+    <!-- ... other messages ... -->
+  </messages>
+  
+  <attacks>
+    <!-- ... attack definitions ... -->
+  </attacks>
 </hackerbot>
 ```
 
-### Bot Configuration Priority
-1. XML configuration (highest priority)
-2. Command line arguments
-3. Default values (lowest priority)
-
-## Example Configuration
-
-See `config/example_ollama.xml` for a complete example configuration.
-
 ## Features
 
-- **Natural Language Processing**: Uses modern LLM for more natural conversations
-- **Configurable Models**: Support for any model available in Ollama
-- **Fallback Responses**: Graceful handling when Ollama is unavailable
-- **Backward Compatibility**: Existing bot configurations still work
-- **Error Handling**: Robust error handling for network issues
+### Per-User Chat History
+Each user gets their own conversation context that persists across messages. The bot remembers previous conversations and can reference them in responses.
+
+### Chat History Management
+- `clear_history`: Clears your personal chat history
+- `show_history`: Shows your current chat history
+
+### Context Awareness
+The bot automatically includes current attack context in its responses, making it aware of what the user is working on.
+
+### Error Handling
+- Graceful fallback if Ollama is unavailable
+- Connection timeout handling
+- Automatic retry logic
 
 ## Troubleshooting
 
 ### Ollama Connection Issues
-- Ensure Ollama is running: `ollama serve`
-- Check if the model is installed: `ollama list`
-- Verify network connectivity to Ollama server
-- Check firewall settings if using remote Ollama
+1. Ensure Ollama is running: `ollama serve`
+2. Check if the model is available: `ollama list`
+3. Test connection: `curl http://localhost:11434/api/tags`
 
 ### Model Issues
-- Pull the required model: `ollama pull modelname`
-- Verify model name in configuration
-- Check Ollama logs for model-specific errors
+1. Pull the required model: `ollama pull model_name`
+2. Check model compatibility
+3. Adjust system prompts for better responses
 
-## Migration from ALICE
+### Performance
+- Adjust `max_tokens` in the OllamaClient for shorter/faster responses
+- Modify `temperature` for more/less creative responses
+- Use smaller models for faster response times
 
-Existing bot configurations will continue to work. The `AIML_chatbot_rules` field is kept for compatibility but is no longer used. You can optionally add Ollama-specific configuration:
+## Migration from AIML
+
+Existing bot configurations will continue to work. You can optionally add Ollama-specific configuration:
 
 ```xml
-<!-- Optional: Add these fields to customize Ollama settings -->
+<!-- Add these fields to your existing bot configs -->
 <ollama_model>llama2</ollama_model>
 <ollama_host>localhost</ollama_host>
 <ollama_port>11434</ollama_port>
+<system_prompt>Custom system prompt for this bot</system_prompt>
 ```
 
-## Performance Notes
+## Development
 
-- First response may be slower due to model loading
-- Response quality depends on the chosen model
-- Consider using smaller models for faster responses
-- Network latency affects response time for remote Ollama instances 
+### Adding New Features
+- Extend the `OllamaClient` class for additional functionality
+- Add new message handlers in the bot configuration
+- Implement custom response processing
+
+### Testing
+- Use the example configuration in `config/example_ollama.xml`
+- Test with different Ollama models
+- Verify chat history functionality
+
+## License
+
+This project maintains the same license as the original Hackerbot. 

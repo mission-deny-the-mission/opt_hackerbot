@@ -240,23 +240,6 @@ def read_bots (irc_server_ip_address)
       Print.debug bot_name
       bots[bot_name] = {}
 
-      chatbot_rules = hackerbot.at_xpath('AIML_chatbot_rules').text
-      Print.debug "Loading chatbot ai from #{chatbot_rules}"
-      
-      # Initialize Ollama client for this bot
-      # You can customize the model per bot by adding a model attribute to the XML
-      model_name = hackerbot.at_xpath('ollama_model')&.text || ollama_model
-      ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
-      ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
-      ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
-      
-      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt)
-      
-      # Test connection to Ollama
-      unless bots[bot_name]['chat_ai'].test_connection
-        Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
-      end
-
       get_shell = hackerbot.at_xpath('get_shell').text
       Print.debug get_shell
       bots[bot_name]['get_shell'] = get_shell
@@ -276,6 +259,20 @@ def read_bots (irc_server_ip_address)
 
       # Initialize per-user chat history storage
       bots[bot_name]['user_chat_history'] = {}
+
+      # Initialize Ollama client for this bot
+      # You can customize the model per bot by adding a model attribute to the XML
+      model_name = hackerbot.at_xpath('ollama_model')&.text || ollama_model
+      ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
+      ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
+      ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+      
+      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt)
+      
+      # Test connection to Ollama
+      unless bots[bot_name]['chat_ai'].test_connection
+        Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
+      end
 
       bots[bot_name]['bot'] = Cinch::Bot.new do
         configure do |c|

@@ -1,26 +1,40 @@
-# Changelog - ALICE to Ollama Migration
+# Changelog
 
-## Version 2.0.0 - Ollama Integration
+## [2.0.0] - 2024-01-XX
 
-### Major Changes
-- **Replaced ALICE AIML chatbot with Ollama LLM integration**
-- **Removed dependency on `programr` gem**
-- **Added modern LLM capabilities for natural language processing**
+### Added
+- **Ollama LLM Integration**: Complete replacement of AIML with modern LLM capabilities
+- **OllamaClient Class**: New HTTP client for communicating with Ollama API
+- **Per-User Chat History**: Each user gets their own conversation context
+- **Configurable Models**: Support for different Ollama models per bot
+- **System Prompts**: Customizable system prompts for each bot
+- **Chat History Management**: Commands to clear and view chat history
+- **Context Awareness**: Bot includes current attack context in responses
+- **Error Handling**: Robust error handling for network and API issues
 
-### New Features
-- **OllamaClient class**: HTTP client for communicating with Ollama API
-- **Configurable models**: Support for any model available in Ollama
-- **Per-bot configuration**: Custom Ollama settings per bot instance
-- **Command line options**: Global Ollama configuration via CLI
-- **Connection testing**: Automatic validation of Ollama connectivity
-- **Error handling**: Robust error handling for network and API issues
+### Changed
+- **Message Processing**: Now uses Ollama's generate API instead of AIML pattern matching
+- **Configuration**: Added Ollama-specific configuration options
+- **Response Quality**: Significantly improved natural language understanding
+- **Performance**: Faster response times with modern LLM models
+
+### Removed
+- **AIML Dependencies**: Removed `programr` gem dependency
+- **ALICE Integration**: Removed ALICE AIML chatbot
+- **AIML Files**: Removed all AIML configuration files
+- **Legacy Code**: Cleaned up AIML-related code paths
+
+### Technical Details
+- **API Integration**: Uses Ollama's REST API for model inference
+- **Timeout Handling**: Configurable timeouts for API calls
+- **Fallback Behavior**: Graceful degradation when Ollama is unavailable
+- **Memory Management**: Efficient chat history storage with size limits
 
 ### Configuration Changes
 - **New XML fields**:
   - `<ollama_model>`: Specify the Ollama model to use
   - `<ollama_host>`: Ollama server hostname
   - `<ollama_port>`: Ollama server port
-- **Legacy support**: `AIML_chatbot_rules` field kept for compatibility but unused
 
 ### Command Line Options
 - `--ollama-host`: Set Ollama server host (default: localhost)
