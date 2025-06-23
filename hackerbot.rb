@@ -10,7 +10,7 @@ require 'thwait'
 
 # Ollama API client for LLM integration
 class OllamaClient
-  def initialize(host = 'localhost', port = 11434, model = 'llama2', system_prompt = nil)
+  def initialize(host = 'localhost', port = 11434, model = 'llama2', system_prompt = nil, max_tokens = 150, temperature = 0.7)
     @host = host
     @port = port
     @model = model
@@ -19,6 +19,8 @@ class OllamaClient
     @chat_history = []
     @user_chat_histories = {}
     @max_history_length = 10  # Keep last 10 exchanges
+    @max_tokens = 150
+    @temperature = 0.7
   end
 
   def add_to_history(user_message, assistant_response, user_id = nil)
@@ -266,8 +268,9 @@ def read_bots (irc_server_ip_address)
       ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
       ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
       ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
-      
-      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt)
+      max_tokens = (hackerbot.at_xpath('max_tokens')&.text || 150).to_i
+      temperature = (hackerbot.at_xpath('model_temperature')&.text || 0.7).to_f
+      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature)
       
       # Test connection to Ollama
       unless bots[bot_name]['chat_ai'].test_connection
