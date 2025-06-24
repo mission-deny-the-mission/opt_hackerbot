@@ -8,6 +8,8 @@ require 'json'
 require 'getoptlong'
 require 'thwait'
 
+DEFAULT_SYSTEM_PROMPT = "You are a helpful cybersecurity training assistant.You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical."
+
 # Ollama API client for LLM integration
 class OllamaClient
   def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = 150, temperature = 0.7)
@@ -15,7 +17,7 @@ class OllamaClient
     @port = port
     @model = model
     @base_url = "http://#{@host}:#{@port}"
-    @system_prompt = system_prompt || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+    @system_prompt = system_prompt || DEFAULT_SYSTEM_PROMPT
     @chat_history = []
     @user_chat_histories = {}
     @max_history_length = 10  # Keep last 10 exchanges
@@ -269,7 +271,7 @@ def read_bots (irc_server_ip_address)
       model_name = hackerbot.at_xpath('ollama_model')&.text || ollama_model
       ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
       ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
-      ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || "You are a helpful AI assistant. Respond naturally and conversationally to user messages. Keep responses concise and relevant."
+      ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
       max_tokens = (hackerbot.at_xpath('max_tokens')&.text || 150).to_i
       temperature = (hackerbot.at_xpath('model_temperature')&.text || 0.7).to_f
       bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature)
@@ -457,7 +459,7 @@ def read_bots (irc_server_ip_address)
         on :message do |m|
 
           # Only process messages not related to controlling attacks
-          if m.message !~ /hello|help|next|previous|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
+          if m.message !~ /hello|help|next|previous|ready|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
             reaction = ''
             begin
               # Use Ollama to generate a response with user-specific chat history
