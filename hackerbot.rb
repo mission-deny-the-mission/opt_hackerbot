@@ -83,7 +83,9 @@ class OllamaClient
         "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{message}\nAssistant:"
       end
 
-      puts full_prompt
+      Print.info "Generating response using model: #{@model}"
+      Print.info "Full prompt:"
+      Print.info full_prompt
 
       request_body = {
         model: @model,
