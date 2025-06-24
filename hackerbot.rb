@@ -10,7 +10,7 @@ require 'thwait'
 
 # Ollama API client for LLM integration
 class OllamaClient
-  def initialize(host = 'localhost', port = 11434, model = 'llama2', system_prompt = nil, max_tokens = 150, temperature = 0.7)
+  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = 150, temperature = 0.7)
     @host = host
     @port = port
     @model = model
@@ -702,5 +702,7 @@ opts.each do |opt, arg|
   end
 end
 
-bots = read_bots(irc_server_ip_address)
-start_bots(bots)
+if __FILE__ == $0
+  bots = read_bots(irc_server_ip_address)
+  start_bots(bots)
+end
