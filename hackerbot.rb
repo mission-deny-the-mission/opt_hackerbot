@@ -9,14 +9,15 @@ require 'getoptlong'
 require 'thwait'
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful cybersecurity training assistant.You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical."
-DEFAULT_NUM_THREAD = 2
+DEFAULT_NUM_THREAD = 8
 DEFAULT_KEEPALIVE = -1
 DEFAULT_MAX_TOKENS = 150
 DEFAULT_TEMPERATURE = 0.7
+DEFAULT_STREAMING = true
 
 # Ollama API client for LLM integration
 class OllamaClient
-  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = nil, temperature = nil, num_thread = nil, keepalive = nil)
+  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = nil, temperature = nil, num_thread = nil, keepalive = nil, streaming = nil)
     @host = host
     @port = port
     @model = model
@@ -29,6 +30,7 @@ class OllamaClient
     @temperature = temperature || DEFAULT_TEMPERATURE
     @num_thread = num_thread || DEFAULT_NUM_THREAD
     @keepalive = keepalive || DEFAULT_KEEPALIVE
+    @streaming = streaming.nil? ? DEFAULT_STREAMING : streaming
   end
 
   def add_to_history(user_message, assistant_response, user_id = nil)
@@ -70,7 +72,11 @@ class OllamaClient
     @user_chat_histories.delete(user_id) if user_id
   end
 
-  def generate_response(message, context = '', user_id = nil)
+  def generate_response(message, context = '', user_id = nil, stream_callback = nil)
+    if stream_callback
+      return generate_streaming_response(message, context, user_id, stream_callback)
+    end
+    
     begin
       uri = URI("#{@base_url}/api/generate")
       
@@ -129,6 +135,114 @@ class OllamaClient
       else
         Print.err "Ollama API error: #{response.code} - #{response.body}"
         return nil
+      end
+    rescue => e
+      Print.err "Error calling Ollama API: #{e.message}"
+      return nil
+    end
+  end
+
+  def generate_streaming_response(message, context = '', user_id = nil, stream_callback = nil)
+    begin
+      uri = URI("#{@base_url}/api/generate")
+      
+      # Create a system prompt that makes the bot act like a helpful assistant
+      system_prompt = @system_prompt
+      
+      # Get chat history context for the specific user
+      chat_context = get_chat_context(user_id)
+      
+      # Combine context, chat history, and message
+      full_prompt = if context.empty? && chat_context.empty?
+        "#{system_prompt}\n\nUser: #{message}\nAssistant:"
+      elsif context.empty?
+        "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{message}\nAssistant:"
+      elsif chat_context.empty?
+        "#{system_prompt}\n\nContext: #{context}\n\nUser: #{message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{message}\nAssistant:"
+      end
+
+      Print.info "Generating streaming response using model: #{@model}"
+      Print.info "Full prompt:"
+      Print.info full_prompt
+
+      request_body = {
+        model: @model,
+        prompt: full_prompt,
+        stream: true,
+        keepalive: @keepalive,
+        options: {
+          temperature: @temperature,
+          top_p: 0.9,
+          max_tokens: @max_tokens,
+          num_thread: @num_thread
+        }
+      }
+
+      http = Net::HTTP.new(@host, @port)
+      http.open_timeout = 10
+      http.read_timeout = 300
+
+      request = Net::HTTP::Post.new(uri)
+      request['Content-Type'] = 'application/json'
+      request.body = request_body.to_json
+
+      # Use a block to handle the streaming response
+      full_response = ''
+      current_line = ''
+      
+      http.request(request) do |response|
+        if response.code == '200'
+          response.read_body do |chunk|
+            # Process each chunk as it arrives
+            chunk.each_line do |line|
+              line.strip!
+              next if line.empty?
+              
+              begin
+                data = JSON.parse(line)
+                if data['response']
+                  text_chunk = data['response']
+                  full_response << text_chunk
+                  current_line << text_chunk
+                  
+                  # Send the chunk immediately for more responsive streaming
+                  if stream_callback && !text_chunk.empty?
+                    stream_callback.call(text_chunk)
+                  end
+                  
+                  # Also handle complete lines for better formatting
+                  if current_line.include?("\n")
+                    lines = current_line.split("\n", -1)
+                    # Keep the last (potentially incomplete) line
+                    current_line = lines.last
+                  end
+                end
+                
+                # Check if this is the final response
+                if data['done']
+                  # Send any remaining content in current_line
+                  if !current_line.strip.empty? && stream_callback
+                    stream_callback.call(current_line.strip)
+                  end
+                  break
+                end
+              rescue JSON::ParserError => e
+                Print.err "Failed to parse streaming response line: #{line}"
+                next
+              end
+            end
+          end
+          
+          # Add this exchange to chat history for the specific user
+          add_to_history(message, full_response.strip, user_id)
+          
+          return full_response.strip
+        else
+          Print.err "Ollama API error: #{response.code} - #{response.body}"
+          return nil
+        end
       end
     rescue => e
       Print.err "Error calling Ollama API: #{e.message}"
@@ -283,7 +397,9 @@ def read_bots (irc_server_ip_address)
       temperature = (hackerbot.at_xpath('model_temperature')&.text || DEFAULT_TEMPERATURE).to_f
       num_thread = (hackerbot.at_xpath('num_thread')&.text || DEFAULT_NUM_THREAD).to_i
       keepalive = (hackerbot.at_xpath('keepalive')&.text || DEFAULT_KEEPALIVE).to_i
-      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature, num_thread, keepalive)
+      streaming_config = hackerbot.at_xpath('streaming')&.text
+      streaming_enabled = streaming_config.nil? ? DEFAULT_STREAMING : (streaming_config.downcase == 'true')
+      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature, num_thread, keepalive, streaming_enabled)
       
       # Test connection to Ollama
       unless bots[bot_name]['chat_ai'].test_connection
@@ -469,7 +585,6 @@ def read_bots (irc_server_ip_address)
 
           # Only process messages not related to controlling attacks
           if m.message !~ /hello|help|next|previous|ready|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
-            reaction = ''
             begin
               # Use Ollama to generate a response with user-specific chat history
               user_id = m.user.nick
@@ -481,15 +596,55 @@ def read_bots (irc_server_ip_address)
                 attack_context = "Current attack (#{current_attack + 1}): #{bots[bot_name]['attacks'][current_attack]['prompt']}"
               end
               
-              reaction = bots[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
+              # Use streaming if enabled for this bot
+              if bots[bot_name]['chat_ai'].instance_variable_get(:@streaming)
+                # Create a callback for streaming responses that accumulates chunks
+                accumulated_text = ''
+                stream_callback = Proc.new do |chunk|
+                  accumulated_text << chunk
+                  
+                  # Check if we have complete lines to send
+                  if accumulated_text.include?("\n")
+                    lines = accumulated_text.split("\n", -1)
+                    # Send all complete lines except the last one (which might be incomplete)
+                    lines[0...-1].each do |complete_line|
+                      if !complete_line.strip.empty?
+                        m.reply complete_line.strip
+                      end
+                    end
+                    # Keep the last (potentially incomplete) line
+                    accumulated_text = lines.last
+                  end
+                end
+                
+                reaction = bots[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id, stream_callback)
+                
+                # Send any remaining accumulated text
+                if !accumulated_text.strip.empty?
+                  m.reply accumulated_text.strip
+                end
+                
+                # If streaming failed or returned nil, fall back to non-streaming
+                if reaction.nil? || reaction.empty?
+                  reaction = bots[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
+                  if reaction && !reaction.empty?
+                    m.reply reaction
+                  elsif m.message.include?('?')
+                    m.reply bots[bot_name]['messages']['non_answer']
+                  end
+                end
+              else
+                # Use non-streaming response
+                reaction = bots[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
+                if reaction && !reaction.empty?
+                  m.reply reaction
+                elsif m.message.include?('?')
+                  m.reply bots[bot_name]['messages']['non_answer']
+                end
+              end
             rescue Exception => e
               puts e.message
               puts e.backtrace.inspect
-              reaction = ''
-            end
-            if reaction != '' && reaction != nil
-              m.reply reaction
-            else
               if m.message.include?('?')
                 m.reply bots[bot_name]['messages']['non_answer']
               end
@@ -674,7 +829,7 @@ def start_bots(bots)
 end
 
 def usage
-  Print.std 'ruby hackerbot.rb [--irc-server host] [--ollama-host host] [--ollama-port port] [--ollama-model model]'
+  Print.std 'ruby hackerbot.rb [--irc-server host] [--ollama-host host] [--ollama-port port] [--ollama-model model] [--streaming true|false]'
 end
 
 # -- main --
@@ -692,6 +847,7 @@ opts = GetoptLong.new(
     [ '--ollama-host', '-o', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--ollama-port', '-p', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--ollama-model', '-m', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--streaming', '-s', GetoptLong::REQUIRED_ARGUMENT ],
 )
 
 # process option arguments
@@ -708,6 +864,15 @@ opts.each do |opt, arg|
       ollama_port = arg.to_i;
     when '--ollama-model'
       ollama_model = arg;
+    when '--streaming'
+      streaming_arg = arg.downcase
+      if streaming_arg == 'true' || streaming_arg == 'false'
+        DEFAULT_STREAMING = (streaming_arg == 'true')
+      else
+        Print.err "Streaming argument must be 'true' or 'false': #{arg}"
+        usage
+        exit
+      end
     else
       Print.err "Argument not valid: #{arg}"
       usage

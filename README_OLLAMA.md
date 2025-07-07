@@ -10,6 +10,7 @@ This version of Hackerbot has been updated to use Ollama LLM for natural languag
 4. **Per-user chat history**: Each user gets their own conversation context
 5. **Configurable models**: Each bot can use different Ollama models
 6. **System prompts**: Customizable system prompts per bot
+7. **Streaming responses**: Real-time line-by-line output for improved responsiveness
 
 ## Requirements
 
@@ -41,6 +42,7 @@ ruby hackerbot.rb --ollama-host localhost --ollama-port 11434 --ollama-model lla
 - `--ollama-host host`: Ollama server host (default: localhost)
 - `--ollama-port port`: Ollama server port (default: 11434)
 - `--ollama-model model`: Default Ollama model (default: llama2)
+- `--streaming true|false`: Enable/disable streaming responses (default: true)
 
 ## Configuration
 
@@ -55,6 +57,7 @@ Bot configurations are defined in XML files in the `config/` directory. Each bot
   <ollama_host>localhost</ollama_host>
   <ollama_port>11434</ollama_port>
   <system_prompt>You are a helpful cybersecurity training assistant.</system_prompt>
+  <streaming>true</streaming>
   
   <get_shell>false</get_shell>
   
@@ -80,6 +83,9 @@ Each user gets their own conversation context that persists across messages. The
 
 ### Context Awareness
 The bot automatically includes current attack context in its responses, making it aware of what the user is working on.
+
+### Streaming Responses
+The bot can stream responses line-by-line in real-time, providing immediate feedback to users. This can be enabled/disabled per bot or globally via command line arguments.
 
 ### Error Handling
 - Graceful fallback if Ollama is unavailable
@@ -113,6 +119,7 @@ Existing bot configurations will continue to work. You can optionally add Ollama
 <ollama_host>localhost</ollama_host>
 <ollama_port>11434</ollama_port>
 <system_prompt>Custom system prompt for this bot</system_prompt>
+<streaming>true</streaming>
 ```
 
 ## Development

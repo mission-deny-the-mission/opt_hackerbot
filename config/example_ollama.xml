@@ -9,6 +9,7 @@
   <system_prompt>You are a helpful cybersecurity training assistant. You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical.</system_prompt>
   <max_tokens>150</max_tokens>
   <model_temperature>0.7</model_temperature>
+  <streaming>true</streaming>
   
   <get_shell>false</get_shell>
   
