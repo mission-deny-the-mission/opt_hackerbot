@@ -9,10 +9,14 @@ require 'getoptlong'
 require 'thwait'
 
 DEFAULT_SYSTEM_PROMPT = "You are a helpful cybersecurity training assistant.You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical."
+DEFAULT_NUM_THREAD = 2
+DEFAULT_KEEPALIVE = -1
+DEFAULT_MAX_TOKENS = 150
+DEFAULT_TEMPERATURE = 0.7
 
 # Ollama API client for LLM integration
 class OllamaClient
-  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = 150, temperature = 0.7)
+  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = nil, temperature = nil, num_thread = nil, keepalive = nil)
     @host = host
     @port = port
     @model = model
@@ -21,8 +25,10 @@ class OllamaClient
     @chat_history = []
     @user_chat_histories = {}
     @max_history_length = 10  # Keep last 10 exchanges
-    @max_tokens = 150
-    @temperature = 0.7
+    @max_tokens = max_tokens || DEFAULT_MAX_TOKENS
+    @temperature = temperature || DEFAULT_TEMPERATURE
+    @num_thread = num_thread || DEFAULT_NUM_THREAD
+    @keepalive = keepalive || DEFAULT_KEEPALIVE
   end
 
   def add_to_history(user_message, assistant_response, user_id = nil)
@@ -93,11 +99,12 @@ class OllamaClient
         model: @model,
         prompt: full_prompt,
         stream: false,
+        keepalive: @keepalive,
         options: {
-          temperature: 0.7,
+          temperature: @temperature,
           top_p: 0.9,
-          max_tokens: 150,
-          num_thread: 8
+          max_tokens: @max_tokens,
+          num_thread: @num_thread
         }
       }
 
@@ -272,9 +279,11 @@ def read_bots (irc_server_ip_address)
       ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || ollama_host
       ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || ollama_port.to_s).to_i
       ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
-      max_tokens = (hackerbot.at_xpath('max_tokens')&.text || 150).to_i
-      temperature = (hackerbot.at_xpath('model_temperature')&.text || 0.7).to_f
-      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature)
+      max_tokens = (hackerbot.at_xpath('max_tokens')&.text || DEFAULT_MAX_TOKENS).to_i
+      temperature = (hackerbot.at_xpath('model_temperature')&.text || DEFAULT_TEMPERATURE).to_f
+      num_thread = (hackerbot.at_xpath('num_thread')&.text || DEFAULT_NUM_THREAD).to_i
+      keepalive = (hackerbot.at_xpath('keepalive')&.text || DEFAULT_KEEPALIVE).to_i
+      bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature, num_thread, keepalive)
       
       # Test connection to Ollama
       unless bots[bot_name]['chat_ai'].test_connection
