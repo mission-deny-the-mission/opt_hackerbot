@@ -10,6 +10,29 @@ class BotManager
     @ollama_port = ollama_port
     @ollama_model = ollama_model
     @bots = {}
+    @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
+    @max_history_length = 10
+  end
+
+  def add_to_history(bot_name, user_id, user_message, assistant_response)
+    @user_chat_histories[bot_name][user_id] ||= []
+    @user_chat_histories[bot_name][user_id] << { user: user_message, assistant: assistant_response }
+    if @user_chat_histories[bot_name][user_id].length > @max_history_length
+      @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(@max_history_length)
+    end
+  end
+
+  def get_chat_context(bot_name, user_id)
+    history = @user_chat_histories[bot_name][user_id] || []
+    return '' if history.empty?
+    context_parts = history.map do |exchange|
+      "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+    end
+    context_parts.join("\n\n")
+  end
+
+  def clear_user_history(bot_name, user_id)
+    @user_chat_histories[bot_name].delete(user_id)
   end
 
   def read_bots
@@ -74,16 +97,34 @@ class BotManager
           Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
         end
 
-        create_bot(bot_name)
+        create_bot(bot_name, ollama_system_prompt)
       end
     end
 
     @bots
   end
 
-  def create_bot(bot_name)
+  def assemble_prompt(system_prompt, context, chat_context, user_message)
+    if context.empty? && chat_context.empty?
+      "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
+    elsif context.empty?
+      "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+    elsif chat_context.empty?
+      "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+    else
+      "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+    end
+  end
+
+  def create_bot(bot_name, system_prompt)
     bots_ref = @bots
     irc_server_ip_address = @irc_server_ip_address
+    user_chat_histories = @user_chat_histories
+    max_history_length = @max_history_length
+    get_chat_context = method(:get_chat_context)
+    add_to_history = method(:add_to_history)
+    clear_user_history = method(:clear_user_history)
+    assemble_prompt = method(:assemble_prompt)
     
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
@@ -240,13 +281,13 @@ class BotManager
 
       on :message, 'clear_history' do |m|
         user_id = m.user.nick
-        bots_ref[bot_name]['chat_ai'].clear_user_history(user_id)
+        clear_user_history.call(bot_name, user_id)
         m.reply "Chat history cleared for #{user_id}."
       end
 
       on :message, 'show_history' do |m|
         user_id = m.user.nick
-        chat_context = bots_ref[bot_name]['chat_ai'].get_chat_context(user_id)
+        chat_context = get_chat_context.call(bot_name, user_id)
         if chat_context.empty?
           m.reply "No chat history found for #{user_id}."
         else
@@ -260,58 +301,42 @@ class BotManager
         # Only process messages not related to controlling attacks
         if m.message !~ /hello|help|next|previous|ready|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
           begin
-            # Use Ollama to generate a response with user-specific chat history
             user_id = m.user.nick
-            
-            # Add current attack context if available
             current_attack = bots_ref[bot_name]['current_attack']
             attack_context = ''
             if current_attack < bots_ref[bot_name]['attacks'].length
               attack_context = "Current attack (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
             end
-            
-            # Use streaming if enabled for this bot
+            chat_context = get_chat_context.call(bot_name, user_id)
+            prompt = assemble_prompt.call(system_prompt, attack_context, chat_context, m.message)
             if bots_ref[bot_name]['chat_ai'].instance_variable_get(:@streaming)
-              # Create a callback for streaming responses that accumulates chunks
               accumulated_text = ''
               stream_callback = Proc.new do |chunk|
                 accumulated_text << chunk
-                
-                # Check if we have complete lines to send
                 if accumulated_text.include?("\n")
                   lines = accumulated_text.split("\n", -1)
-                  # Send all complete lines except the last one (which might be incomplete)
                   lines[0...-1].each do |complete_line|
                     if !complete_line.strip.empty?
                       m.reply complete_line.strip
                     end
                   end
-                  # Keep the last (potentially incomplete) line
                   accumulated_text = lines.last
                 end
               end
-              
-              reaction = bots_ref[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id, stream_callback)
-              
-              # Send any remaining accumulated text
+              reaction = bots_ref[bot_name]['chat_ai'].generate_response(prompt, stream_callback)
               if !accumulated_text.strip.empty?
                 m.reply accumulated_text.strip
               end
-              
-              # If streaming failed or returned nil, fall back to non-streaming
-              if reaction.nil? || reaction.empty?
-                reaction = bots_ref[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
-                if reaction && !reaction.empty?
-                  m.reply reaction
-                elsif m.message.include?('?')
-                  m.reply bots_ref[bot_name]['messages']['non_answer']
-                end
+              if reaction && !reaction.empty?
+                add_to_history.call(bot_name, user_id, m.message, reaction)
+              elsif m.message.include?('?')
+                m.reply bots_ref[bot_name]['messages']['non_answer']
               end
             else
-              # Use non-streaming response
-              reaction = bots_ref[bot_name]['chat_ai'].generate_response(m.message, attack_context, user_id)
+              reaction = bots_ref[bot_name]['chat_ai'].generate_response(prompt)
               if reaction && !reaction.empty?
                 m.reply reaction
+                add_to_history.call(bot_name, user_id, m.message, reaction)
               elsif m.message.include?('?')
                 m.reply bots_ref[bot_name]['messages']['non_answer']
               end

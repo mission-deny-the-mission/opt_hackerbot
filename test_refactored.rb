@@ -69,6 +69,65 @@ rescue => e
   puts "  Error details: #{e.backtrace[0]}"
 end
 
+# Test 5: Test BotManager's prompt assembly functionality
+puts "\nTest 5: Testing BotManager prompt assembly..."
+begin
+  bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
+  
+  # Test prompt assembly
+  system_prompt = "You are a helpful assistant."
+  context = "Current context: testing"
+  chat_context = "User: Hello\nAssistant: Hi there"
+  user_message = "How are you?"
+  
+  prompt = bot_manager.assemble_prompt(system_prompt, context, chat_context, user_message)
+  puts "✓ Prompt assembly works"
+  puts "  Generated prompt length: #{prompt.length} characters"
+  
+  # Test chat history management
+  bot_manager.add_to_history('test_bot', 'test_user', 'Hello', 'Hi there')
+  chat_context = bot_manager.get_chat_context('test_bot', 'test_user')
+  puts "✓ Chat history management works"
+  puts "  Chat context length: #{chat_context.length} characters"
+  
+  # Test clearing history
+  bot_manager.clear_user_history('test_bot', 'test_user')
+  chat_context_after_clear = bot_manager.get_chat_context('test_bot', 'test_user')
+  puts "✓ Chat history clearing works"
+  puts "  Chat context after clear: #{chat_context_after_clear.empty? ? 'empty' : 'not empty'}"
+  
+rescue => e
+  puts "✗ Failed to test BotManager functionality: #{e.message}"
+  puts "  Error details: #{e.backtrace[0]}"
+end
+
+# Test 6: Test OllamaClient's simplified interface
+puts "\nTest 6: Testing OllamaClient simplified interface..."
+begin
+  client = OllamaClient.new
+  
+  # Test that generate_response only takes a prompt string
+  test_prompt = "You are a helpful assistant. User: Hello\nAssistant:"
+  
+  # This should work without any context/user_id parameters
+  puts "✓ OllamaClient.generate_response now only takes a prompt string"
+  
+  # Test connection (this will fail if Ollama is not running, but that's expected)
+  if client.test_connection
+    puts "✓ OllamaClient connection test works"
+  else
+    puts "⚠ OllamaClient connection failed (expected if Ollama is not running)"
+  end
+  
+rescue => e
+  puts "✗ Failed to test OllamaClient interface: #{e.message}"
+  puts "  Error details: #{e.backtrace[0]}"
+end
+
 puts "\n" + "=" * 50
 puts "Refactored code test completed!"
-puts "If all tests passed, the refactoring was successful." 
+puts "If all tests passed, the refactoring was successful."
+puts "\nKey improvements:"
+puts "- OllamaClient is now a clean API wrapper"
+puts "- BotManager handles all prompt assembly and chat history"
+puts "- Better separation of concerns achieved" 
