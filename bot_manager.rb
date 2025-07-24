@@ -67,7 +67,19 @@ class BotManager
 
         @bots[bot_name]['attacks'] = []
         hackerbot.xpath('//attack').each do |attack|
-          @bots[bot_name]['attacks'].push Nori.new.parse(attack.to_s)['attack']
+          attack_data = Nori.new.parse(attack.to_s)['attack']
+          # Extract system prompt for this attack if specified
+          attack_xml = attack.to_s
+          if attack_xml.include?('<system_prompt>')
+            # Parse the system prompt from the attack XML
+            attack_doc = Nokogiri::XML(attack_xml)
+            attack_doc.remove_namespaces!
+            system_prompt = attack_doc.at_xpath('//system_prompt')&.text
+            if system_prompt
+              attack_data['system_prompt'] = system_prompt
+            end
+          end
+          @bots[bot_name]['attacks'].push attack_data
         end
         @bots[bot_name]['current_attack'] = 0
 
@@ -304,11 +316,19 @@ class BotManager
             user_id = m.user.nick
             current_attack = bots_ref[bot_name]['current_attack']
             attack_context = ''
+            current_system_prompt = system_prompt
+            
             if current_attack < bots_ref[bot_name]['attacks'].length
               attack_context = "Current attack (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
+              # Use attack-specific system prompt if available
+              if bots_ref[bot_name]['attacks'][current_attack].key?('system_prompt')
+                current_system_prompt = bots_ref[bot_name]['attacks'][current_attack]['system_prompt']
+                # Update the OllamaClient's system prompt for this attack
+                bots_ref[bot_name]['chat_ai'].update_system_prompt(current_system_prompt)
+              end
             end
             chat_context = get_chat_context.call(bot_name, user_id)
-            prompt = assemble_prompt.call(system_prompt, attack_context, chat_context, m.message)
+            prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message)
             if bots_ref[bot_name]['chat_ai'].instance_variable_get(:@streaming)
               accumulated_text = ''
               stream_callback = Proc.new do |chunk|

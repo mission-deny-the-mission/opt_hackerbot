@@ -152,4 +152,14 @@ class OllamaClient
       return false
     end
   end
+
+  # Update the system prompt dynamically
+  def update_system_prompt(new_prompt)
+    @system_prompt = new_prompt
+  end
+
+  # Get the current system prompt
+  def get_system_prompt
+    @system_prompt
+  end
 end 

@@ -10,7 +10,8 @@ This version of Hackerbot has been updated to use Ollama LLM for natural languag
 4. **Per-user chat history**: Each user gets their own conversation context
 5. **Configurable models**: Each bot can use different Ollama models
 6. **System prompts**: Customizable system prompts per bot
-7. **Streaming responses**: Real-time line-by-line output for improved responsiveness
+7. **Per-attack system prompts**: Change bot personality and behavior at each exercise stage
+8. **Streaming responses**: Real-time line-by-line output for improved responsiveness
 
 ## Requirements
 
@@ -67,7 +68,17 @@ Bot configurations are defined in XML files in the `config/` directory. Each bot
   </messages>
   
   <attacks>
-    <!-- ... attack definitions ... -->
+    <!-- Each attack can have its own system prompt -->
+    <attack>
+      <prompt>This is a normal attack.</prompt>
+      <!-- Uses global system prompt -->
+    </attack>
+    
+    <attack>
+      <prompt>This attack has a custom personality.</prompt>
+      <system_prompt>You are now a gullible customer service agent who is easily manipulated.</system_prompt>
+      <!-- Uses attack-specific system prompt -->
+    </attack>
   </attacks>
 </hackerbot>
 ```
@@ -83,6 +94,13 @@ Each user gets their own conversation context that persists across messages. The
 
 ### Context Awareness
 The bot automatically includes current attack context in its responses, making it aware of what the user is working on.
+
+### Per-Attack System Prompts
+Each attack stage can have its own system prompt, allowing the bot to change personality and behavior dynamically. This enables:
+- **Social engineering exercises**: Bot can role-play as gullible targets
+- **AI/LLM security training**: Bot can simulate vulnerable AI assistants
+- **Progressive difficulty**: Start with easy targets, progress to harder ones
+- **Multi-persona scenarios**: Switch between different roles in a single exercise
 
 ### Streaming Responses
 The bot can stream responses line-by-line in real-time, providing immediate feedback to users. This can be enabled/disabled per bot or globally via command line arguments.
@@ -131,8 +149,13 @@ Existing bot configurations will continue to work. You can optionally add Ollama
 
 ### Testing
 - Use the example configuration in `config/example_ollama.xml`
+- Use the fishing exercise example in `config/fishing_exercise.xml.example`
 - Test with different Ollama models
 - Verify chat history functionality
+- Test per-attack system prompt changes
+
+### Per-Attack System Prompts
+For detailed information about using per-attack system prompts for social engineering and AI security exercises, see `README_PER_ATTACK_PROMPTS.md`.
 
 ## License
 
