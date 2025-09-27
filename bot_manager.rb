@@ -476,6 +476,7 @@ class BotManager
     add_to_history = method(:add_to_history)
     clear_user_history = method(:clear_user_history)
     assemble_prompt = method(:assemble_prompt)
+    get_enhanced_context = method(:get_enhanced_context)
 
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
@@ -671,7 +672,7 @@ class BotManager
             # Get RAG + CAG enhanced context if enabled
             enhanced_context = nil
             if bots_ref[bot_name]['rag_cag_enabled'] != false
-              enhanced_context = get_enhanced_context(bot_name, m.message)
+              enhanced_context = get_enhanced_context.call(bot_name, m.message)
             end
 
             prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
