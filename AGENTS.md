@@ -1,183 +1,68 @@
-# Hackerbot Agents System
+# Hackerbot Project Guide for AI Agents
 
-Hackerbot is a Ruby-based IRC bot framework designed for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through integration with multiple LLM providers.
+## Project Overview
 
-## Overview
+Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through multiple LLM providers (Ollama, OpenAI, VLLM, SGLang) and advanced knowledge retrieval systems (RAG + CAG).
 
-The system consists of intelligent IRC bots that can guide users through progressive cybersecurity challenges while maintaining contextual conversations using LLMs. Each bot can adapt its personality and behavior based on the current training scenario. Hackerbot now supports multiple LLM backends including Ollama, OpenAI, VLLM, and SGLang.
+## Core Architecture
 
-## Core Components
+### Main Components
+- `hackerbot.rb` - Entry point and CLI handler
+- `bot_manager.rb` - Central bot instance controller
+- `llm_client.rb` - Base LLM interface with provider-specific implementations
+- `rag_cag_manager.rb` - Unified RAG (Retrieval-Augmented Generation) and CAG (Context-Aware Generation) coordinator
 
-### Main Application
-- `hackerbot.rb` - Entry point that handles command-line arguments and initializes the bot manager
-- `bot_manager.rb` - Central controller that manages multiple bot instances and their configurations
-- `llm_client.rb` - Base class for all LLM clients
-- `ollama_client.rb` - Interface for communicating with Ollama LLM services
-- `openai_client.rb` - Interface for communicating with OpenAI API
-- `vllm_client.rb` - Interface for communicating with VLLM servers
-- `sglang_client.rb` - Interface for communicating with SGLang servers
-- `llm_client_factory.rb` - Factory for creating appropriate LLM client instances
+### Key Subsystems
+1. **LLM Integration**: Multiple provider support with streaming and chat history
+2. **RAG System**: Document retrieval and semantic search capabilities
+3. **CAG System**: Entity extraction and knowledge graph analysis
+4. **Knowledge Bases**: MITRE ATT&CK, man pages, markdown files
+5. **Offline Support**: Persistent storage and air-gapped operation
+
+## Development Guidelines
+
+### Project Structure
+```
+opt_hackerbot/
+├── rag/                # Retrieval-Augmented Generation
+├── cag/                # Context-Aware Generation
+├── knowledge_bases/    # Knowledge sources and processing
+├── config/             # XML configuration files
+├── docs/               # Documentation
+└── test/               # Test suites
+```
+
+### Key Files to Know
+- `config/example_*.xml` - Configuration examples and templates
+- `setup_offline_rag_cag.rb` - Offline mode setup script
+- `demo_*.rb` - Interactive demonstration scripts
+- `knowledge_bases/mitre_attack_knowledge.rb` - Core threat intelligence
 
 ### Configuration System
-Bots are configured through XML files located in the `config/` directory:
-- `<name>` - Unique identifier for the bot
-- `<llm_provider>` - LLM provider to use (ollama, openai, vllm, sglang)
-- `<get_shell>` - Shell access configuration
-- `<messages>` - Static response templates
-- `<attacks>` - Progressive challenge scenarios
+Bots are configured through XML files in `config/` with these key elements:
+- `<llm_provider>` - Ollama, OpenAI, VLLM, or SGLang
+- `<rag_cag_enabled>` - Enable/disable knowledge retrieval
+- `<attacks>` - Progressive training scenarios
+- `<knowledge_sources>` - Custom knowledge base configuration
 
-### LLM Integration
-- Support for multiple LLM providers: Ollama, OpenAI, VLLM, SGLang
-- Per-user chat history management for contextual conversations
-- Streaming responses for real-time interaction
-- Per-attack system prompts for dynamic personality changes
+### Development Tips
+1. **LLM Clients**: Implement new providers by extending `llm_client.rb`
+2. **Knowledge Sources**: Add new sources by extending `base_knowledge_source.rb`
+3. **Configuration**: Use XML files for bot definitions and settings
+4. **Testing**: Run tests with `ruby test/test_*.rb`
+5. **Offline Mode**: Default operation mode, use `setup_offline_rag_cag.rb` for initial setup
 
-## Key Features
+### Best Practices
+- Keep LLM client implementations modular and provider-agnostic
+- Use the factory pattern for creating LLM instances (`llm_client_factory.rb`)
+- Implement proper error handling for external service connections
+- Follow the existing naming conventions (snake_case for files and methods)
+- Cache expensive operations (embedding generation, knowledge base queries)
 
-### Multi-Bot Management
-- Single manager controls multiple concurrent bot instances
-- Each bot operates in its own IRC channels
-- Independent configuration per bot
+### Important Notes
+- System defaults to offline operation for security and reliability
+- RAG and CAG can be controlled independently per bot
+- MITRE ATT&CK framework is included by default in all knowledge bases
+- Support for man pages and markdown files as additional knowledge sources
 
-### Progressive Attack System
-- Structured learning paths through numbered attack scenarios
-- Navigation commands (`next`, `previous`, `goto`)
-- Conditional progression based on user responses
-- Automated verification of correct answers
-
-### AI-Powered Conversations
-- Natural language understanding through multiple LLM providers
-- Context retention through per-user chat history
-- Dynamic personality adaptation per training stage
-- Real-time streaming responses for better interactivity
-
-### Interactive Learning
-- Quiz-based knowledge verification
-- Hands-on shell command execution
-- Immediate feedback mechanisms
-- Comprehensive help system
-
-## Agent Capabilities
-
-### Social Engineering Training
-Agents can role-play various personas:
-- Gullible customer service representatives
-- Naive IT administrators
-- Trusting employees with sensitive access
-
-### AI Security Exercises
-Agents simulate vulnerable AI systems for:
-- Prompt injection attack training
-- LLM security awareness
-- Responsible AI interaction practices
-
-### Traditional Cybersecurity Drills
-Agents guide users through:
-- Network reconnaissance
-- Exploitation techniques
-- Post-exploitation activities
-
-## Supported LLM Providers
-
-### Ollama
-Local LLM inference engine with support for many models.
-
-### OpenAI
-Cloud-based API access to GPT models with API key authentication.
-
-### VLLM
-High-throughput LLM inference server optimized for serving.
-
-### SGLang
-Structured generation language for efficient LLM inference.
-
-## Configuration Examples
-
-### Basic Configuration with Ollama
-```xml
-<hackerbot>
-  <name>TrainingBot</name>
-  <llm_provider>ollama</llm_provider>
-  <ollama_model>llama2</ollama_model>
-  <system_prompt>Helpful cybersecurity instructor</system_prompt>
-  <get_shell>false</get_shell>
-  
-  <attacks>
-    <attack>
-      <prompt>Introduction to port scanning</prompt>
-      <system_prompt>Beginner-friendly instructor persona</system_prompt>
-    </attack>
-  </attacks>
-</hackerbot>
-```
-
-### Configuration with OpenAI
-```xml
-<hackerbot>
-  <name>GPTBot</name>
-  <llm_provider>openai</llm_provider>
-  <openai_api_key>YOUR_API_KEY_HERE</openai_api_key>
-  <ollama_model>gpt-3.5-turbo</ollama_model>
-  <system_prompt>Helpful cybersecurity instructor</system_prompt>
-  <get_shell>false</get_shell>
-</hackerbot>
-```
-
-### Configuration with VLLM
-```xml
-<hackerbot>
-  <name>VLLMBot</name>
-  <llm_provider>vllm</llm_provider>
-  <vllm_host>localhost</vllm_host>
-  <vllm_port>8000</vllm_port>
-  <ollama_model>facebook/opt-125m</ollama_model>
-  <system_prompt>Helpful cybersecurity instructor</system_prompt>
-  <get_shell>false</get_shell>
-</hackerbot>
-```
-
-### Configuration with SGLang
-```xml
-<hackerbot>
-  <name>SGLangBot</name>
-  <llm_provider>sglang</llm_provider>
-  <sglang_host>localhost</sglang_host>
-  <sglang_port>30000</sglang_port>
-  <ollama_model>meta-llama/Llama-2-7b-chat-hf</ollama_model>
-  <system_prompt>Helpful cybersecurity instructor</system_prompt>
-  <get_shell>false</get_shell>
-</hackerbot>
-```
-
-## Command-Line Usage
-
-Start the system with:
-```bash
-ruby hackerbot.rb [OPTIONS]
-```
-
-Options:
-- `--irc-server`, `-i HOST` - IRC server IP address (default: localhost)
-- `--llm-provider`, `-l PROVIDER` - LLM provider: ollama, openai, vllm, sglang (default: ollama)
-- `--ollama-host`, `-o HOST` - Ollama server host (default: localhost)
-- `--ollama-port`, `-p PORT` - Ollama server port (default: 11434)
-- `--ollama-model`, `-m MODEL` - Ollama model name (default: gemma3:1b)
-- `--openai-api-key`, `-k KEY` - OpenAI API key
-- `--vllm-host HOST` - VLLM server host (default: localhost)
-- `--vllm-port PORT` - VLLM server port (default: 8000)
-- `--sglang-host HOST` - SGLang server host (default: localhost)
-- `--sglang-port PORT` - SGLang server port (default: 30000)
-- `--streaming`, `-s true|false` - Enable/disable streaming (default: true)
-- `--help`, `-h` - Show help message
-
-Connect via IRC client to interact with bots in channels named after each bot or in the general `#bots` channel.
-
-## Training Applications
-
-- **Red Team Exercises** - Simulate adversary behaviors
-- **Blue Team Training** - Practice detection and response
-- **Social Engineering Defense** - Learn to recognize manipulation
-- **AI Security Awareness** - Understand LLM vulnerabilities
-- **Incident Response Drills** - Practice structured response procedures
-
-This framework provides a flexible platform for creating engaging, interactive cybersecurity training experiences that combine traditional attack simulation with modern AI-powered educational techniques using multiple LLM backends.
+This framework provides flexible, offline-capable cybersecurity training with AI-powered conversations and comprehensive knowledge retrieval.

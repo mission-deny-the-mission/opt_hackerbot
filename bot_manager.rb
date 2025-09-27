@@ -2,9 +2,10 @@ require 'nokogiri'
 require 'nori'
 require './print.rb'
 require './llm_client_factory.rb'
+require './rag_cag_manager.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000)
+  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
     @irc_server_ip_address = irc_server_ip_address
     @llm_provider = llm_provider
     @ollama_host = ollama_host
@@ -18,6 +19,141 @@ class BotManager
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
     @max_history_length = 10
+    @enable_rag_cag = enable_rag_cag
+    @rag_cag_config = rag_cag_config
+    @rag_cag_manager = nil
+
+    # Set default offline mode and independent RAG/CAG settings
+    @rag_cag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
+    @rag_cag_config[:enable_rag] = rag_cag_config.fetch(:enable_rag, true)  # Default to both enabled
+    @rag_cag_config[:enable_cag] = rag_cag_config.fetch(:enable_cag, true)  # Default to both enabled
+
+    # Initialize RAG + CAG manager if enabled
+    if @enable_rag_cag
+      initialize_rag_cag_manager
+    end
+  end
+
+  def initialize_rag_cag_manager
+    Print.info "Initializing RAG + CAG Manager..."
+
+    # Load offline configuration to determine defaults
+    require './rag_cag_offline_config'
+    offline_config_manager = OfflineConfigurationManager.new
+
+    # Determine if we should use offline mode
+    use_offline = case @rag_cag_config[:offline_mode]
+                  when 'offline'
+                    true
+                  when 'online'
+                    false
+                  else # 'auto'
+                    offline_config_manager.detect_connectivity == :offline
+                  end
+
+    Print.info "Using #{use_offline ? 'offline' : 'online'} mode for RAG + CAG systems"
+
+    # Default RAG configuration with offline as default
+    rag_config = if use_offline
+      {
+        vector_db: {
+          provider: 'chromadb_offline',
+          storage_path: './knowledge_bases/offline/vector_db',
+          persist_embeddings: true,
+          compression_enabled: true
+        },
+        embedding_service: {
+          provider: 'ollama_offline',
+          model: 'nomic-embed-text',
+          cache_embeddings: true,
+          cache_path: './cache/embeddings',
+          fallback_to_random: true
+        },
+        rag_settings: {
+          max_results: 5,
+          similarity_threshold: 0.7,
+          enable_caching: true
+        }
+      }
+    else
+      {
+        vector_db: {
+          provider: 'chromadb',
+          host: 'localhost',
+          port: 8000
+        },
+        embedding_service: {
+          provider: 'ollama',
+          host: @ollama_host,
+          port: @ollama_port,
+          model: 'nomic-embed-text'
+        },
+        rag_settings: {
+          max_results: 5,
+          similarity_threshold: 0.7,
+          enable_caching: true
+        }
+      }
+    end
+
+    # Default CAG configuration with offline as default
+    cag_config = if use_offline
+      {
+        knowledge_graph: {
+          provider: 'in_memory_offline',
+          storage_path: './knowledge_bases/offline/graph',
+          persist_graph: true,
+          load_from_file: true,
+          compression_enabled: true
+        },
+        entity_extractor: {
+          provider: 'rule_based_offline',
+          cache_entities: true
+        },
+        cag_settings: {
+          max_context_depth: 2,
+          max_context_nodes: 20,
+          enable_caching: true
+        }
+      }
+    else
+      {
+        knowledge_graph: {
+          provider: 'in_memory'
+        },
+        entity_extractor: {
+          provider: 'rule_based'
+        },
+        cag_settings: {
+          max_context_depth: 2,
+          max_context_nodes: 20,
+          enable_caching: true
+        }
+      }
+    end
+
+    # Override with user-provided configuration
+    rag_config.deep_merge!(@rag_cag_config[:rag]) if @rag_cag_config[:rag]
+    cag_config.deep_merge!(@rag_cag_config[:cag]) if @rag_cag_config[:cag]
+
+    unified_config = {
+      enable_rag: @rag_cag_config[:enable_rag],
+      enable_cag: @rag_cag_config[:enable_cag],
+      rag_weight: @rag_cag_config.fetch(:rag_weight, 0.6),
+      cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
+      max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
+      enable_caching: @rag_cag_config.fetch(:enable_caching, true),
+      auto_initialization: @rag_cag_config.fetch(:auto_initialization, true),
+      enable_knowledge_sources: @rag_cag_config.fetch(:enable_knowledge_sources, true),
+      knowledge_sources_config: @rag_cag_config.fetch(:knowledge_sources_config, [])
+    }
+
+    @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
+
+    unless @rag_cag_manager.setup
+      Print.err "Failed to initialize RAG + CAG Manager"
+      @rag_cag_manager = nil
+    end
   end
 
   def add_to_history(bot_name, user_id, user_message, assistant_response)
@@ -39,6 +175,69 @@ class BotManager
 
   def clear_user_history(bot_name, user_id)
     @user_chat_histories[bot_name].delete(user_id)
+  end
+
+  def get_enhanced_context(bot_name, user_message)
+    return nil unless @enable_rag_cag && @rag_cag_manager
+
+    # Check if bot has specific RAG + CAG configuration
+    rag_cag_enabled = @bots.dig(bot_name, 'rag_cag_enabled')
+    return nil if rag_cag_enabled == false
+
+    # Get bot-specific RAG and CAG settings
+    rag_enabled = @bots.dig(bot_name, 'rag_enabled')
+    cag_enabled = @bots.dig(bot_name, 'cag_enabled')
+
+    # If neither RAG nor CAG is enabled for this bot, return nil
+    return nil if rag_enabled == false && cag_enabled == false
+
+    # Get bot-specific context preferences
+    context_options = {}
+    if @bots.dig(bot_name, 'rag_cag_config')
+      context_options = {
+        max_rag_results: @bots.dig(bot_name, 'rag_cag_config', 'max_rag_results') || 5,
+        max_cag_depth: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_depth') || 2,
+        max_cag_nodes: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_nodes') || 10,
+        include_rag_context: rag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_rag_context') != false),
+        include_cag_context: cag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false),
+        custom_collection: @bots.dig(bot_name, 'rag_cag_config', 'collection_name')
+      }
+    else
+      # Use global settings if no bot-specific config
+      context_options = {
+        max_rag_results: 5,
+        max_cag_depth: 2,
+        max_cag_nodes: 10,
+        include_rag_context: rag_enabled != false,
+        include_cag_context: cag_enabled != false,
+        custom_collection: nil
+      }
+    end
+
+    # Get enhanced context from RAG + CAG manager
+    enhanced_context = @rag_cag_manager.get_enhanced_context(user_message, context_options)
+    Print.debug "Enhanced context length: #{enhanced_context&.length || 0} characters"
+    enhanced_context
+  end
+
+  def extract_entities_from_message(bot_name, user_message)
+    return nil unless @enable_rag_cag && @rag_cag_manager
+
+    # Check if bot has entity extraction enabled
+    entity_extraction_enabled = @bots.dig(bot_name, 'entity_extraction_enabled')
+    return nil if entity_extraction_enabled == false
+
+    # Check if CAG is enabled for this bot (entity extraction requires CAG)
+    cag_enabled = @bots.dig(bot_name, 'cag_enabled')
+    return nil if cag_enabled == false
+
+    # Get bot-specific entity types
+    entity_types = @bots.dig(bot_name, 'entity_types') || ['ip_address', 'url', 'hash', 'filename']
+
+    # Extract entities
+    entities = @rag_cag_manager.extract_entities(user_message, entity_types)
+    Print.debug "Extracted #{entities&.length || 0} entities from message"
+    entities
   end
 
   def read_bots
@@ -180,6 +379,66 @@ class BotManager
           )
         end
 
+        # Parse RAG + CAG configuration if enabled
+        rag_cag_enabled = hackerbot.at_xpath('rag_cag_enabled')&.text
+        @bots[bot_name]['rag_cag_enabled'] = rag_cag_enabled ? (rag_cag_enabled.downcase == 'true') : @enable_rag_cag
+
+        if @bots[bot_name]['rag_cag_enabled']
+          # Parse individual RAG and CAG enabling (allowing independent control)
+          rag_enabled_node = hackerbot.at_xpath('rag_enabled')&.text
+          cag_enabled_node = hackerbot.at_xpath('cag_enabled')&.text
+
+          # Use global settings as defaults, but allow per-bot override
+          @bots[bot_name]['rag_enabled'] = if rag_enabled_node
+            rag_enabled_node.downcase == 'true'
+          else
+            @rag_cag_config[:enable_rag]  # Use global setting
+          end
+
+          @bots[bot_name]['cag_enabled'] = if cag_enabled_node
+            cag_enabled_node.downcase == 'true'
+          else
+            @rag_cag_config[:enable_cag]  # Use global setting
+          end
+
+          # Parse RAG configuration
+          rag_config_node = hackerbot.at_xpath('rag_cag_config/rag')
+          if rag_config_node
+            @bots[bot_name]['rag_cag_config'] ||= {}
+            @bots[bot_name]['rag_cag_config']['max_rag_results'] = (rag_config_node.at_xpath('max_rag_results')&.text || '5').to_i
+            @bots[bot_name]['rag_cag_config']['include_rag_context'] = !(rag_config_node.at_xpath('include_rag_context')&.text.downcase == 'false')
+            @bots[bot_name]['rag_cag_config']['collection_name'] = rag_config_node.at_xpath('collection_name')&.text
+          end
+
+          # Parse CAG configuration
+          cag_config_node = hackerbot.at_xpath('rag_cag_config/cag')
+          if cag_config_node
+            @bots[bot_name]['rag_cag_config'] ||= {}
+            @bots[bot_name]['rag_cag_config']['max_cag_depth'] = (cag_config_node.at_xpath('max_cag_depth')&.text || '2').to_i
+            @bots[bot_name]['rag_cag_config']['max_cag_nodes'] = (cag_config_node.at_xpath('max_cag_nodes')&.text || '10').to_i
+            @bots[bot_name]['rag_cag_config']['include_cag_context'] = !(cag_config_node.at_xpath('include_cag_context')&.text.downcase == 'false')
+          end
+
+          # Parse entity extraction configuration
+          entity_extraction_enabled = hackerbot.at_xpath('entity_extraction_enabled')&.text
+          @bots[bot_name]['entity_extraction_enabled'] = entity_extraction_enabled ? (entity_extraction_enabled.downcase == 'true') : true
+
+          # Parse entity types
+          entity_types_node = hackerbot.at_xpath('entity_types')
+          if entity_types_node
+            entity_types = entity_types_node.text.split(',').map(&:strip).reject(&:empty?)
+            @bots[bot_name]['entity_types'] = entity_types unless entity_types.empty?
+          end
+
+          # Parse knowledge sources configuration
+          knowledge_sources_node = hackerbot.at_xpath('knowledge_sources')
+          if knowledge_sources_node
+            @bots[bot_name]['knowledge_sources'] = parse_knowledge_sources(knowledge_sources_node)
+            # Update global RAG/CAG config with bot-specific knowledge sources
+            @rag_cag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
+          end
+        end
+
         # Test connection to LLM provider
         unless @bots[bot_name]['chat_ai'].test_connection
           Print.err "Warning: Cannot connect to #{provider} for bot #{bot_name}. Chat responses may not work."
@@ -192,15 +451,137 @@ class BotManager
     @bots
   end
 
-  def assemble_prompt(system_prompt, context, chat_context, user_message)
-    if context.empty? && chat_context.empty?
-      "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
-    elsif context.empty?
-      "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
-    elsif chat_context.empty?
-      "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+  def parse_knowledge_sources(knowledge_sources_node)
+    sources = []
+
+    knowledge_sources_node.xpath('source').each do |source_node|
+      source_type = source_node.at_xpath('type')&.text
+      source_name = source_node.at_xpath('name')&.text
+      enabled = source_node.at_xpath('enabled')&.text
+      description = source_node.at_xpath('description')&.text
+      priority = source_node.at_xpath('priority')&.text
+
+      next unless source_type
+
+      source_config = {
+        type: source_type,
+        name: source_name || source_type,
+        enabled: enabled ? (enabled.downcase == 'true') : true,
+        description: description || '',
+        priority: priority ? priority.to_i : 0
+      }
+
+      # Parse type-specific configuration
+      case source_type.downcase
+      when 'man_pages', 'manpage', 'man'
+        source_config[:man_pages] = parse_man_pages_config(source_node)
+      when 'markdown_files', 'markdown', 'md'
+        source_config[:markdown_files] = parse_markdown_files_config(source_node)
+      end
+
+      sources << source_config
+    end
+
+    sources
+  end
+
+  def parse_man_pages_config(source_node)
+    man_pages = []
+
+    source_node.xpath('man_pages/man_page').each do |man_page_node|
+      name = man_page_node.at_xpath('name')&.text
+      section = man_page_node.at_xpath('section')&.text
+      collection_name = man_page_node.at_xpath('collection_name')&.text
+
+      next unless name
+
+      man_page_config = {
+        name: name,
+        collection_name: collection_name || 'default_man_pages'
+      }
+
+      if section
+        man_page_config[:section] = section.to_i
+      end
+
+      man_pages << man_page_config
+    end
+
+    man_pages
+  end
+
+  def parse_markdown_files_config(source_node)
+    markdown_files = []
+
+    source_node.xpath('markdown_files/markdown_file').each do |markdown_file_node|
+      path = markdown_file_node.at_xpath('path')&.text
+      collection_name = markdown_file_node.at_xpath('collection_name')&.text
+      tags_node = markdown_file_node.at_xpath('tags')
+
+      next unless path
+
+      markdown_file_config = {
+        path: path,
+        collection_name: collection_name || 'default_markdown_files'
+      }
+
+      # Parse tags if present
+      if tags_node
+        tags = []
+        tags_node.xpath('tag').each do |tag_node|
+          tag_text = tag_node.text
+          tags << tag_text if tag_text && !tag_text.empty?
+        end
+        markdown_file_config[:tags] = tags unless tags.empty?
+      end
+
+      markdown_files << markdown_file_config
+    end
+
+    # Also check for directory-based configuration
+    directory_node = source_node.at_xpath('markdown_files/directory')
+    if directory_node
+      dir_path = directory_node.at_xpath('path')&.text
+      dir_pattern = directory_node.at_xpath('pattern')&.text
+      dir_collection = directory_node.at_xpath('collection_name')&.text
+
+      if dir_path
+        dir_config = {
+          path: dir_path,
+          collection_name: dir_collection || "markdown_#{File.basename(dir_path).gsub(/[^\w\-]/, '_')}",
+          pattern: dir_pattern || '*.md',
+          is_directory: true
+        }
+        markdown_files << dir_config
+      end
+    end
+
+    markdown_files
+  end
+
+  def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
+    if enhanced_context && !enhanced_context.strip.empty?
+      # Include RAG + CAG enhanced context
+      if context.empty? && chat_context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif chat_context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      end
     else
-      "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      # Original prompt assembly without enhanced context
+      if context.empty? && chat_context.empty?
+        "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
+      elsif context.empty?
+        "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif chat_context.empty?
+        "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      end
     end
   end
 
@@ -213,6 +594,7 @@ class BotManager
     add_to_history = method(:add_to_history)
     clear_user_history = method(:clear_user_history)
     assemble_prompt = method(:assemble_prompt)
+    get_enhanced_context = method(:get_enhanced_context)
 
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
@@ -404,7 +786,14 @@ class BotManager
               end
             end
             chat_context = get_chat_context.call(bot_name, user_id)
-            prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message)
+
+            # Get RAG + CAG enhanced context if enabled
+            enhanced_context = nil
+            if bots_ref[bot_name]['rag_cag_enabled'] != false
+              enhanced_context = get_enhanced_context.call(bot_name, m.message)
+            end
+
+            prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
             if bots_ref[bot_name]['chat_ai'].instance_variable_get(:@streaming)
               accumulated_text = ''
               stream_callback = Proc.new do |chunk|

@@ -21,6 +21,11 @@ def usage
   Print.std '  --sglang-host HOST             SGLang server host (default: localhost)'
   Print.std '  --sglang-port PORT             SGLang server port (default: 30000)'
   Print.std '  --streaming, -s true|false     Enable/disable streaming (default: true)'
+  Print.std '  --enable-rag-cag               Enable RAG + CAG capabilities (default: true)'
+  Print.std '  --rag-only                     Enable only RAG system (disables CAG)'
+  Print.std '  --cag-only                     Enable only CAG system (disables RAG)'
+  Print.std '  --offline                      Force offline mode (default: auto-detect)'
+  Print.std '  --online                       Force online mode'
   Print.std '  --help, -h                     Show this help message'
 end
 
@@ -40,6 +45,10 @@ $vllm_host = 'localhost'
 $vllm_port = 8000
 $sglang_host = 'localhost'
 $sglang_port = 30000
+$enable_rag_cag = true
+$rag_only = false
+$cag_only = false
+$offline_mode = 'auto'  # 'auto', 'offline', 'online'
 
 # Get command line arguments
 opts = GetoptLong.new(
@@ -55,6 +64,11 @@ opts = GetoptLong.new(
     [ '--sglang-host', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--sglang-port', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--streaming', '-s', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--enable-rag-cag', GetoptLong::NO_ARGUMENT ],
+    [ '--rag-only', GetoptLong::NO_ARGUMENT ],
+    [ '--cag-only', GetoptLong::NO_ARGUMENT ],
+    [ '--offline', GetoptLong::NO_ARGUMENT ],
+    [ '--online', GetoptLong::NO_ARGUMENT ],
 )
 
 # process option arguments
@@ -94,6 +108,20 @@ begin
         usage
         exit
       end
+    when '--enable-rag-cag'
+      $enable_rag_cag = true
+    when '--rag-only'
+      $enable_rag_cag = true
+      $rag_only = true
+      $cag_only = false
+    when '--cag-only'
+      $enable_rag_cag = true
+      $rag_only = false
+      $cag_only = true
+    when '--offline'
+      $offline_mode = 'offline'
+    when '--online'
+      $offline_mode = 'online'
     else
       Print.err "Argument not valid: #{arg}"
       usage
@@ -107,7 +135,14 @@ rescue GetoptLong::InvalidOption => e
 end
 
 if __FILE__ == $0
-  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $vllm_host, $vllm_port, $sglang_host, $sglang_port)
+  # Prepare RAG + CAG configuration
+  rag_cag_config = {
+    enable_rag: !$cag_only,  # Enable RAG unless CAG-only mode
+    enable_cag: !$rag_only,  # Enable CAG unless RAG-only mode
+    offline_mode: $offline_mode
+  }
+
+  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $enable_rag_cag, rag_cag_config)
   bots = bot_manager.read_bots
   bot_manager.start_bots
 end
