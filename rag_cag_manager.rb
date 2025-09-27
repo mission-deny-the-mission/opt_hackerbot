@@ -5,6 +5,8 @@ require './print.rb'
 
 # Unified RAG + CAG Manager for integrated knowledge retrieval and context-aware generation
 class RAGCAGManager
+  # Public accessors
+  attr_reader :initialized, :cag_manager, :rag_manager
   def initialize(rag_config, cag_config, unified_config = {})
     @rag_config = rag_config
     @cag_config = cag_config
@@ -283,7 +285,8 @@ class RAGCAGManager
 
     # Add CAG stats
     if @cag_manager
-      stats[:cag_graph_stats] = @cag_manager.instance_variable_get(:@knowledge_graph).try(:get_graph_stats)
+      knowledge_graph = @cag_manager.instance_variable_get(:@knowledge_graph)
+      stats[:cag_graph_stats] = knowledge_graph.get_graph_stats if knowledge_graph.respond_to?(:get_graph_stats)
       stats[:cag_connected] = @cag_manager.test_connection
     end
 

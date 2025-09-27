@@ -56,10 +56,10 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing RAG + CAG Manager initialization..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    result = @manager.initialize
+    result = @manager.setup
 
     assert result, "RAG + CAG Manager should initialize successfully"
-    assert @manager.initialized?, "Manager should be marked as initialized"
+    assert @manager.initialized, "Manager should be marked as initialized"
 
     puts "✓ RAG + CAG Manager initialization successful"
   end
@@ -68,7 +68,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing knowledge base initialization..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
 
     result = @manager.initialize_knowledge_base
     assert result, "Knowledge base should initialize successfully"
@@ -80,7 +80,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing enhanced context retrieval..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
     @manager.initialize_knowledge_base
 
     # Test queries
@@ -105,7 +105,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing entity extraction..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
 
     test_messages = [
       "The attack came from 192.168.1.100 using http://malicious.com/malware.exe",
@@ -127,7 +127,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing related entity retrieval..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
     @manager.initialize_knowledge_base
 
     test_entities = [
@@ -152,7 +152,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing custom knowledge addition..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
 
     # Custom documents
     custom_documents = [
@@ -202,7 +202,7 @@ class TestRAGCAGSystem < Minitest::Test
       enable_caching: true,
       cache_ttl: 60
     }))
-    @manager.initialize
+    @manager.setup
     @manager.initialize_knowledge_base
 
     query = "What is credential dumping?"
@@ -223,7 +223,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing connection functionality..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
 
     # Test individual connections
     rag_ok = @manager.instance_variable_get(:@rag_manager).test_connection if @manager.instance_variable_get(:@rag_manager)
@@ -243,7 +243,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing retrieval statistics..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
     @manager.initialize_knowledge_base
 
     stats = @manager.get_retrieval_stats
@@ -263,7 +263,7 @@ class TestRAGCAGSystem < Minitest::Test
     puts "Testing cleanup functionality..."
 
     @manager = RAGCAGManager.new(@rag_config, @cag_config, @unified_config)
-    @manager.initialize
+    @manager.setup
 
     # Perform some operations to create state
     @manager.initialize_knowledge_base
@@ -276,7 +276,7 @@ class TestRAGCAGSystem < Minitest::Test
     rag_manager = @manager.instance_variable_get(:@rag_manager)
     cag_manager = @manager.instance_variable_get(:@cag_manager)
 
-    assert !@manager.initialized?, "Manager should not be initialized after cleanup"
+    assert !@manager.initialized, "Manager should not be initialized after cleanup"
 
     puts "✓ Cleanup functionality working correctly"
   end
@@ -291,11 +291,11 @@ class TestRAGCAGSystem < Minitest::Test
     @manager = RAGCAGManager.new(invalid_config, @cag_config, @unified_config)
 
     # Should handle initialization gracefully
-    result = @manager.initialize
+    result = @manager.setup
     assert !result, "Should fail gracefully with invalid configuration"
 
     # Test with empty query
-    if @manager.initialized?
+    if @manager.initialized
       empty_context = @manager.get_enhanced_context("")
       assert empty_context.nil? || empty_context.empty?, "Should handle empty query gracefully"
     end
