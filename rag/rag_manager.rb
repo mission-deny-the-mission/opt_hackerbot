@@ -248,8 +248,106 @@ class RAGManager
     when 'huggingface'
       require './rag/huggingface_embedding_client.rb'
       HuggingFaceEmbeddingClient.new(config)
+    when 'mock'
+      # Create a simple mock embedding service for testing
+      MockEmbeddingService.new(config)
     else
       raise ArgumentError, "Unsupported embedding service provider: #{provider}"
+    end
+  end
+
+  # Simple mock embedding service for testing
+  class MockEmbeddingService
+    def initialize(config)
+      @config = config
+      @model = config[:model] || 'mock-embed-model'
+      @embedding_dimension = config[:embedding_dimension] || 384
+      @initialized = false
+    end
+
+    def connect
+      Print.info "Connecting to mock embedding service..."
+      @initialized = true
+      Print.info "Connected to mock embedding service successfully"
+      true
+    end
+
+    def disconnect
+      Print.info "Disconnecting from mock embedding service"
+      @initialized = false
+      true
+    end
+
+    def generate_embedding(text)
+      return nil unless @initialized
+      Print.info "Generating mock embedding for text (length: #{text.length})"
+      embedding = generate_deterministic_embedding(text)
+      Print.info "Successfully generated mock embedding (dimension: #{embedding.length})"
+      embedding
+    end
+
+    def generate_batch_embeddings(texts)
+      return [] unless @initialized
+      Print.info "Generating mock batch embeddings for #{texts.length} texts"
+      embeddings = texts.map { |text| generate_embedding(text) }.compact
+      Print.info "Successfully generated #{embeddings.length} mock batch embeddings"
+      embeddings
+    end
+
+    def test_connection
+      Print.info "Testing mock embedding service connection..."
+      success = @initialized
+      Print.info "Mock embedding service connection test #{success ? 'successful' : 'failed'}"
+      success
+    end
+
+    def connected?
+      @initialized
+    end
+
+    private
+
+    def generate_deterministic_embedding(text)
+      # Generate a deterministic embedding based on text content
+      # Create more semantically meaningful embeddings for testing
+
+      # Extract key terms and normalize text
+      normalized_text = text.downcase.gsub(/[^\w\s]/, ' ').gsub(/\s+/, ' ').strip
+      key_terms = normalized_text.split(' ').select { |word| word.length > 2 }
+
+      # Use text characteristics to generate a more meaningful embedding
+      embedding = []
+
+      # Generate base embedding using hash but make it more consistent for similar terms
+      base_seed = normalized_text.hash.abs
+
+      @embedding_dimension.times do |i|
+        # Create some dimension-specific patterns
+        dimension_seed = base_seed + i * 31
+
+        # Check if this dimension should be influenced by key terms
+        term_influence = 0.0
+        key_terms.each do |term|
+          term_seed = term.hash.abs + i * 17
+          term_value = ((term_seed * 1103515245 + 12345) & 0x7fffffff).to_f / 0x7fffffff
+          term_influence += term_value * 0.3  # Scale down term influence
+        end
+
+        # Combine base seed with term influence
+        seed = ((dimension_seed * 1103515245 + 12345) & 0x7fffffff)
+        base_value = (seed.to_f / 0x7fffffff) * 2 - 1
+
+        # Mix base value with term influence
+        final_value = base_value * 0.7 + term_influence * 0.3
+
+        embedding << final_value
+      end
+
+      # Normalize the embedding vector
+      magnitude = Math.sqrt(embedding.map { |x| x * x }.sum)
+      embedding = embedding.map { |x| x / magnitude } if magnitude > 0
+
+      embedding
     end
   end
 

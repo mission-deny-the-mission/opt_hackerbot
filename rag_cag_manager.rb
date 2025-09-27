@@ -1,12 +1,13 @@
 require './rag/rag_manager.rb'
 require './cag/cag_manager.rb'
 require './knowledge_bases/mitre_attack_knowledge.rb'
+require './knowledge_bases/knowledge_source_manager.rb'
 require './print.rb'
 
 # Unified RAG + CAG Manager for integrated knowledge retrieval and context-aware generation
 class RAGCAGManager
   # Public accessors
-  attr_reader :initialized, :cag_manager, :rag_manager
+  attr_reader :initialized, :cag_manager, :rag_manager, :knowledge_source_manager
   def initialize(rag_config, cag_config, unified_config = {})
     @rag_config = rag_config
     @cag_config = cag_config
@@ -19,7 +20,9 @@ class RAGCAGManager
       knowledge_base_name: unified_config[:knowledge_base_name] || 'cybersecurity',
       enable_caching: unified_config[:enable_caching] || false,
       cache_ttl: unified_config[:cache_ttl] || 3600, # 1 hour
-      auto_initialization: unified_config[:auto_initialization] || true
+      auto_initialization: unified_config[:auto_initialization] || true,
+      enable_knowledge_sources: unified_config[:enable_knowledge_sources] || true,
+      knowledge_sources_config: unified_config[:knowledge_sources_config] || []
     }
 
     @cache = {}
@@ -27,6 +30,7 @@ class RAGCAGManager
     @initialized = false
     @rag_manager = nil
     @cag_manager = nil
+    @knowledge_source_manager = nil
   end
 
   def setup
@@ -66,6 +70,18 @@ class RAGCAGManager
       end
     end
 
+    # Initialize knowledge source manager if enabled
+    if @unified_config[:enable_knowledge_sources]
+      Print.info "Initializing Knowledge Source Manager..."
+      @knowledge_source_manager = KnowledgeSourceManager.new(@unified_config)
+
+      sources_config = @unified_config[:knowledge_sources_config] || default_knowledge_sources_config
+      unless @knowledge_source_manager.initialize_sources(sources_config)
+        Print.err "Failed to initialize Knowledge Source Manager"
+        success = false
+      end
+    end
+
     if success
       @initialized = true
       Print.info "RAG + CAG Manager initialized successfully"
@@ -91,27 +107,61 @@ class RAGCAGManager
 
     success = true
 
-    # Initialize RAG knowledge base
-    if @unified_config[:enable_rag] && @rag_manager
-      Print.info "Loading RAG documents..."
-      rag_documents = MITREAttackKnowledge.to_rag_documents
-      Print.info "Generated #{rag_documents.length} RAG documents"
-
-      unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], rag_documents)
-        Print.err "Failed to add RAG knowledge base"
+    # Load knowledge from all sources
+    if @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
+      Print.info "Loading knowledge from all sources..."
+      unless @knowledge_source_manager.load_all_knowledge
+        Print.err "Failed to load knowledge from sources"
         success = false
       end
-    end
 
-    # Initialize CAG knowledge base
-    if @unified_config[:enable_cag] && @cag_manager
-      Print.info "Loading CAG knowledge triplets..."
-      cag_triplets = MITREAttackKnowledge.to_cag_triplets
-      Print.info "Generated #{cag_triplets.length} CAG knowledge triplets"
+      # Get documents and triplets from all sources
+      all_rag_documents = @knowledge_source_manager.get_all_rag_documents
+      all_cag_triplets = @knowledge_source_manager.get_all_cag_triplets
 
-      unless @cag_manager.create_knowledge_base_from_triplets(cag_triplets)
-        Print.err "Failed to create CAG knowledge base"
-        success = false
+      Print.info "Retrieved #{all_rag_documents.length} RAG documents and #{all_cag_triplets.length} CAG triplets from sources"
+
+      # Initialize RAG knowledge base
+      if @unified_config[:enable_rag] && @rag_manager && !all_rag_documents.empty?
+        unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], all_rag_documents)
+          Print.err "Failed to add RAG knowledge base"
+          success = false
+        end
+      end
+
+      # Initialize CAG knowledge base
+      if @unified_config[:enable_cag] && @cag_manager && !all_cag_triplets.empty?
+        unless @cag_manager.create_knowledge_base_from_triplets(all_cag_triplets)
+          Print.err "Failed to create CAG knowledge base"
+          success = false
+        end
+      end
+    else
+      # Fallback to legacy MITRE Attack knowledge only
+      Print.info "Using legacy MITRE Attack knowledge base..."
+
+      # Initialize RAG knowledge base
+      if @unified_config[:enable_rag] && @rag_manager
+        Print.info "Loading RAG documents..."
+        rag_documents = MITREAttackKnowledge.to_rag_documents
+        Print.info "Generated #{rag_documents.length} RAG documents"
+
+        unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], rag_documents)
+          Print.err "Failed to add RAG knowledge base"
+          success = false
+        end
+      end
+
+      # Initialize CAG knowledge base
+      if @unified_config[:enable_cag] && @cag_manager
+        Print.info "Loading CAG knowledge triplets..."
+        cag_triplets = MITREAttackKnowledge.to_cag_triplets
+        Print.info "Generated #{cag_triplets.length} CAG knowledge triplets"
+
+        unless @cag_manager.create_knowledge_base_from_triplets(cag_triplets)
+          Print.err "Failed to create CAG knowledge base"
+          success = false
+        end
       end
     end
 
@@ -326,6 +376,10 @@ class RAGCAGManager
       @cag_manager.cleanup
     end
 
+    if @knowledge_source_manager
+      @knowledge_source_manager.cleanup
+    end
+
     @cache.clear
     @cache_timestamps.clear
     @initialized = false
@@ -446,5 +500,81 @@ class RAGCAGManager
     if expired_keys.any?
       Print.debug "Cleaned up #{expired_keys.length} expired cache entries"
     end
+  end
+
+  private
+
+  def default_knowledge_sources_config
+    [
+      {
+        type: 'mitre_attack',
+        name: 'mitre_attack',
+        enabled: true,
+        description: 'MITRE ATT&CK framework knowledge base',
+        priority: 1
+      }
+    ]
+  end
+
+  def add_man_page_to_sources(man_name, section = nil, collection_name = 'default_man_pages')
+    return false unless @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
+
+    # Find or create man pages source
+    man_source = @knowledge_source_manager.instance_variable_get(:@sources)['man_pages']
+    unless man_source
+      # Add man pages source
+      man_source_config = {
+        type: 'man_pages',
+        name: 'man_pages',
+        enabled: true,
+        description: 'Unix/Linux man pages',
+        priority: 2,
+        man_pages: []  # Start empty
+      }
+
+      unless @knowledge_source_manager.add_knowledge_source(man_source_config)
+        Print.err "Failed to add man pages knowledge source"
+        return false
+      end
+
+      man_source = @knowledge_source_manager.instance_variable_get(:@sources)['man_pages']
+    end
+
+    # Add the man page
+    man_source.add_man_page(man_name, section, collection_name)
+  end
+
+  def add_markdown_file_to_sources(file_path, collection_name = 'default_markdown_files')
+    return false unless @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
+
+    # Find or create markdown files source
+    md_source = @knowledge_source_manager.instance_variable_get(:@sources)['markdown_files']
+    unless md_source
+      # Add markdown files source
+      md_source_config = {
+        type: 'markdown_files',
+        name: 'markdown_files',
+        enabled: true,
+        description: 'Markdown documentation files',
+        priority: 3,
+        markdown_files: []  # Start empty
+      }
+
+      unless @knowledge_source_manager.add_knowledge_source(md_source_config)
+        Print.err "Failed to add markdown files knowledge source"
+        return false
+      end
+
+      md_source = @knowledge_source_manager.instance_variable_get(:@sources)['markdown_files']
+    end
+
+    # Add the markdown file
+    md_source.add_markdown_file(file_path, collection_name)
+  end
+
+  def get_knowledge_source_stats
+    return {} unless @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
+
+    @knowledge_source_manager.get_source_statistics
   end
 end

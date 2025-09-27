@@ -26,6 +26,12 @@ The system consists of intelligent IRC bots that can guide users through progres
 - `rag/embedding_service_interface.rb` - Base interface for embedding service implementations
 - `cag/knowledge_graph_interface.rb` - Base interface for knowledge graph implementations
 - `knowledge_bases/mitre_attack_knowledge.rb` - Comprehensive MITRE ATT&CK framework knowledge
+- `knowledge_bases/knowledge_source_manager.rb` - Manager for multiple knowledge sources
+- `knowledge_bases/base_knowledge_source.rb` - Base interface for knowledge sources
+- `knowledge_bases/sources/man_pages/man_page_knowledge.rb` - Man page knowledge source
+- `knowledge_bases/sources/markdown_files/markdown_knowledge.rb` - Markdown file knowledge source
+- `knowledge_bases/utils/man_page_processor.rb` - Man page extraction and processing
+- `knowledge_bases/utils/markdown_processor.rb` - Markdown file parsing and analysis
 
 ### Offline Operation Support
 - `rag_cag_offline_config.rb` - Offline configuration and connectivity detection (offline is now the default)
@@ -45,6 +51,7 @@ Bots are configured through XML files located in the `config/` directory:
 - `<rag_enabled>` - Enable only RAG system (optional, defaults to true if rag_cag_enabled)
 - `<cag_enabled>` - Enable only CAG system (optional, defaults to true if rag_cag_enabled)
 - `<rag_cag_config>` - RAG + CAG specific configuration
+- `<knowledge_sources>` - Enhanced knowledge sources configuration (man pages, markdown files)
 
 ### LLM Integration
 - Support for multiple LLM providers: Ollama, OpenAI, VLLM, SGLang
@@ -95,6 +102,14 @@ Bots are configured through XML files located in the `config/` directory:
 - **Entity Recognition**: Automatic extraction of IPs, URLs, hashes, filenames, and other cybersecurity entities
 - **Semantic Search**: Find relevant information across multiple knowledge domains
 - **Offline Operation**: Full functionality without internet connectivity after setup
+
+### Enhanced Knowledge Sources
+- **Man Pages Integration**: Direct access to Unix/Linux command documentation with section-aware processing
+- **Markdown Files Support**: Include custom documentation by file path with metadata extraction and tagging
+- **Flexible Configuration**: Define multiple knowledge sources in XML with collection organization and priority ordering
+- **Intelligent Processing**: Automatic content extraction, relationship mapping, and knowledge graph integration
+- **Multi-Source Queries**: Retrieve relevant information across MITRE ATT&CK, man pages, and markdown documentation simultaneously
+- **Caching System**: Performance-optimized caching for man pages and markdown files with intelligent invalidation
 
 ### Offline Operation
 - **Default Offline Mode**: System now defaults to offline operation for enhanced security and reliability
@@ -263,6 +278,107 @@ Structured generation language for efficient LLM inference.
   
   <entity_extraction_enabled>true</entity_extraction_enabled>
   <entity_types>ip_address, url, hash, filename</entity_types>
+</hackerbot>
+```
+
+### Enhanced Knowledge Sources Configuration
+```xml
+<hackerbot>
+  <name>EnhancedKnowledgeBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are an advanced cybersecurity training assistant with access to comprehensive knowledge bases including MITRE ATT&CK, Unix/Linux man pages, and custom markdown documentation. You can provide detailed explanations about attack patterns, security tools, command usage, and defense strategies.</system_prompt>
+  <get_shell>false</get_shell>
+  
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>true</cag_enabled>
+  
+  <!-- Enhanced Knowledge Sources Configuration -->
+  <knowledge_sources>
+    <!-- MITRE ATT&CK Framework (always included by default) -->
+    <source>
+      <type>mitre_attack</type>
+      <name>mitre_attack</name>
+      <enabled>true</enabled>
+      <description>MITRE ATT&CK framework knowledge base</description>
+      <priority>1</priority>
+    </source>
+    
+    <!-- Man Pages Knowledge Source -->
+    <source>
+      <type>man_pages</type>
+      <name>security_tools</name>
+      <enabled>true</enabled>
+      <description>Unix/Linux security tools man pages</description>
+      <priority>2</priority>
+      <man_pages>
+        <man_page>
+          <name>nmap</name>
+          <section>1</section>
+          <collection_name>network_scanning_tools</collection_name>
+        </man_page>
+        <man_page>
+          <name>iptables</name>
+          <section>8</section>
+          <collection_name>firewall_tools</collection_name>
+        </man_page>
+        <man_page>
+          <name>tcpdump</name>
+          <section>1</section>
+          <collection_name>network_analysis</collection_name>
+        </man_page>
+        <man_page>
+          <name>ssh</name>
+          <section>1</section>
+          <collection_name>secure_communication</collection_name>
+        </man_page>
+        <man_page>
+          <name>openssl</name>
+          <section>1</section>
+          <collection_name>cryptography_tools</collection_name>
+        </man_page>
+      </man_pages>
+    </source>
+    
+    <!-- Markdown Files Knowledge Source -->
+    <source>
+      <type>markdown_files</type>
+      <name>cybersecurity_docs</name>
+      <enabled>true</enabled>
+      <description>Custom cybersecurity documentation in markdown format</description>
+      <priority>3</priority>
+      <markdown_files>
+        <markdown_file>
+          <path>docs/network_security_best_practices.md</path>
+          <collection_name>security_guidelines</collection_name>
+          <tags>
+            <tag>network-security</tag>
+            <tag>best-practices</tag>
+            <tag>defense</tag>
+          </tags>
+        </markdown_file>
+        <markdown_file>
+          <path>docs/incident_response_procedures.md</path>
+          <collection_name>incident_response</collection_name>
+          <tags>
+            <tag>incident-response</tag>
+            <tag>procedures</tag>
+            <tag>forensics</tag>
+          </tags>
+        </markdown_file>
+        <directory>
+          <path>docs/threat_intelligence/</path>
+          <pattern>*.md</pattern>
+          <collection_name>threat_intelligence</collection_name>
+        </directory>
+      </markdown_files>
+    </source>
+  </knowledge_sources>
+  
+  <entity_extraction_enabled>true</entity_extraction_enabled>
+  <entity_types>ip_address, url, hash, filename, port, email, domain, command, tool_name</entity_types>
 </hackerbot>
 ```
 
@@ -476,11 +592,35 @@ Connect via IRC client to interact with bots in channels named after each bot or
 - **Compliance Training**: Meet data sovereignty requirements
 - **Cost-Effective Operation**: No cloud service fees or API dependencies
 
+## Documentation and Resources
+
+- **Implementation Guide**: `README_ENHANCED_KNOWLEDGE.md` - Comprehensive guide to enhanced knowledge sources
+- **Demo Script**: `demo_enhanced_knowledge.rb` - Interactive demonstration of enhanced capabilities
+- **Configuration Examples**: 
+  - `config/example_enhanced_knowledge_bot.xml` - Complete example with man pages and markdown files
+  - `config/example_rag_cag_bot.xml` - Traditional RAG/CAG configuration
+- **Example Documentation**: 
+  - `docs/network_security_best_practices.md` - Network security guidelines
+  - `docs/incident_response_procedures.md` - Incident response playbooks
+  - `docs/threat_intelligence/apt_groups.md` - Threat intelligence information
+
 ## Project Structure
 
 ```
 opt_hackerbot/
 ├── rag_cag_manager.rb                    # Unified RAG + CAG manager
+├── knowledge_bases/                       # Knowledge base collections and sources
+│   ├── base_knowledge_source.rb          # Base interface for knowledge sources
+│   ├── knowledge_source_manager.rb       # Manager for multiple knowledge sources
+│   ├── mitre_attack_knowledge.rb         # MITRE ATT&CK framework
+│   ├── sources/                          # Knowledge source implementations
+│   │   ├── man_pages/                    # Man page knowledge source
+│   │   │   └── man_page_knowledge.rb     # Man page processing and integration
+│   │   └── markdown_files/               # Markdown file knowledge source
+│   │       └── markdown_knowledge.rb     # Markdown file processing and integration
+│   └── utils/                            # Knowledge processing utilities
+│       ├── man_page_processor.rb         # Man page extraction and processing
+│       └── markdown_processor.rb         # Markdown file parsing and analysis
 ├── rag/                                   # RAG system components
 │   ├── rag_manager.rb                     # RAG operations coordinator
 │   ├── vector_db_interface.rb            # Vector database base interface
@@ -488,17 +628,24 @@ opt_hackerbot/
 │   ├── chromadb_client.rb               # In-memory ChromaDB client
 │   ├── chromadb_offline_client.rb       # Offline persistent ChromaDB
 │   ├── openai_embedding_client.rb        # OpenAI embedding service
-│   └── ollama_embedding_client.rb        # Ollama embedding service
+│   ├── ollama_embedding_client.rb        # Ollama embedding service
 │   └── ollama_embedding_offline_client.rb # Offline Ollama embedding
 ├── cag/                                   # CAG system components
 │   ├── cag_manager.rb                     # CAG operations coordinator
 │   ├── knowledge_graph_interface.rb       # Knowledge graph base interface
-│   └── in_memory_graph_client.rb          # In-memory knowledge graph
+│   ├── in_memory_graph_client.rb          # In-memory knowledge graph
 │   └── in_memory_graph_offline_client.rb # Offline persistent graph
-├── knowledge_bases/                       # Knowledge base collections
-│   └── mitre_attack_knowledge.rb         # MITRE ATT&CK framework
 ├── config/                                # Bot configuration files
-│   └── example_rag_cag_bot.xml           # Example RAG + CAG bot config
+│   ├── example_rag_cag_bot.xml           # Example RAG + CAG bot config
+│   └── example_enhanced_knowledge_bot.xml # Example with man pages and markdown files
+├── docs/                                  # Example documentation files
+│   ├── network_security_best_practices.md # Network security guidelines
+│   ├── incident_response_procedures.md   # Incident response procedures
+│   └── threat_intelligence/               # Threat intelligence documents
+│       └── apt_groups.md                 # APT groups and threat actors
+├── cache/                                 # Cache directories for knowledge sources
+│   ├── man_pages/                         # Cached man page content
+│   └── markdown/                          # Cached markdown file content
 ├── test/                                  # Test suites
 │   ├── test_rag_cag_system.rb            # RAG + CAG system tests
 │   ├── rag/                               # RAG component tests
@@ -506,8 +653,12 @@ opt_hackerbot/
 ├── setup_offline_rag_cag.rb               # Offline setup script
 ├── rag_cag_offline_config.rb             # Offline configuration manager
 ├── demo_rag_cag.rb                       # Interactive demonstration
+├── demo_enhanced_knowledge.rb            # Enhanced knowledge sources demo
 ├── start_offline.sh                      # Offline startup script
-└── RAG_CAG_IMPLEMENTATION_SUMMARY.md     # Implementation documentation
+├── RAG_CAG_IMPLEMENTATION_SUMMARY.md     # Implementation documentation
+└── README_ENHANCED_KNOWLEDGE.md          # Enhanced knowledge sources guide
 ```
 
 This framework provides a flexible platform for creating engaging, interactive cybersecurity training experiences that combine traditional attack simulation with modern AI-powered educational techniques using multiple LLM backends and advanced knowledge retrieval systems. The RAG + CAG integration enables intelligent, context-aware conversations with comprehensive cybersecurity knowledge, both online and offline.
+
+**Enhanced Knowledge Sources**: The system now supports man pages and markdown files as knowledge sources, allowing bots to provide detailed explanations about Unix/Linux commands, security tools, and custom documentation. Knowledge sources are configured through XML and can be organized into logical collections with customizable priorities and processing options.

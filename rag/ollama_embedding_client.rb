@@ -1,6 +1,9 @@
 
 require './rag/embedding_service_interface.rb'
 require './print.rb'
+require 'uri'
+require 'net/http'
+require 'json'
 
 # Ollama API client for generating embeddings
 class OllamaEmbeddingClient < EmbeddingServiceInterface

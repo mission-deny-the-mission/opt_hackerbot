@@ -143,7 +143,9 @@ class BotManager
       cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
       max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
       enable_caching: @rag_cag_config.fetch(:enable_caching, true),
-      auto_initialization: @rag_cag_config.fetch(:auto_initialization, true)
+      auto_initialization: @rag_cag_config.fetch(:auto_initialization, true),
+      enable_knowledge_sources: @rag_cag_config.fetch(:enable_knowledge_sources, true),
+      knowledge_sources_config: @rag_cag_config.fetch(:knowledge_sources_config, [])
     }
 
     @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
@@ -427,6 +429,14 @@ class BotManager
             entity_types = entity_types_node.text.split(',').map(&:strip).reject(&:empty?)
             @bots[bot_name]['entity_types'] = entity_types unless entity_types.empty?
           end
+
+          # Parse knowledge sources configuration
+          knowledge_sources_node = hackerbot.at_xpath('knowledge_sources')
+          if knowledge_sources_node
+            @bots[bot_name]['knowledge_sources'] = parse_knowledge_sources(knowledge_sources_node)
+            # Update global RAG/CAG config with bot-specific knowledge sources
+            @rag_cag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
+          end
         end
 
         # Test connection to LLM provider
@@ -439,6 +449,114 @@ class BotManager
     end
 
     @bots
+  end
+
+  def parse_knowledge_sources(knowledge_sources_node)
+    sources = []
+
+    knowledge_sources_node.xpath('source').each do |source_node|
+      source_type = source_node.at_xpath('type')&.text
+      source_name = source_node.at_xpath('name')&.text
+      enabled = source_node.at_xpath('enabled')&.text
+      description = source_node.at_xpath('description')&.text
+      priority = source_node.at_xpath('priority')&.text
+
+      next unless source_type
+
+      source_config = {
+        type: source_type,
+        name: source_name || source_type,
+        enabled: enabled ? (enabled.downcase == 'true') : true,
+        description: description || '',
+        priority: priority ? priority.to_i : 0
+      }
+
+      # Parse type-specific configuration
+      case source_type.downcase
+      when 'man_pages', 'manpage', 'man'
+        source_config[:man_pages] = parse_man_pages_config(source_node)
+      when 'markdown_files', 'markdown', 'md'
+        source_config[:markdown_files] = parse_markdown_files_config(source_node)
+      end
+
+      sources << source_config
+    end
+
+    sources
+  end
+
+  def parse_man_pages_config(source_node)
+    man_pages = []
+
+    source_node.xpath('man_pages/man_page').each do |man_page_node|
+      name = man_page_node.at_xpath('name')&.text
+      section = man_page_node.at_xpath('section')&.text
+      collection_name = man_page_node.at_xpath('collection_name')&.text
+
+      next unless name
+
+      man_page_config = {
+        name: name,
+        collection_name: collection_name || 'default_man_pages'
+      }
+
+      if section
+        man_page_config[:section] = section.to_i
+      end
+
+      man_pages << man_page_config
+    end
+
+    man_pages
+  end
+
+  def parse_markdown_files_config(source_node)
+    markdown_files = []
+
+    source_node.xpath('markdown_files/markdown_file').each do |markdown_file_node|
+      path = markdown_file_node.at_xpath('path')&.text
+      collection_name = markdown_file_node.at_xpath('collection_name')&.text
+      tags_node = markdown_file_node.at_xpath('tags')
+
+      next unless path
+
+      markdown_file_config = {
+        path: path,
+        collection_name: collection_name || 'default_markdown_files'
+      }
+
+      # Parse tags if present
+      if tags_node
+        tags = []
+        tags_node.xpath('tag').each do |tag_node|
+          tag_text = tag_node.text
+          tags << tag_text if tag_text && !tag_text.empty?
+        end
+        markdown_file_config[:tags] = tags unless tags.empty?
+      end
+
+      markdown_files << markdown_file_config
+    end
+
+    # Also check for directory-based configuration
+    directory_node = source_node.at_xpath('markdown_files/directory')
+    if directory_node
+      dir_path = directory_node.at_xpath('path')&.text
+      dir_pattern = directory_node.at_xpath('pattern')&.text
+      dir_collection = directory_node.at_xpath('collection_name')&.text
+
+      if dir_path
+        dir_config = {
+          path: dir_path,
+          collection_name: dir_collection || "markdown_#{File.basename(dir_path).gsub(/[^\w\-]/, '_')}",
+          pattern: dir_pattern || '*.md',
+          is_directory: true
+        }
+        markdown_files << dir_config
+      end
+    end
+
+    markdown_files
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
