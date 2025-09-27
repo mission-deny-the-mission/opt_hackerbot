@@ -1,7 +1,7 @@
 require 'net/http'
 require 'json'
-require './print.rb'
-require './llm_client.rb'
+require_relative '../print.rb'
+require_relative './llm_client.rb'
 
 # Default configuration constants for Ollama
 DEFAULT_OLLAMA_HOST = 'localhost'

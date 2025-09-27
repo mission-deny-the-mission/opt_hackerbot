@@ -1,7 +1,7 @@
 require 'nokogiri'
 require 'nori'
-require './print.rb'
-require './ollama_client.rb'
+require_relative './print.rb'
+require_relative './providers/ollama_client.rb'
 
 class BotManager
   def initialize(irc_server_ip_address, ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b')
@@ -103,7 +103,7 @@ class BotManager
         streaming_config = hackerbot.at_xpath('streaming')&.text
         streaming_enabled = streaming_config.nil? ? DEFAULT_STREAMING : (streaming_config.downcase == 'true')
         @bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature, num_thread, keepalive, streaming_enabled)
-        
+
         # Test connection to Ollama
         unless @bots[bot_name]['chat_ai'].test_connection
           Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
@@ -137,7 +137,7 @@ class BotManager
     add_to_history = method(:add_to_history)
     clear_user_history = method(:clear_user_history)
     assemble_prompt = method(:assemble_prompt)
-    
+
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
         c.nick = bot_name
@@ -208,12 +208,12 @@ class BotManager
       on :message, /^(the answer is|answer):? .+$/i do |m|
         answer = m.message.chomp().match(/(?:the )?answer(?: is)?:? (.+)$/i)[1]
         current = bots_ref[bot_name]['current_attack']
-      
+
         quiz = nil
         if bots_ref[bot_name]['attacks'][current].key?('quiz') && bots_ref[bot_name]['attacks'][current]['quiz'].key?('answer')
           quiz = bots_ref[bot_name]['attacks'][current]['quiz']
         end
-      
+
         if quiz != nil
           correct_answer = quiz['answer'].clone
           if bots_ref[bot_name]['attacks'][current].key?('post_command_output')
@@ -231,17 +231,17 @@ class BotManager
           end
           correct_answer.chomp!
           Print.debug "#{correct_answer}====#{answer}"
-      
+
           if answer.strip.match?(/^(?:#{correct_answer})$/i)
             m.reply bots_ref[bot_name]['messages']['correct_answer']
             m.reply quiz['correct_answer_response']
-      
+
             if quiz.key?('trigger_next_attack')
               if bots_ref[bot_name]['current_attack'] < bots_ref[bot_name]['attacks'].length - 1
                 bots_ref[bot_name]['current_attack'] += 1
                 current = bots_ref[bot_name]['current_attack']
                 update_bot_state(bot_name, bots_ref, current)
-      
+
                 sleep(1)
                 if bots_ref[bot_name]['messages'].key?('show_attack_numbers')
                   m.reply "** ##{current + 1} **"
@@ -317,7 +317,7 @@ class BotManager
             current_attack = bots_ref[bot_name]['current_attack']
             attack_context = ''
             current_system_prompt = system_prompt
-            
+
             if current_attack < bots_ref[bot_name]['attacks'].length
               attack_context = "Current attack (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
               # Use attack-specific system prompt if available
@@ -594,4 +594,4 @@ def check_output_conditions(bot_name, bots, current, lines, m)
     end
   end
   current
-end 
+end

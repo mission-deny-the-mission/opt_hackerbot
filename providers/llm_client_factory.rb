@@ -1,8 +1,8 @@
-require './llm_client.rb'
-require './ollama_client.rb'
-require './openai_client.rb'
-require './vllm_client.rb'
-require './sglang_client.rb'
+require_relative './llm_client.rb'
+require_relative './ollama_client.rb'
+require_relative './openai_client.rb'
+require_relative './vllm_client.rb'
+require_relative './sglang_client.rb'
 
 module LLMClientFactory
   def self.create_client(provider, **options)

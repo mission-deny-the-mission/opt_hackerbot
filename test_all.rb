@@ -3,7 +3,7 @@
 # Comprehensive test suite for Hackerbot
 # Combines all tests from test_refactored.rb, test_streaming.rb, and test_ollama.rb
 
-require_relative 'ollama_client'
+require_relative 'providers/ollama_client'
 require_relative 'bot_manager'
 require_relative 'hackerbot'
 
@@ -55,24 +55,24 @@ begin
     'test_bot' => {
       'current_attack' => 0,
       'attacks' => [
-        { 
-          'post_command_outputs' => [], 
+        {
+          'post_command_outputs' => [],
           'shell_command_outputs' => [],
           'condition' => []
         },
-        { 
-          'post_command_outputs' => [], 
+        {
+          'post_command_outputs' => [],
           'shell_command_outputs' => [],
           'condition' => []
         }
       ]
     }
   }
-  
+
   # Test update_bot_state function
   update_bot_state('test_bot', test_bots, 1)
   puts "✓ update_bot_state function works"
-  
+
   # Test check_output_conditions function (basic test)
   puts "✓ check_output_conditions function accessible"
 rescue => e
@@ -84,29 +84,29 @@ end
 puts "\nTest 5: Testing BotManager prompt assembly..."
 begin
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
-  
+
   # Test prompt assembly
   system_prompt = "You are a helpful assistant."
   context = "Current context: testing"
   chat_context = "User: Hello\nAssistant: Hi there"
   user_message = "How are you?"
-  
+
   prompt = bot_manager.assemble_prompt(system_prompt, context, chat_context, user_message)
   puts "✓ Prompt assembly works"
   puts "  Generated prompt length: #{prompt.length} characters"
-  
+
   # Test chat history management
   bot_manager.add_to_history('test_bot', 'test_user', 'Hello', 'Hi there')
   chat_context = bot_manager.get_chat_context('test_bot', 'test_user')
   puts "✓ Chat history management works"
   puts "  Chat context length: #{chat_context.length} characters"
-  
+
   # Test clearing history
   bot_manager.clear_user_history('test_bot', 'test_user')
   chat_context_after_clear = bot_manager.get_chat_context('test_bot', 'test_user')
   puts "✓ Chat history clearing works"
   puts "  Chat context after clear: #{chat_context_after_clear.empty? ? 'empty' : 'not empty'}"
-  
+
 rescue => e
   puts "✗ Failed to test BotManager functionality: #{e.message}"
   puts "  Error details: #{e.backtrace[0]}"
@@ -116,20 +116,20 @@ end
 puts "\nTest 6: Testing OllamaClient simplified interface..."
 begin
   client = OllamaClient.new
-  
+
   # Test that generate_response only takes a prompt string
   test_prompt = "You are a helpful assistant. User: Hello\nAssistant:"
-  
+
   # This should work without any context/user_id parameters
   puts "✓ OllamaClient.generate_response now only takes a prompt string"
-  
+
   # Test connection (this will fail if Ollama is not running, but that's expected)
   if client.test_connection
     puts "✓ OllamaClient connection test works"
   else
     puts "⚠ OllamaClient connection failed (expected if Ollama is not running)"
   end
-  
+
 rescue => e
   puts "✗ Failed to test OllamaClient interface: #{e.message}"
   puts "  Error details: #{e.backtrace[0]}"
@@ -149,7 +149,7 @@ client = OllamaClient.new
 puts "Testing connection to Ollama..."
 if client.test_connection
   puts "✓ Connection successful"
-  
+
   puts "Testing response generation..."
   response = client.generate_response("Hello, how are you?")
   if response && !response.empty?
@@ -192,7 +192,7 @@ else
   end
 
   response = client.generate_response(
-    "Tell me about cybersecurity in 3 short sentences", 
+    "Tell me about cybersecurity in 3 short sentences",
     stream_callback
   )
 
@@ -244,17 +244,17 @@ begin
       puts "✗ XML parsing errors: #{doc.errors}"
     else
       puts "✓ XML parsing successful"
-      
+
       # Test specific XML elements
       bot_name = doc.at_xpath('//name')&.text
       puts "  Bot name: #{bot_name}"
-      
+
       ollama_model = doc.at_xpath('//ollama_model')&.text
       puts "  Ollama model: #{ollama_model}"
-      
+
       system_prompt = doc.at_xpath('//system_prompt')&.text
       puts "  System prompt length: #{system_prompt&.length || 0} characters"
-      
+
       attacks = doc.xpath('//attack')
       puts "  Number of attacks: #{attacks.length}"
     end
@@ -332,20 +332,20 @@ end
 puts "\nTest 3: Testing prompt assembly edge cases..."
 begin
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
-  
+
   # Test with empty strings
   empty_prompt = bot_manager.assemble_prompt("", "", "", "")
   puts "✓ Empty prompt assembly works (length: #{empty_prompt.length})"
-  
+
   # Test with very long strings
   long_string = "x" * 1000
   long_prompt = bot_manager.assemble_prompt(long_string, long_string, long_string, long_string)
   puts "✓ Long prompt assembly works (length: #{long_prompt.length})"
-  
+
   # Test with special characters
   special_prompt = bot_manager.assemble_prompt("Test\nwith\nnewlines", "Test\twith\ttabs", "Test\rwith\rreturns", "Test\"with\"quotes")
   puts "✓ Special character prompt assembly works (length: #{special_prompt.length})"
-  
+
 rescue => e
   puts "✗ Failed to test prompt assembly edge cases: #{e.message}"
 end
@@ -354,22 +354,22 @@ end
 puts "\nTest 4: Testing chat history edge cases..."
 begin
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
-  
+
   # Test with very long messages
   long_message = "x" * 500
   bot_manager.add_to_history('test_bot', 'test_user', long_message, long_message)
   context = bot_manager.get_chat_context('test_bot', 'test_user')
   puts "✓ Long message handling works (context length: #{context.length})"
-  
+
   # Test with empty messages
   bot_manager.add_to_history('test_bot', 'test_user', "", "")
   context = bot_manager.get_chat_context('test_bot', 'test_user')
   puts "✓ Empty message handling works (context length: #{context.length})"
-  
+
   # Test clearing non-existent history
   bot_manager.clear_user_history('test_bot', 'nonexistent_user')
   puts "✓ Clearing non-existent history works"
-  
+
 rescue => e
   puts "✗ Failed to test chat history edge cases: #{e.message}"
 end
@@ -413,18 +413,18 @@ end
 puts "\nTest 3: Testing chat history performance..."
 begin
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
-  
+
   start_time = Time.now
   100.times do |i|
     bot_manager.add_to_history('test_bot', 'test_user', "Message #{i}", "Response #{i}")
   end
   end_time = Time.now
-  
+
   context = bot_manager.get_chat_context('test_bot', 'test_user')
   puts "✓ Added 100 messages in #{(end_time - start_time).round(3)} seconds"
   puts "  Final context length: #{context.length} characters"
   puts "  History length: #{bot_manager.instance_variable_get(:@user_chat_histories)['test_bot']['test_user'].length} messages"
-  
+
 rescue => e
   puts "✗ Failed to test chat history performance: #{e.message}"
 end
@@ -440,7 +440,7 @@ puts "-" * 40
 puts "Test 1: Testing full workflow simulation..."
 begin
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
-  
+
   # Simulate a conversation
   user_messages = [
     "Hello, how are you?",
@@ -448,14 +448,14 @@ begin
     "How do I protect my computer?",
     "What are common attack vectors?"
   ]
-  
+
   user_messages.each_with_index do |message, index|
     # Add to history
     bot_manager.add_to_history('test_bot', 'test_user', message, "Response #{index + 1}")
-    
+
     # Get context
     context = bot_manager.get_chat_context('test_bot', 'test_user')
-    
+
     # Assemble prompt
     prompt = bot_manager.assemble_prompt(
       "You are a helpful assistant.",
@@ -463,12 +463,12 @@ begin
       context,
       message
     )
-    
+
     puts "  ✓ Step #{index + 1}: Message processed (prompt length: #{prompt.length})"
   end
-  
+
   puts "✓ Full workflow simulation completed successfully"
-  
+
 rescue => e
   puts "✗ Failed to test full workflow: #{e.message}"
 end
@@ -479,7 +479,7 @@ begin
   # Test if we can read the bots (this will try to load XML files)
   bot_manager = BotManager.new('localhost', 'localhost', 11434, 'gemma3:1b')
   bots = bot_manager.read_bots
-  
+
   if bots.is_a?(Hash)
     puts "✓ Configuration loading works"
     puts "  Number of bots loaded: #{bots.keys.length}"
@@ -487,7 +487,7 @@ begin
   else
     puts "⚠ Configuration loading returned unexpected type: #{bots.class}"
   end
-  
+
 rescue => e
   puts "✗ Failed to test configuration loading: #{e.message}"
 end
@@ -529,4 +529,4 @@ puts "\nNote: Some tests may fail if Ollama is not running locally."
 puts "To run Ollama:"
 puts "  1. Start Ollama server: ollama serve"
 puts "  2. Pull a model: ollama pull gemma3:1b"
-puts "  3. Run this test suite again" 
+puts "  3. Run this test suite again"

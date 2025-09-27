@@ -1,6 +1,6 @@
 require 'net/http'
 require 'json'
-require './print.rb'
+require_relative '../print.rb'
 
 # Default configuration constants
 DEFAULT_SYSTEM_PROMPT = "You are a helpful cybersecurity training assistant. You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical."

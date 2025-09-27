@@ -1,12 +1,12 @@
 require 'minitest/autorun'
 require 'minitest/spec'
-require_relative '../llm_client'
+require_relative '../providers/llm_client'
 require_relative '../print'
-require_relative '../ollama_client' if File.exist?('../ollama_client.rb')
-require_relative '../openai_client' if File.exist?('../openai_client.rb')
-require_relative '../vllm_client' if File.exist?('../vllm_client.rb')
-require_relative '../sglang_client' if File.exist?('../sglang_client.rb')
-require_relative '../llm_client_factory'
+require_relative '../providers/ollama_client' if File.exist?('../providers/ollama_client.rb')
+require_relative '../providers/openai_client' if File.exist?('../providers/openai_client.rb')
+require_relative '../providers/vllm_client' if File.exist?('../providers/vllm_client.rb')
+require_relative '../providers/sglang_client' if File.exist?('../providers/sglang_client.rb')
+require_relative '../providers/llm_client_factory'
 require_relative '../bot_manager'
 require 'nokogiri'
 require 'net/http'

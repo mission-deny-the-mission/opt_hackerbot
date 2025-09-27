@@ -89,7 +89,7 @@ class QuickTestRunner
 
       # Test if we can load the basic modules without errors
       begin
-        require_relative '../llm_client'
+        require_relative '../providers/llm_client'
         print_result("✓ llm_client.rb loads successfully")
       rescue LoadError => e
         print_result("✗ llm_client.rb failed to load: #{e.message}", :error)
@@ -112,8 +112,8 @@ class QuickTestRunner
 
     begin
       # Load required modules
-      require_relative '../llm_client'
-      require_relative '../llm_client_factory'
+      require_relative '../providers/llm_client'
+      require_relative '../providers/llm_client_factory'
       require_relative '../print'
 
       # Test if classes are defined
@@ -157,7 +157,7 @@ class QuickTestRunner
     print_test_header("LLM Client Factory")
 
     begin
-      require_relative '../llm_client_factory'
+      require_relative '../providers/llm_client_factory'
 
       # Test factory methods exist
       if LLMClientFactory.respond_to?(:create_client)
@@ -276,7 +276,7 @@ class QuickTestRunner
     print_test_header("Base LLM Client")
 
     begin
-      require_relative '../llm_client'
+      require_relative '../providers/llm_client'
 
       # Test if we can create a base LLM client
       begin

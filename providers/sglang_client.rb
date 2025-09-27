@@ -1,6 +1,6 @@
 require 'net/http'
 require 'json'
-require './llm_client.rb'
+require_relative './llm_client.rb'
 
 # Default configuration constants for SGLang
 DEFAULT_SGLANG_HOST = 'localhost'

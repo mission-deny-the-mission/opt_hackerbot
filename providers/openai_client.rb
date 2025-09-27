@@ -1,6 +1,6 @@
 require 'net/http'
 require 'json'
-require './llm_client.rb'
+require_relative './llm_client.rb'
 
 # Default configuration constants for OpenAI
 DEFAULT_OPENAI_HOST = 'api.openai.com'

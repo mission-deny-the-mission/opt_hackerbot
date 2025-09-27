@@ -1,8 +1,8 @@
 require 'nokogiri'
 require 'nori'
-require './print.rb'
-require './llm_client_factory.rb'
-require './rag_cag_manager.rb'
+require_relative './print.rb'
+require_relative './providers/llm_client_factory.rb'
+require_relative './rag_cag_manager.rb'
 
 class BotManager
   def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
