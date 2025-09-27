@@ -6,9 +6,10 @@ require './print.rb'
 require './bot_manager.rb'
 
 def usage
+  Print.std 'USAGE'
   Print.std 'ruby hackerbot.rb [OPTIONS]'
   Print.std ''
-  Print.std 'Options:'
+  Print.std 'OPTIONS:'
   Print.std '  --irc-server, -i HOST          IRC server IP address (default: localhost)'
   Print.std '  --llm-provider, -l PROVIDER    LLM provider: ollama, openai, vllm, sglang (default: ollama)'
   Print.std '  --ollama-host, -o HOST         Ollama server host (default: localhost)'
@@ -29,16 +30,16 @@ Print.std '~'*47
 Print.std ' '*19 + 'Hackerbot'
 Print.std '~'*47
 
-irc_server_ip_address = 'localhost'
-llm_provider = 'ollama'  # Default provider
-ollama_host = 'localhost'
-ollama_port = 11434
-ollama_model = 'gemma3:1b'
-openai_api_key = nil
-vllm_host = 'localhost'
-vllm_port = 8000
-sglang_host = 'localhost'
-sglang_port = 30000
+$irc_server_ip_address = 'localhost'
+$llm_provider = 'ollama'  # Default provider
+$ollama_host = 'localhost'
+$ollama_port = 11434
+$ollama_model = 'gemma3:1b'
+$openai_api_key = nil
+$vllm_host = 'localhost'
+$vllm_port = 8000
+$sglang_host = 'localhost'
+$sglang_port = 30000
 
 # Get command line arguments
 opts = GetoptLong.new(
@@ -57,37 +58,37 @@ opts = GetoptLong.new(
 )
 
 # process option arguments
-opts.each do |opt, arg|
-  case opt
-    # Main options
-    when '--help'
-      usage
-    when '--help'
-      usage
+begin
+  opts.each do |opt, arg|
+    case opt
+      # Main options
+      when '--help'
+        usage
+        exit
     when '--irc-server'
-      irc_server_ip_address = arg;
+      $irc_server_ip_address = arg;
     when '--llm-provider'
-      llm_provider = arg;
+      $llm_provider = arg;
     when '--ollama-host'
-      ollama_host = arg;
+      $ollama_host = arg;
     when '--ollama-port'
-      ollama_port = arg.to_i;
+      $ollama_port = arg.to_i;
     when '--ollama-model'
-      ollama_model = arg;
+      $ollama_model = arg;
     when '--openai-api-key'
-      openai_api_key = arg;
+      $openai_api_key = arg;
     when '--vllm-host'
-      vllm_host = arg;
+      $vllm_host = arg;
     when '--vllm-port'
-      vllm_port = arg.to_i;
+      $vllm_port = arg.to_i;
     when '--sglang-host'
-      sglang_host = arg;
+      $sglang_host = arg;
     when '--sglang-port'
-      sglang_port = arg.to_i;
+      $sglang_port = arg.to_i;
     when '--streaming'
       streaming_arg = arg.downcase
       if streaming_arg == 'true' || streaming_arg == 'false'
-        DEFAULT_STREAMING = (streaming_arg == 'true')
+        $DEFAULT_STREAMING = (streaming_arg == 'true')
       else
         Print.err "Streaming argument must be 'true' or 'false': #{arg}"
         usage
@@ -97,11 +98,16 @@ opts.each do |opt, arg|
       Print.err "Argument not valid: #{arg}"
       usage
       exit
+    end
   end
+rescue GetoptLong::InvalidOption => e
+  Print.err "Argument not valid: #{e.message}"
+  usage
+  exit
 end
 
 if __FILE__ == $0
-  bot_manager = BotManager.new(irc_server_ip_address, llm_provider, ollama_host, ollama_port, ollama_model, openai_api_key, vllm_host, vllm_port, sglang_host, sglang_port)
+  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $vllm_host, $vllm_port, $sglang_host, $sglang_port)
   bots = bot_manager.read_bots
   bot_manager.start_bots
 end

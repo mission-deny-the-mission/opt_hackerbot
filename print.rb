@@ -14,31 +14,31 @@ class Print
   def self.bold(text); colorize(text, "\e[2m"); end
 
   def self.debug(msg)
-    puts purple(' ' + msg)
+    puts purple(' ' + msg.to_s)
   end
 
   def self.verbose(msg)
-    puts grey(' ' + msg)
+    puts grey(' ' + msg.to_s)
   end
 
   def self.err(msg)
-    $stderr.puts red(msg)
+    $stderr.puts red(msg.to_s)
   end
 
   def self.info(msg)
-    puts green(msg)
+    puts green(msg.to_s)
   end
 
   def self.std(msg)
-    puts yellow(msg)
+    puts yellow(msg.to_s)
   end
 
   # local encoders/generators write messages to stderr (stdout used to return values)
   def self.local(msg)
-    $stderr.puts cyan(msg)
+    $stderr.puts cyan(msg.to_s)
   end
   def self.local_verbose(msg)
-    $stderr.puts cyan(' ' + msg)
+    $stderr.puts cyan(' ' + msg.to_s)
   end
 
 end
