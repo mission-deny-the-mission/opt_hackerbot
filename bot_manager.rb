@@ -2,9 +2,10 @@ require 'nokogiri'
 require 'nori'
 require './print.rb'
 require './llm_client_factory.rb'
+require './rag_cag_manager.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000)
+  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
     @irc_server_ip_address = irc_server_ip_address
     @llm_provider = llm_provider
     @ollama_host = ollama_host
@@ -18,6 +19,72 @@ class BotManager
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
     @max_history_length = 10
+    @enable_rag_cag = enable_rag_cag
+    @rag_cag_config = rag_cag_config
+    @rag_cag_manager = nil
+
+    # Initialize RAG + CAG manager if enabled
+    if @enable_rag_cag
+      initialize_rag_cag_manager
+    end
+  end
+
+  def initialize_rag_cag_manager
+    Print.info "Initializing RAG + CAG Manager..."
+
+    # Default RAG configuration
+    rag_config = {
+      vector_db: {
+        provider: 'chromadb',
+        host: 'localhost',
+        port: 8000
+      },
+      embedding_service: {
+        provider: 'openai',
+        api_key: @openai_api_key
+      },
+      rag_settings: {
+        max_results: 5,
+        similarity_threshold: 0.7,
+        enable_caching: true
+      }
+    }
+
+    # Default CAG configuration
+    cag_config = {
+      knowledge_graph: {
+        provider: 'in_memory'
+      },
+      entity_extractor: {
+        provider: 'rule_based'
+      },
+      cag_settings: {
+        max_context_depth: 2,
+        max_context_nodes: 20,
+        enable_caching: true
+      }
+    }
+
+    # Override with user-provided configuration
+    rag_config.deep_merge!(@rag_cag_config[:rag]) if @rag_cag_config[:rag]
+    cag_config.deep_merge!(@rag_cag_config[:cag]) if @rag_cag_config[:cag]
+
+    unified_config = {
+      enable_rag: @rag_cag_config.fetch(:enable_rag, true),
+      enable_cag: @rag_cag_config.fetch(:enable_cag, true),
+      rag_weight: @rag_cag_config.fetch(:rag_weight, 0.6),
+      cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
+      max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
+      enable_caching: @rag_cag_config.fetch(:enable_caching, true),
+      auto_initialization: @rag_cag_config.fetch(:auto_initialization, true)
+    }
+
+    @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
+
+    unless @rag_cag_manager.initialize
+      Print.err "Failed to initialize RAG + CAG Manager"
+      @rag_cag_manager = nil
+    end
   end
 
   def add_to_history(bot_name, user_id, user_message, assistant_response)
@@ -39,6 +106,48 @@ class BotManager
 
   def clear_user_history(bot_name, user_id)
     @user_chat_histories[bot_name].delete(user_id)
+  end
+
+  def get_enhanced_context(bot_name, user_message)
+    return nil unless @enable_rag_cag && @rag_cag_manager
+
+    # Check if bot has specific RAG + CAG configuration
+    rag_cag_enabled = @bots.dig(bot_name, 'rag_cag_enabled')
+    return nil if rag_cag_enabled == false
+
+    # Get bot-specific context preferences
+    context_options = {}
+    if @bots.dig(bot_name, 'rag_cag_config')
+      context_options = {
+        max_rag_results: @bots.dig(bot_name, 'rag_cag_config', 'max_rag_results') || 5,
+        max_cag_depth: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_depth') || 2,
+        max_cag_nodes: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_nodes') || 10,
+        include_rag_context: @bots.dig(bot_name, 'rag_cag_config', 'include_rag_context') != false,
+        include_cag_context: @bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false,
+        custom_collection: @bots.dig(bot_name, 'rag_cag_config', 'collection_name')
+      }
+    end
+
+    # Get enhanced context from RAG + CAG manager
+    enhanced_context = @rag_cag_manager.get_enhanced_context(user_message, context_options)
+    Print.debug "Enhanced context length: #{enhanced_context&.length || 0} characters"
+    enhanced_context
+  end
+
+  def extract_entities_from_message(bot_name, user_message)
+    return nil unless @enable_rag_cag && @rag_cag_manager
+
+    # Check if bot has entity extraction enabled
+    entity_extraction_enabled = @bots.dig(bot_name, 'entity_extraction_enabled')
+    return nil if entity_extraction_enabled == false
+
+    # Get bot-specific entity types
+    entity_types = @bots.dig(bot_name, 'entity_types') || ['ip_address', 'url', 'hash', 'filename']
+
+    # Extract entities
+    entities = @rag_cag_manager.extract_entities(user_message, entity_types)
+    Print.debug "Extracted #{entities&.length || 0} entities from message"
+    entities
   end
 
   def read_bots
@@ -180,6 +289,41 @@ class BotManager
           )
         end
 
+        # Parse RAG + CAG configuration if enabled
+        rag_cag_enabled = hackerbot.at_xpath('rag_cag_enabled')&.text
+        @bots[bot_name]['rag_cag_enabled'] = rag_cag_enabled ? (rag_cag_enabled.downcase == 'true') : @enable_rag_cag
+
+        if @bots[bot_name]['rag_cag_enabled']
+          # Parse RAG configuration
+          rag_config_node = hackerbot.at_xpath('rag_cag_config/rag')
+          if rag_config_node
+            @bots[bot_name]['rag_cag_config'] ||= {}
+            @bots[bot_name]['rag_cag_config']['max_rag_results'] = (rag_config_node.at_xpath('max_rag_results')&.text || '5').to_i
+            @bots[bot_name]['rag_cag_config']['include_rag_context'] = !(rag_config_node.at_xpath('include_rag_context')&.text.downcase == 'false')
+            @bots[bot_name]['rag_cag_config']['collection_name'] = rag_config_node.at_xpath('collection_name')&.text
+          end
+
+          # Parse CAG configuration
+          cag_config_node = hackerbot.at_xpath('rag_cag_config/cag')
+          if cag_config_node
+            @bots[bot_name]['rag_cag_config'] ||= {}
+            @bots[bot_name]['rag_cag_config']['max_cag_depth'] = (cag_config_node.at_xpath('max_cag_depth')&.text || '2').to_i
+            @bots[bot_name]['rag_cag_config']['max_cag_nodes'] = (cag_config_node.at_xpath('max_cag_nodes')&.text || '10').to_i
+            @bots[bot_name]['rag_cag_config']['include_cag_context'] = !(cag_config_node.at_xpath('include_cag_context')&.text.downcase == 'false')
+          end
+
+          # Parse entity extraction configuration
+          entity_extraction_enabled = hackerbot.at_xpath('entity_extraction_enabled')&.text
+          @bots[bot_name]['entity_extraction_enabled'] = entity_extraction_enabled ? (entity_extraction_enabled.downcase == 'true') : true
+
+          # Parse entity types
+          entity_types_node = hackerbot.at_xpath('entity_types')
+          if entity_types_node
+            entity_types = entity_types_node.text.split(',').map(&:strip).reject(&:empty?)
+            @bots[bot_name]['entity_types'] = entity_types unless entity_types.empty?
+          end
+        end
+
         # Test connection to LLM provider
         unless @bots[bot_name]['chat_ai'].test_connection
           Print.err "Warning: Cannot connect to #{provider} for bot #{bot_name}. Chat responses may not work."
@@ -192,15 +336,29 @@ class BotManager
     @bots
   end
 
-  def assemble_prompt(system_prompt, context, chat_context, user_message)
-    if context.empty? && chat_context.empty?
-      "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
-    elsif context.empty?
-      "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
-    elsif chat_context.empty?
-      "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+  def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
+    if enhanced_context && !enhanced_context.strip.empty?
+      # Include RAG + CAG enhanced context
+      if context.empty? && chat_context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif chat_context.empty?
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      end
     else
-      "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      # Original prompt assembly without enhanced context
+      if context.empty? && chat_context.empty?
+        "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
+      elsif context.empty?
+        "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      elsif chat_context.empty?
+        "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+      else
+        "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      end
     end
   end
 
@@ -404,7 +562,14 @@ class BotManager
               end
             end
             chat_context = get_chat_context.call(bot_name, user_id)
-            prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message)
+
+            # Get RAG + CAG enhanced context if enabled
+            enhanced_context = nil
+            if bots_ref[bot_name]['rag_cag_enabled'] != false
+              enhanced_context = get_enhanced_context(bot_name, m.message)
+            end
+
+            prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
             if bots_ref[bot_name]['chat_ai'].instance_variable_get(:@streaming)
               accumulated_text = ''
               stream_callback = Proc.new do |chunk|

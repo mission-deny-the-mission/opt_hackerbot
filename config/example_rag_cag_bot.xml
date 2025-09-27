@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hackerbot>
+  <name>CybersecurityRAGBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are an advanced cybersecurity training assistant with access to comprehensive knowledge bases. You can provide detailed explanations about attack patterns, malware families, security tools, and defense strategies. Use your enhanced context to provide accurate, up-to-date information and always cite specific sources when possible.</system_prompt>
+  <get_shell>false</get_shell>
+
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>7</max_rag_results>
+      <include_rag_context>true</include_rag_context>
+      <collection_name>cybersecurity_advanced</collection_name>
+    </rag>
+
+    <cag>
+      <max_cag_depth>3</max_cag_depth>
+      <max_cag_nodes>25</max_cag_nodes>
+      <include_cag_context>true</include_cag_context>
+    </cag>
+  </rag_cag_config>
+
+  <entity_extraction_enabled>true</entity_extraction_enabled>
+  <entity_types>ip_address, url, hash, filename, port, email</entity_types>
+
+  <messages>
+    <greeting>Hello! I'm CybersecurityRAGBot, your AI cybersecurity training assistant with advanced knowledge retrieval capabilities. I have access to comprehensive databases including MITRE ATT&CK, malware families, attack tools, and security defenses. How can I help you today?</greeting>
+    <help>Available commands:
+- hello: Start a conversation and get the first attack scenario
+- next/previous: Navigate through cybersecurity training scenarios
+- goto/attack N: Jump to a specific attack scenario (e.g., "goto 1")
+- list: Show all available attack scenarios
+- ready: Execute shell commands for current attack (if applicable)
+- answer [your answer]: Submit your answer to quiz questions
+- clear_history: Clear your conversation history
+- show_history: View your conversation history
+
+I can also provide detailed explanations about:
+- Attack patterns and techniques
+- Malware families and their behavior
+- Security tools and methodologies
+- Defense strategies and mitigations
+- Entity recognition and contextual analysis</help>
+    <next>Moving to the next scenario...</next>
+    <previous>Going back to the previous scenario...</previous>
+    <goto>Jumping to attack scenario...</goto>
+    <ready>Preparing to demonstrate the current attack pattern...</ready>
+    <say_ready>Are you ready to proceed?</say_ready>
+    <correct_answer>Excellent! That's the correct answer.</correct_answer>
+    <incorrect_answer>Not quite. Try again or ask for a hint.</incorrect_answer>
+    <no_quiz>No quiz available for this scenario.</no_quiz>
+    <last_attack>You've completed all the available scenarios. Great job!</last_attack>
+    <first_attack>您 already at the first scenario.</first_attack>
+    <invalid>Invalid attack scenario number. Please check the available scenarios with 'list'.</invalid>
+    <getting_shell>Setting up the demonstration environment...</getting_shell>
+    <got_shell>Successfully set up the demonstration environment!</got_shell>
+    <shell_fail_message>Failed to set up the demonstration environment. Please check your system configuration.</shell_fail_message>
+    <repeat>Would you like to try this scenario again or ask for more details?</repeat>
+    <non_answer>I'm here to help with cybersecurity training. Could you ask a specific question about the current scenario or general cybersecurity concepts?</non_answer>
+  </messages>
+
+  <attacks>
+    <attack>
+      <prompt>Let's start with credential dumping attacks. What are the main techniques used by attackers to steal credentials from Windows systems?</prompt>
+      <system_prompt>You are a cybersecurity expert specializing in credential access attacks. Focus on providing detailed technical explanations about credential dumping techniques, tools like Mimikatz, and defensive strategies.</system_prompt>
+      <quiz>
+        <question>What is the primary mechanism that Mimikatz uses to extract credentials from Windows systems?</question>
+        <answer>LSASS memory access</answer>
+        <correct_answer_response>Correct! Mimikatz primarily accesses the Local Security Authority Subsystem Service (LSASS) process memory to extract credential material. This technique is classified as T1003.001 in the MITRE ATT&CK framework.</correct_answer_response>
+      </quiz>
+      <condition>
+        <output_matches>LSASS|Local Security Authority</output_matches>
+        <message>Excellent! You've identified the key component. LSASS (Local Security Authority Subsystem Service) is indeed the primary target for credential dumping attacks.</message>
+      </condition>
+      <else_condition>
+        <message>Consider exploring Windows credential storage mechanisms and the LSASS process. Try using the knowledge base to learn more about credential access techniques.</message>
+      </else_condition>
+    </attack>
+
+    <attack>
+      <prompt>Now let's examine phishing attacks. How can you identify a sophisticated phishing email, and what defensive measures are most effective against spear phishing?</prompt>
+      <system_prompt>You are a social engineering and phishing defense expert. Provide detailed explanations about phishing techniques, email analysis, and defensive strategies including email filtering and user awareness training.</system_prompt>
+      <quiz>
+        <question>What is the primary defense mechanism against zero-day phishing attacks that bypass traditional email filters?</question>
+        <answer>user awareness training</answer>
+        <correct_answer_response>Correct! User awareness training is the primary defense against zero-day phishing attacks. Even sophisticated email filtering can be bypassed by novel phishing techniques, making educated users the last line of defense.</correct_answer_response>
+      </quiz>
+      <condition>
+        <output_matches>spear phishing|targeted|whaling</output_matches>
+        <message>Great insight! You're recognizing the sophistication of targeted attacks. These are often more dangerous than broad phishing campaigns.</message>
+      </condition>
+      <else_condition>
+        <message>Consider exploring different types of phishing attacks and their specific characteristics. The knowledge base contains detailed information about various phishing techniques.</message>
+      </else_condition>
+    </attack>
+
+    <attack>
+      <prompt>Let's analyze ransomware defense strategies. What are the three critical components of an effective ransomware defense program?</prompt>
+      <system_prompt>You are a ransomware defense and incident response expert. Focus on providing comprehensive information about ransomware families, attack vectors, and multi-layered defense strategies.</system_prompt>
+      <quiz>
+        <question>Which backup strategy is most effective against ransomware that encrypts network shares?</question>
+        <answer>3-2-1 backup rule</answer>
+        <correct_answer_response>Excellent! The 3-2-1 backup rule (3 copies, 2 different media, 1 offsite) is the most effective strategy against ransomware. This ensures that even if network shares are encrypted, you have recoverable backups.</correct_answer_response>
+      </quiz>
+      <condition>
+        <output_matches>backup|recovery|immutable</output_matches>
+        <message>Excellent focus! Backup and recovery are indeed critical components of ransomware defense. Immutable backups are particularly important as they cannot be encrypted or deleted by attackers.</message>
+      </condition>
+      <else_condition>
+        <message>Consider the multiple layers of ransomware defense: prevention, detection, response, and recovery. The knowledge base has detailed information about ransomware families and defense strategies.</message>
+      </else_condition>
+    </attack>
+
+    <attack>
+      <prompt>Finally, let's explore network security monitoring. What are the key indicators of compromise (IOCs) that suggest an active network intrusion?</prompt>
+      <system_prompt>You are a network security monitoring and threat hunting expert. Provide detailed explanations about network intrusion detection, traffic analysis, and threat hunting methodologies.</system_prompt>
+      <quiz>
+        <question>What network protocol behavior often indicates C2 (Command and Control) communication?</question>
+        <answer>beaconing|periodic communication|dns tunneling</answer>
+        <correct_answer_response>Correct! Beaconing behavior - periodic, regular communication from internal systems to external IP addresses - is a classic indicator of C2 communication. Other patterns include DNS tunneling and unusual protocol usage.</correct_answer_response>
+      </quiz>
+      <condition>
+        <output_matches>C2|command and control|beaconing|anomaly</output_matches>
+        <message>Great observation! You're identifying key behavioral patterns that indicate advanced persistent threats. These are exactly the types of IOCs that security analysts look for during threat hunting.</message>
+      </condition>
+      <else_condition>
+        <message>Consider exploring network traffic analysis techniques and common patterns of malicious network activity. The knowledge base contains information about various attack tools and their network behaviors.</message>
+      </else_condition>
+    </attack>
+  </attacks>
+</hackerbot>
