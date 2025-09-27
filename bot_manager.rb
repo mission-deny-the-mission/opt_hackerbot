@@ -23,6 +23,11 @@ class BotManager
     @rag_cag_config = rag_cag_config
     @rag_cag_manager = nil
 
+    # Set default offline mode and independent RAG/CAG settings
+    @rag_cag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
+    @rag_cag_config[:enable_rag] = rag_cag_config.fetch(:enable_rag, true)  # Default to both enabled
+    @rag_cag_config[:enable_cag] = rag_cag_config.fetch(:enable_cag, true)  # Default to both enabled
+
     # Initialize RAG + CAG manager if enabled
     if @enable_rag_cag
       initialize_rag_cag_manager
@@ -32,46 +37,106 @@ class BotManager
   def initialize_rag_cag_manager
     Print.info "Initializing RAG + CAG Manager..."
 
-    # Default RAG configuration
-    rag_config = {
-      vector_db: {
-        provider: 'chromadb',
-        host: 'localhost',
-        port: 8000
-      },
-      embedding_service: {
-        provider: 'openai',
-        api_key: @openai_api_key
-      },
-      rag_settings: {
-        max_results: 5,
-        similarity_threshold: 0.7,
-        enable_caching: true
-      }
-    }
+    # Load offline configuration to determine defaults
+    require './rag_cag_offline_config'
+    offline_config_manager = OfflineConfigurationManager.new
 
-    # Default CAG configuration
-    cag_config = {
-      knowledge_graph: {
-        provider: 'in_memory'
-      },
-      entity_extractor: {
-        provider: 'rule_based'
-      },
-      cag_settings: {
-        max_context_depth: 2,
-        max_context_nodes: 20,
-        enable_caching: true
+    # Determine if we should use offline mode
+    use_offline = case @rag_cag_config[:offline_mode]
+                  when 'offline'
+                    true
+                  when 'online'
+                    false
+                  else # 'auto'
+                    offline_config_manager.detect_connectivity == :offline
+                  end
+
+    Print.info "Using #{use_offline ? 'offline' : 'online'} mode for RAG + CAG systems"
+
+    # Default RAG configuration with offline as default
+    rag_config = if use_offline
+      {
+        vector_db: {
+          provider: 'chromadb_offline',
+          storage_path: './knowledge_bases/offline/vector_db',
+          persist_embeddings: true,
+          compression_enabled: true
+        },
+        embedding_service: {
+          provider: 'ollama_offline',
+          model: 'nomic-embed-text',
+          cache_embeddings: true,
+          cache_path: './cache/embeddings',
+          fallback_to_random: true
+        },
+        rag_settings: {
+          max_results: 5,
+          similarity_threshold: 0.7,
+          enable_caching: true
+        }
       }
-    }
+    else
+      {
+        vector_db: {
+          provider: 'chromadb',
+          host: 'localhost',
+          port: 8000
+        },
+        embedding_service: {
+          provider: 'openai',
+          api_key: @openai_api_key
+        },
+        rag_settings: {
+          max_results: 5,
+          similarity_threshold: 0.7,
+          enable_caching: true
+        }
+      }
+    end
+
+    # Default CAG configuration with offline as default
+    cag_config = if use_offline
+      {
+        knowledge_graph: {
+          provider: 'in_memory_offline',
+          storage_path: './knowledge_bases/offline/graph',
+          persist_graph: true,
+          load_from_file: true,
+          compression_enabled: true
+        },
+        entity_extractor: {
+          provider: 'rule_based_offline',
+          cache_entities: true
+        },
+        cag_settings: {
+          max_context_depth: 2,
+          max_context_nodes: 20,
+          enable_caching: true
+        }
+      }
+    else
+      {
+        knowledge_graph: {
+          provider: 'in_memory'
+        },
+        entity_extractor: {
+          provider: 'rule_based'
+        },
+        cag_settings: {
+          max_context_depth: 2,
+          max_context_nodes: 20,
+          enable_caching: true
+        }
+      }
+    end
 
     # Override with user-provided configuration
     rag_config.deep_merge!(@rag_cag_config[:rag]) if @rag_cag_config[:rag]
     cag_config.deep_merge!(@rag_cag_config[:cag]) if @rag_cag_config[:cag]
 
     unified_config = {
-      enable_rag: @rag_cag_config.fetch(:enable_rag, true),
-      enable_cag: @rag_cag_config.fetch(:enable_cag, true),
+      enable_rag: @rag_cag_config[:enable_rag],
+      enable_cag: @rag_cag_config[:enable_cag],
       rag_weight: @rag_cag_config.fetch(:rag_weight, 0.6),
       cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
       max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
@@ -115,6 +180,13 @@ class BotManager
     rag_cag_enabled = @bots.dig(bot_name, 'rag_cag_enabled')
     return nil if rag_cag_enabled == false
 
+    # Get bot-specific RAG and CAG settings
+    rag_enabled = @bots.dig(bot_name, 'rag_enabled')
+    cag_enabled = @bots.dig(bot_name, 'cag_enabled')
+
+    # If neither RAG nor CAG is enabled for this bot, return nil
+    return nil if rag_enabled == false && cag_enabled == false
+
     # Get bot-specific context preferences
     context_options = {}
     if @bots.dig(bot_name, 'rag_cag_config')
@@ -122,9 +194,19 @@ class BotManager
         max_rag_results: @bots.dig(bot_name, 'rag_cag_config', 'max_rag_results') || 5,
         max_cag_depth: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_depth') || 2,
         max_cag_nodes: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_nodes') || 10,
-        include_rag_context: @bots.dig(bot_name, 'rag_cag_config', 'include_rag_context') != false,
-        include_cag_context: @bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false,
+        include_rag_context: rag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_rag_context') != false),
+        include_cag_context: cag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false),
         custom_collection: @bots.dig(bot_name, 'rag_cag_config', 'collection_name')
+      }
+    else
+      # Use global settings if no bot-specific config
+      context_options = {
+        max_rag_results: 5,
+        max_cag_depth: 2,
+        max_cag_nodes: 10,
+        include_rag_context: rag_enabled != false,
+        include_cag_context: cag_enabled != false,
+        custom_collection: nil
       }
     end
 
@@ -140,6 +222,10 @@ class BotManager
     # Check if bot has entity extraction enabled
     entity_extraction_enabled = @bots.dig(bot_name, 'entity_extraction_enabled')
     return nil if entity_extraction_enabled == false
+
+    # Check if CAG is enabled for this bot (entity extraction requires CAG)
+    cag_enabled = @bots.dig(bot_name, 'cag_enabled')
+    return nil if cag_enabled == false
 
     # Get bot-specific entity types
     entity_types = @bots.dig(bot_name, 'entity_types') || ['ip_address', 'url', 'hash', 'filename']
@@ -294,6 +380,23 @@ class BotManager
         @bots[bot_name]['rag_cag_enabled'] = rag_cag_enabled ? (rag_cag_enabled.downcase == 'true') : @enable_rag_cag
 
         if @bots[bot_name]['rag_cag_enabled']
+          # Parse individual RAG and CAG enabling (allowing independent control)
+          rag_enabled_node = hackerbot.at_xpath('rag_enabled')&.text
+          cag_enabled_node = hackerbot.at_xpath('cag_enabled')&.text
+
+          # Use global settings as defaults, but allow per-bot override
+          @bots[bot_name]['rag_enabled'] = if rag_enabled_node
+            rag_enabled_node.downcase == 'true'
+          else
+            @rag_cag_config[:enable_rag]  # Use global setting
+          end
+
+          @bots[bot_name]['cag_enabled'] = if cag_enabled_node
+            cag_enabled_node.downcase == 'true'
+          else
+            @rag_cag_config[:enable_cag]  # Use global setting
+          end
+
           # Parse RAG configuration
           rag_config_node = hackerbot.at_xpath('rag_cag_config/rag')
           if rag_config_node

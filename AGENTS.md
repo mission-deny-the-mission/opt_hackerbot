@@ -1,6 +1,6 @@
 # Hackerbot Agents System
 
-Hackerbot is a Ruby-based IRC bot framework designed for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through integration with multiple LLM providers and advanced knowledge retrieval systems.
+Hackerbot is a Ruby-based IRC bot framework designed for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through integration with multiple LLM providers and advanced knowledge retrieval systems. The system now defaults to offline operation and supports independent control of RAG and CAG components.
 
 ## Overview
 
@@ -28,7 +28,7 @@ The system consists of intelligent IRC bots that can guide users through progres
 - `knowledge_bases/mitre_attack_knowledge.rb` - Comprehensive MITRE ATT&CK framework knowledge
 
 ### Offline Operation Support
-- `rag_cag_offline_config.rb` - Offline configuration and connectivity detection
+- `rag_cag_offline_config.rb` - Offline configuration and connectivity detection (offline is now the default)
 - `rag/chromadb_offline_client.rb` - Persistent vector database for offline operation
 - `rag/ollama_embedding_offline_client.rb` - Local embedding service with caching
 - `cag/in_memory_graph_offline_client.rb` - Persistent knowledge graph for offline operation
@@ -42,6 +42,8 @@ Bots are configured through XML files located in the `config/` directory:
 - `<messages>` - Static response templates
 - `<attacks>` - Progressive challenge scenarios
 - `<rag_cag_enabled>` - Enable/disable RAG + CAG capabilities
+- `<rag_enabled>` - Enable only RAG system (optional, defaults to true if rag_cag_enabled)
+- `<cag_enabled>` - Enable only CAG system (optional, defaults to true if rag_cag_enabled)
 - `<rag_cag_config>` - RAG + CAG specific configuration
 
 ### LLM Integration
@@ -58,6 +60,12 @@ Bots are configured through XML files located in the `config/` directory:
 - Each bot operates in its own IRC channels
 - Independent configuration per bot
 - Shared or per-bot knowledge bases
+
+### Individual System Control
+- **RAG-Only Mode**: Enable only document retrieval and semantic search capabilities
+- **CAG-Only Mode**: Enable only entity extraction and knowledge graph analysis
+- **Independent Configuration**: Per-bot control over which systems are active
+- **Resource Optimization**: Reduce memory and processing requirements by using only needed components
 
 ### Progressive Attack System
 - Structured learning paths through numbered attack scenarios
@@ -89,6 +97,7 @@ Bots are configured through XML files located in the `config/` directory:
 - **Offline Operation**: Full functionality without internet connectivity after setup
 
 ### Offline Operation
+- **Default Offline Mode**: System now defaults to offline operation for enhanced security and reliability
 - **Air-Gapped Support**: Complete offline functionality with pre-downloaded knowledge bases
 - **Persistent Storage**: Local embeddings and knowledge graph storage
 - **Auto-Detection**: Automatic connectivity detection and fallback to offline mode
@@ -154,7 +163,7 @@ Structured generation language for efficient LLM inference.
 
 ## Configuration Examples
 
-### Basic Configuration with Ollama
+### Basic Configuration with Ollama (Defaults to Offline)
 ```xml
 <hackerbot>
   <name>TrainingBot</name>
@@ -162,6 +171,9 @@ Structured generation language for efficient LLM inference.
   <ollama_model>llama2</ollama_model>
   <system_prompt>Helpful cybersecurity instructor</system_prompt>
   <get_shell>false</get_shell>
+  
+  <!-- RAG + CAG is enabled by default with offline operation -->
+  <rag_cag_enabled>true</rag_cag_enabled>
   
   <attacks>
     <attack>
@@ -172,7 +184,7 @@ Structured generation language for efficient LLM inference.
 </hackerbot>
 ```
 
-### Configuration with RAG + CAG Enabled
+### Configuration with RAG + CAG Enabled (Defaults to Offline)
 ```xml
 <hackerbot>
   <name>CybersecurityRAGBot</name>
@@ -181,8 +193,12 @@ Structured generation language for efficient LLM inference.
   <system_prompt>You are an advanced cybersecurity training assistant with access to comprehensive knowledge bases. You can provide detailed explanations about attack patterns, malware families, security tools, and defense strategies. Use your enhanced context to provide accurate, up-to-date information and always cite specific sources when possible.</system_prompt>
   <get_shell>false</get_shell>
   
-  <!-- RAG + CAG Configuration -->
+  <!-- RAG + CAG Configuration (enabled by default) -->
   <rag_cag_enabled>true</rag_cag_enabled>
+  
+  <!-- Individual system control (optional - defaults to both enabled) -->
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>true</cag_enabled>
   
   <rag_cag_config>
     <rag>
@@ -215,7 +231,7 @@ Structured generation language for efficient LLM inference.
 </hackerbot>
 ```
 
-### Offline Configuration
+### Offline Configuration (Now Default)
 ```xml
 <hackerbot>
   <name>OfflineCyberBot</name>
@@ -224,8 +240,12 @@ Structured generation language for efficient LLM inference.
   <system_prompt>You are an offline cybersecurity training assistant. All your knowledge comes from pre-downloaded cybersecurity knowledge bases including MITRE ATT&CK, CVE databases, and security tools. Provide comprehensive explanations based on your available knowledge.</system_prompt>
   <get_shell>false</get_shell>
   
-  <!-- Offline RAG + CAG Configuration -->
+  <!-- RAG + CAG Configuration (now defaults to offline) -->
   <rag_cag_enabled>true</rag_cag_enabled>
+  
+  <!-- Individual system control examples -->
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>true</cag_enabled>
   
   <rag_cag_config>
     <rag>
@@ -243,6 +263,74 @@ Structured generation language for efficient LLM inference.
   
   <entity_extraction_enabled>true</entity_extraction_enabled>
   <entity_types>ip_address, url, hash, filename</entity_types>
+</hackerbot>
+```
+
+### RAG-Only Configuration
+```xml
+<hackerbot>
+  <name>DocumentRetrievalBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are a cybersecurity document retrieval assistant. I focus on retrieving relevant documents from comprehensive knowledge bases to provide accurate information about attack patterns, vulnerabilities, and security tools.</system_prompt>
+  <get_shell>false</get_shell>
+  
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+  
+  <!-- Individual system control: RAG only -->
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>false</cag_enabled>
+  
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>10</max_rag_results>
+      <include_rag_context>true</include_rag_context>
+      <collection_name>cybersecurity_documents</collection_name>
+    </rag>
+    
+    <cag>
+      <max_cag_depth>0</max_cag_depth>
+      <max_cag_nodes>0</max_cag_nodes>
+      <include_cag_context>false</include_cag_context>
+    </cag>
+  </rag_cag_config>
+  
+  <entity_extraction_enabled>false</entity_extraction_enabled>
+</hackerbot>
+```
+
+### CAG-Only Configuration
+```xml
+<hackerbot>
+  <name>EntityAnalysisBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are a cybersecurity entity analysis assistant. I specialize in extracting and analyzing entities like IP addresses, URLs, hashes, and filenames, then understanding their relationships within cybersecurity knowledge graphs.</system_prompt>
+  <get_shell>false</get_shell>
+  
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+  
+  <!-- Individual system control: CAG only -->
+  <rag_enabled>false</rag_enabled>
+  <cag_enabled>true</cag_enabled>
+  
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>0</max_rag_results>
+      <include_rag_context>false</include_rag_context>
+    </rag>
+    
+    <cag>
+      <max_cag_depth>4</max_cag_depth>
+      <max_cag_nodes>30</max_cag_nodes>
+      <include_cag_context>true</include_cag_context>
+    </cag>
+  </rag_cag_config>
+  
+  <entity_extraction_enabled>true</entity_extraction_enabled>
+  <entity_types>ip_address, url, hash, filename, port, email, domain, mac_address</entity_types>
 </hackerbot>
 ```
 
@@ -303,20 +391,32 @@ Options:
 - `--sglang-host HOST` - SGLang server host (default: localhost)
 - `--sglang-port PORT` - SGLang server port (default: 30000)
 - `--streaming`, `-s true|false` - Enable/disable streaming (default: true)
-- `--enable-rag-cag` - Enable RAG + CAG capabilities (default: false)
-- `--offline` - Force offline mode operation (default: auto-detect)
+- `--enable-rag-cag` - Enable RAG + CAG capabilities (default: true)
+- `--rag-only` - Enable only RAG system (disables CAG)
+- `--cag-only` - Enable only CAG system (disables RAG)
+- `--offline` - Force offline mode (default: auto-detect)
+- `--online` - Force online mode
 - `--help`, `-h` - Show help message
 
 ### RAG + CAG Specific Options
 
-When `--enable-rag-cag` is enabled, additional configuration options are available through the XML configuration file or environment variables:
+When `--enable-rag-cag` is enabled (default), additional configuration options are available through the XML configuration file or environment variables:
 
 ```bash
-# Enable RAG + CAG with auto-detection
-ruby hackerbot.rb --enable-rag-cag
+# Enable RAG + CAG with auto-detection (default behavior)
+ruby hackerbot.rb
 
-# Force offline mode
-ruby hackerbot.rb --enable-rag-cag --offline
+# Enable only RAG system
+ruby hackerbot.rb --rag-only
+
+# Enable only CAG system
+ruby hackerbot.rb --cag-only
+
+# Force offline mode (default is auto-detect)
+ruby hackerbot.rb --offline
+
+# Force online mode
+ruby hackerbot.rb --online
 
 # Setup offline mode (one-time initial setup)
 ruby setup_offline_rag_cag.rb

@@ -28,12 +28,12 @@ class OfflineConfigurationManager
     {
       version: "1.0.0",
       offline_mode: {
-        enabled: false,
+        enabled: true,
         auto_detect: true,
         fallback_to_offline: true
       },
       rag: {
-        offline_mode: true,
+        offline_mode: true,  # Default to offline mode
         vector_db: {
           provider: "chromadb_offline",
           storage_path: DEFAULT_KNOWLEDGE_BASE_PATH,
@@ -55,7 +55,7 @@ class OfflineConfigurationManager
         }
       },
       cag: {
-        offline_mode: true,
+        offline_mode: true,  # Default to offline mode
         knowledge_graph: {
           provider: "in_memory_offline",
           storage_path: DEFAULT_KNOWLEDGE_BASE_PATH,

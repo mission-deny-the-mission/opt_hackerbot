@@ -9,6 +9,10 @@
   <!-- RAG + CAG Configuration -->
   <rag_cag_enabled>true</rag_cag_enabled>
 
+  <!-- Individual system control (optional - defaults to both enabled) -->
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>true</cag_enabled>
+
   <rag_cag_config>
     <rag>
       <max_rag_results>7</max_rag_results>
@@ -129,6 +133,166 @@ I can also provide detailed explanations about:
       <else_condition>
         <message>Consider exploring network traffic analysis techniques and common patterns of malicious network activity. The knowledge base contains information about various attack tools and their network behaviors.</message>
       </else_condition>
+    </attack>
+  </attacks>
+</hackerbot>
+
+<!-- Example: RAG-only configuration -->
+<hackerbot>
+  <name>DocumentRetrievalBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are a cybersecurity document retrieval assistant. I have access to comprehensive knowledge bases and can provide detailed information about attack patterns, vulnerabilities, and security tools. I focus on retrieving relevant documents to answer your questions accurately.</system_prompt>
+  <get_shell>false</get_shell>
+
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+
+  <!-- Individual system control: RAG only -->
+  <rag_enabled>true</rag_enabled>
+  <cag_enabled>false</cag_enabled>
+
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>10</max_rag_results>
+      <include_rag_context>true</include_rag_context>
+      <collection_name>cybersecurity_documents</collection_name>
+    </rag>
+
+    <cag>
+      <max_cag_depth>0</max_cag_depth>
+      <max_cag_nodes>0</max_cag_nodes>
+      <include_cag_context>false</include_cag_context>
+    </cag>
+  </rag_cag_config>
+
+  <entity_extraction_enabled>false</entity_extraction_enabled>
+
+  <messages>
+    <greeting>Hello! I'm DocumentRetrievalBot, your specialized cybersecurity document assistant. I focus on retrieving and analyzing relevant documents from comprehensive knowledge bases to provide you with accurate information. How can I help you today?</greeting>
+    <help>Available commands:
+- hello: Start a conversation and get the first attack scenario
+- next/previous: Navigate through cybersecurity training scenarios
+- goto/attack N: Jump to a specific attack scenario (e.g., "goto 1")
+- list: Show all available attack scenarios
+- ready: Execute shell commands for current attack (if applicable)
+- answer [your answer]: Submit your answer to quiz questions
+- clear_history: Clear your conversation history
+- show_history: View your conversation history
+
+I specialize in:
+- Document retrieval and analysis
+- Attack pattern documentation
+- Vulnerability database lookups
+- Security tool documentation
+- Technical reference materials</help>
+    <next>Moving to the next scenario...</next>
+    <previous>Going back to the previous scenario...</previous>
+    <goto>Jumping to attack scenario...</goto>
+    <ready>Preparing to demonstrate the current attack pattern...</ready>
+    <say_ready>Are you ready to proceed?</say_ready>
+    <correct_answer>Excellent! That's the correct answer.</correct_answer>
+    <incorrect_answer>Not quite. Try again or ask for a hint.</incorrect_answer>
+    <no_quiz>No quiz available for this scenario.</no_quiz>
+    <last_attack>You've completed all the available scenarios. Great job!</last_attack>
+    <first_attack>You are already at the first scenario.</first_attack>
+    <invalid>Invalid attack scenario number. Please check the available scenarios with 'list'.</invalid>
+    <getting_shell>Setting up the demonstration environment...</getting_shell>
+    <got_shell>Successfully set up the demonstration environment!</got_shell>
+    <shell_fail_message>Failed to set up the demonstration environment. Please check your system configuration.</shell_fail_message>
+    <repeat>Would you like to try this scenario again or ask for more details?</repeat>
+    <non_answer>I'm here to help with cybersecurity document retrieval. Could you ask a specific question about the current scenario or request information from my knowledge base?</non_answer>
+  </messages>
+
+  <attacks>
+    <attack>
+      <prompt>Let's examine the MITRE ATT&CK framework. What is the definition of T1059 - Command and Scripting Interpreter?</prompt>
+      <system_prompt>You are a MITRE ATT&CK framework expert. Focus on providing detailed information about specific techniques, their definitions, sub-techniques, and related mitigation strategies based on the comprehensive documentation.</system_prompt>
+      <quiz>
+        <question>What are the main sub-techniques under T1059 - Command and Scripting Interpreter?</question>
+        <answer>PowerShell, Windows Command Shell, Python, Unix Shell</answer>
+        <correct_answer_response>Correct! The main sub-techniques under T1059 include T1059.001 (PowerShell), T1059.003 (Windows Command Shell), T1059.006 (Python), and T1059.004 (Unix Shell). These represent different scripting and command interpreter environments that adversaries use to execute commands.</correct_answer_response>
+      </quiz>
+    </attack>
+  </attacks>
+</hackerbot>
+
+<!-- Example: CAG-only configuration -->
+<hackerbot>
+  <name>EntityAnalysisBot</name>
+  <llm_provider>ollama</llm_provider>
+  <ollama_model>gemma3:1b</ollama_model>
+  <system_prompt>You are a cybersecurity entity analysis assistant. I specialize in extracting and analyzing entities like IP addresses, URLs, hashes, and filenames, then understanding their relationships and context within cybersecurity knowledge graphs.</system_prompt>
+  <get_shell>false</get_shell>
+
+  <!-- RAG + CAG Configuration -->
+  <rag_cag_enabled>true</rag_cag_enabled>
+
+  <!-- Individual system control: CAG only -->
+  <rag_enabled>false</rag_enabled>
+  <cag_enabled>true</cag_enabled>
+
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>0</max_rag_results>
+      <include_rag_context>false</include_rag_context>
+    </rag>
+
+    <cag>
+      <max_cag_depth>4</max_cag_depth>
+      <max_cag_nodes>30</max_cag_nodes>
+      <include_cag_context>true</include_cag_context>
+    </cag>
+  </rag_cag_config>
+
+  <entity_extraction_enabled>true</entity_extraction_enabled>
+  <entity_types>ip_address, url, hash, filename, port, email, domain, mac_address</entity_types>
+
+  <messages>
+    <greeting>Hello! I'm EntityAnalysisBot, your specialized cybersecurity entity analysis assistant. I focus on extracting and analyzing entities like IP addresses, URLs, hashes, and filenames, then understanding their relationships within cybersecurity knowledge graphs. How can I help you today?</greeting>
+    <help>Available commands:
+- hello: Start a conversation and get the first attack scenario
+- next/previous: Navigate through cybersecurity training scenarios
+- goto/attack N: Jump to a specific attack scenario (e.g., "goto 1")
+- list: Show all available attack scenarios
+- ready: Execute shell commands for current attack (if applicable)
+- answer [your answer]: Submit your answer to quiz questions
+- clear_history: Clear your conversation history
+- show_history: View your conversation history
+
+I specialize in:
+- Entity extraction and analysis
+- Relationship mapping between entities
+- Knowledge graph traversal
+- Context-aware entity interpretation
+- Threat intelligence correlation</help>
+    <next>Moving to the next scenario...</next>
+    <previous>Going back to the previous scenario...</previous>
+    <goto>Jumping to attack scenario...</goto>
+    <ready>Preparing to demonstrate the current attack pattern...</ready>
+    <say_ready>Are you ready to proceed?</say_ready>
+    <correct_answer>Excellent! That's the correct answer.</correct_answer>
+    <incorrect_answer>Not quite. Try again or ask for a hint.</incorrect_answer>
+    <no_quiz>No quiz available for this scenario.</no_quiz>
+    <last_attack>You've completed all the available scenarios. Great job!</last_attack>
+    <first_attack>You are already at the first scenario.</first_attack>
+    <invalid>Invalid attack scenario number. Please check the available scenarios with 'list'.</invalid>
+    <getting_shell>Setting up the demonstration environment...</getting_shell>
+    <got_shell>Successfully set up the demonstration environment!</got_shell>
+    <shell_fail_message>Failed to set up the demonstration environment. Please check your system configuration.</shell_fail_message>
+    <repeat>Would you like to try this scenario again or ask for more details?</repeat>
+    <non_answer>I'm here to help with entity analysis and relationship mapping. Could you provide some entities or ask about entity relationships in cybersecurity?</non_answer>
+  </messages>
+
+  <attacks>
+    <attack>
+      <prompt>Analyze the following entities and their relationships: IP 192.168.1.100, URL http://malicious-site.com/payload.exe, hash a1b2c3d4e5f67890, filename payload.exe, port 4444. What do these entities suggest about a potential attack scenario?</prompt>
+      <system_prompt>You are a cybersecurity entity relationship expert. Focus on analyzing the relationships between extracted entities and mapping them to known attack patterns, malware families, and threat actor behaviors using knowledge graph traversal.</system_prompt>
+      <quiz>
+        <question>What type of attack is most likely indicated by the combination of these entities?</question>
+        <answer>command and control (C2) communication</answer>
+        <correct_answer_response>Correct! The combination of an IP address, malicious URL, executable payload, specific hash, and high-numbered port strongly suggests Command and Control (C2) communication. This pattern is commonly associated with T1071 - Application Layer Protocol and T1090 - Proxy in the MITRE ATT&CK framework.</correct_answer_response>
+      </quiz>
     </attack>
   </attacks>
 </hackerbot>
