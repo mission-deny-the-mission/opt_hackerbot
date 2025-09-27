@@ -1,4 +1,4 @@
-require './knowledge_graph_interface.rb'
+require './cag/knowledge_graph_interface.rb'
 require './print.rb'
 require 'json'
 require 'fileutils'

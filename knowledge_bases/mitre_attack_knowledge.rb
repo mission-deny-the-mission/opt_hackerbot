@@ -1,6 +1,5 @@
 
 
-```rb /home/harry/opt_hackerbot/knowledge_bases/mitre_attack_knowledge.rb
 # MITRE ATT&CK Framework Knowledge Base for CAG System
 # This file contains structured knowledge about cybersecurity attack patterns
 
@@ -163,7 +162,7 @@ module MITREAttackKnowledge
       description: 'Advanced credential extraction tool focused on Windows systems',
       capabilities: ['credential theft', 'pass-the-hash', 'kerberoasting'],
       attack_patterns: ['T1003'],
-      detection: 'LSASS access monitoring, credentialdumping', 'process monitoring'
+      detection: ['LSASS access monitoring', 'credentialdumping', 'process monitoring']
     },
     {
       name: 'NMap',
@@ -171,7 +170,7 @@ module MITREAttackKnowledge
       description: 'Network discovery and security auditing tool',
       capabilities: ['port scanning', 'service detection', 'OS fingerprinting'],
       attack_patterns: ['T1046', 'T1592'],
-      detection: 'Network scanning detection', 'port scan detection', 'service enumeration detection'
+      detection: ['Network scanning detection', 'port scan detection', 'service enumeration detection']
     },
     {
       name: 'Burp Suite',
@@ -179,7 +178,7 @@ module MITREAttackKnowledge
       description: 'Integrated platform for performing security testing of web applications',
       capabilities: ['web vulnerability scanning', 'interception', 'fuzzing'],
       attack_patterns: ['T1190.001'],
-      detection: 'Web application monitoring', 'HTTP traffic analysis', 'suspicious request patterns'
+      detection: ['Web application monitoring', 'HTTP traffic analysis', 'suspicious request patterns']
     }
   ]
 
@@ -314,7 +313,7 @@ module MITREAttackKnowledge
 
       # Add attack patterns
       malware[:attack_patterns].each do |pattern_id|
-        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.[:name]
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
         if pattern_name
           triplets << {
             subject: malware[:name],
@@ -386,7 +385,7 @@ module MITREAttackKnowledge
 
       # Defense -> mitigates
       defense[:attack_patterns].each do |pattern_id|
-        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.[:name]
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
         if pattern_name
           triplets << {
             subject: defense[:name],
@@ -452,7 +451,7 @@ module MITREAttackKnowledge
 
       doc_content += "\nAssociated Attack Patterns:\n"
       malware[:attack_patterns].each do |pattern_id|
-        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.[:name]
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
       end
 
@@ -507,7 +506,7 @@ module MITREAttackKnowledge
 
       doc_content += "\nMitigates Attack Patterns:\n"
       defense[:attack_patterns].each do |pattern_id|
-        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.[:name]
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
       end
 

@@ -52,8 +52,8 @@ class VectorDBInterface
     raise ArgumentError, "Documents array cannot be empty" if documents.empty?
 
     documents.each do |doc|
-      raise ArgumentError, "Each document must have an 'id' field" unless doc.key?('id')
-      raise ArgumentError, "Each document must have a 'content' field" unless doc.key?('content')
+      raise ArgumentError, "Each document must have an 'id' field" unless doc.key?('id') || doc.key?(:id)
+      raise ArgumentError, "Each document must have a 'content' field" unless doc.key?('content') || doc.key?(:content)
     end
   end
 end

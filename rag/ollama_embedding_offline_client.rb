@@ -1,4 +1,4 @@
-require './embedding_service_interface.rb'
+require './rag/embedding_service_interface.rb'
 require './print.rb'
 require 'json'
 require 'fileutils'

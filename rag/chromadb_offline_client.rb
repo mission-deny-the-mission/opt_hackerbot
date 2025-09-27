@@ -1,4 +1,4 @@
-require './vector_db_interface.rb'
+require './rag/vector_db_interface.rb'
 require './print.rb'
 require 'json'
 require 'fileutils'

@@ -83,8 +83,10 @@ class BotManager
           port: 8000
         },
         embedding_service: {
-          provider: 'openai',
-          api_key: @openai_api_key
+          provider: 'ollama',
+          host: @ollama_host,
+          port: @ollama_port,
+          model: 'nomic-embed-text'
         },
         rag_settings: {
           max_results: 5,
@@ -146,7 +148,7 @@ class BotManager
 
     @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
 
-    unless @rag_cag_manager.initialize
+    unless @rag_cag_manager.setup
       Print.err "Failed to initialize RAG + CAG Manager"
       @rag_cag_manager = nil
     end

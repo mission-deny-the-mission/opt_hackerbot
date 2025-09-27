@@ -1,4 +1,4 @@
-require './knowledge_graph_interface.rb'
+require './cag/knowledge_graph_interface.rb'
 require './print.rb'
 
 # CAG Manager to coordinate context-aware generation operations
@@ -17,7 +17,7 @@ class CAGManager
     @initialized = false
   end
 
-  def initialize
+  def setup
     return if @initialized
 
     Print.info "Initializing CAG Manager..."
@@ -61,7 +61,7 @@ class CAGManager
 
   def expand_context_with_entities(entities, max_depth = nil, max_nodes = nil)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return []
     end
 
@@ -94,7 +94,7 @@ class CAGManager
 
   def get_context_for_query(query, max_depth = nil, max_nodes = nil)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return nil
     end
 
@@ -149,7 +149,7 @@ class CAGManager
 
   def add_knowledge_triplet(subject, relationship, object, properties = {})
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -186,7 +186,7 @@ class CAGManager
 
   def find_related_entities(entity_name, relationship_type = nil, depth = 1)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return []
     end
 
@@ -210,7 +210,7 @@ class CAGManager
 
   def create_knowledge_base_from_triplets(triplets, batch_size = 100)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -265,19 +265,19 @@ class CAGManager
 
     case provider.downcase
     when 'neo4j'
-      require './neo4j_client.rb'
+      require './cag/neo4j_client.rb'
       Neo4jClient.new(config)
     when 'tigergraph'
-      require './tigergraph_client.rb'
+      require './cag/tigergraph_client.rb'
       TigerGraphClient.new(config)
     when 'amazon_neptune'
-      require './amazon_neptune_client.rb'
+      require './cag/amazon_neptune_client.rb'
       AmazonNeptuneClient.new(config)
     when 'arangodb'
-      require './arangodb_client.rb'
+      require './cag/arangodb_client.rb'
       ArangoDBCClient.new(config)
     when 'in_memory'
-      require './in_memory_graph_client.rb'
+      require './cag/in_memory_graph_client.rb'
       InMemoryGraphClient.new(config)
     else
       raise ArgumentError, "Unsupported knowledge graph provider: #{provider}"
@@ -289,10 +289,10 @@ class CAGManager
 
     case provider.downcase
     when 'llm_based'
-      require './llm_entity_extractor.rb'
+      require './cag/llm_entity_extractor.rb'
       LLMEntityExtractor.new(config)
     when 'spacy'
-      require './spacy_entity_extractor.rb'
+      require './cag/spacy_entity_extractor.rb'
       SpacyEntityExtractor.new(config)
     when 'rule_based'
       # Use built-in rule-based extraction

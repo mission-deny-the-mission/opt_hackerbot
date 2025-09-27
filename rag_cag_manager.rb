@@ -27,7 +27,7 @@ class RAGCAGManager
     @cag_manager = nil
   end
 
-  def initialize
+  def setup
     return if @initialized
 
     Print.info "Initializing RAG + CAG Manager..."
@@ -43,7 +43,7 @@ class RAGCAGManager
         @rag_config[:rag_settings]
       )
 
-      unless @rag_manager.initialize
+      unless @rag_manager.setup
         Print.err "Failed to initialize RAG Manager"
         success = false
       end
@@ -58,7 +58,7 @@ class RAGCAGManager
         @cag_config[:cag_settings]
       )
 
-      unless @cag_manager.initialize
+      unless @cag_manager.setup
         Print.err "Failed to initialize CAG Manager"
         success = false
       end
@@ -81,7 +81,7 @@ class RAGCAGManager
 
   def initialize_knowledge_base
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -124,7 +124,7 @@ class RAGCAGManager
 
   def get_enhanced_context(query, context_options = {})
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return nil
     end
 
@@ -193,7 +193,7 @@ class RAGCAGManager
 
   def add_custom_knowledge(collection_name, documents, triplets = [])
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -238,7 +238,7 @@ class RAGCAGManager
 
   def extract_entities(query, entity_types = nil)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return []
     end
 
@@ -252,7 +252,7 @@ class RAGCAGManager
 
   def find_related_entities(entity_name, relationship_type = nil, depth = 1)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return []
     end
 

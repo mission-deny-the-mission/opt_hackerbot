@@ -1,4 +1,4 @@
-require './knowledge_graph_interface.rb'
+require './cag/knowledge_graph_interface.rb'
 require './print.rb'
 
 # In-memory knowledge graph client implementation for testing and local use

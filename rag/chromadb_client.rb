@@ -1,4 +1,4 @@
-require './vector_db_interface.rb'
+require './rag/vector_db_interface.rb'
 require './print.rb'
 
 # In-memory ChromaDB client implementation for testing and local use

@@ -1,7 +1,5 @@
 
-
-```rb /home/hacker/opt_hackerbot/rag/ollama_embedding_client.rb
-require './embedding_service_interface.rb'
+require './rag/embedding_service_interface.rb'
 require './print.rb'
 
 # Ollama API client for generating embeddings
@@ -115,7 +113,7 @@ class OllamaEmbeddingClient < EmbeddingServiceInterface
         Print.info "Successfully generated #{embeddings.length} batch embeddings"
         embeddings
       else
-        Print.warn "Generated only #{embeddings.length} embeddings out of #{texts.length} requested"
+        Print.std "Generated only #{embeddings.length} embeddings out of #{texts.length} requested"
         embeddings
       end
     rescue => e
@@ -149,7 +147,7 @@ class OllamaEmbeddingClient < EmbeddingServiceInterface
         if embedding_models.any?
           Print.info "Found #{embedding_models.length} embedding models"
         else
-          Print.warn "No embedding models found. Consider pulling an embedding model with: ollama pull #{@model}"
+          Print.std "No embedding models found. Consider pulling an embedding model with: ollama pull #{@model}"
         end
       else
         Print.err "Ollama embedding service connection test failed: #{response.code}"

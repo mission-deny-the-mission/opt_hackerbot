@@ -1,5 +1,5 @@
-require './vector_db_interface.rb'
-require './embedding_service_interface.rb'
+require './rag/vector_db_interface.rb'
+require './rag/embedding_service_interface.rb'
 require './print.rb'
 
 # RAG Manager to coordinate retrieval-augmented generation operations
@@ -18,7 +18,7 @@ class RAGManager
     @initialized = false
   end
 
-  def initialize
+  def setup
     return if @initialized
 
     Print.info "Initializing RAG Manager..."
@@ -50,7 +50,7 @@ class RAGManager
 
   def add_knowledge_base(collection_name, documents, embeddings = nil)
     unless @initialized
-      Initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -92,7 +92,7 @@ class RAGManager
 
   def retrieve_relevant_context(query, collection_name, max_results = nil)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return nil
     end
 
@@ -151,7 +151,7 @@ class RAGManager
 
   def create_collection(collection_name)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -161,7 +161,7 @@ class RAGManager
 
   def delete_collection(collection_name)
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return false
     end
 
@@ -180,7 +180,7 @@ class RAGManager
 
   def list_collections
     unless @initialized
-      initialize unless initialize
+      setup unless setup
       return []
     end
 
@@ -219,16 +219,16 @@ class RAGManager
 
     case provider.downcase
     when 'chromadb'
-      require './chromadb_client.rb'
+      require './rag/chromadb_client.rb'
       ChromaDBClient.new(config)
     when 'pinecone'
-      require './pinecone_client.rb'
+      require './rag/pinecone_client.rb'
       PineconeClient.new(config)
     when 'qdrant'
-      require './qdrant_client.rb'
+      require './rag/qdrant_client.rb'
       QdrantClient.new(config)
     when 'faiss'
-      require './faiss_client.rb'
+      require './rag/faiss_client.rb'
       FAISSClient.new(config)
     else
       raise ArgumentError, "Unsupported vector database provider: #{provider}"
@@ -240,13 +240,13 @@ class RAGManager
 
     case provider.downcase
     when 'openai'
-      require './openai_embedding_client.rb'
+      require './rag/openai_embedding_client.rb'
       OpenAIEmbeddingClient.new(config)
     when 'ollama'
-      require './ollama_embedding_client.rb'
+      require './rag/ollama_embedding_client.rb'
       OllamaEmbeddingClient.new(config)
     when 'huggingface'
-      require './huggingface_embedding_client.rb'
+      require './rag/huggingface_embedding_client.rb'
       HuggingFaceEmbeddingClient.new(config)
     else
       raise ArgumentError, "Unsupported embedding service provider: #{provider}"
