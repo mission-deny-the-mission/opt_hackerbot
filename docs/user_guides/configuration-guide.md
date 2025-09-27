@@ -63,7 +63,8 @@
   <!-- OpenAI-specific settings -->
   <openai_model>gpt-3.5-turbo</openai_model>
   <openai_api_key>your-api-key-here</openai_api_key>
-  <openai_host>api.openai.com</openai_host>
+  <!-- Optional: Custom OpenAI-compatible API base URL -->
+  <!-- <openai_base_url>http://localhost:8080/v1</openai_base_url> -->
   
   <!-- Response settings -->
   <streaming>true</streaming>

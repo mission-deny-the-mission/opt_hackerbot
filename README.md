@@ -180,6 +180,20 @@ ruby hackerbot.rb \
   --llm-provider openai \
   --openai-api-key your-api-key \
   --openai-model gpt-3.5-turbo
+
+# Bot with OpenAI-compatible API (local llama.cpp, Together.ai, etc.)
+ruby hackerbot.rb \
+  --llm-provider openai \
+  --openai-api-key your-api-key \
+  --openai-model llama-2-7b-chat \
+  --openai-base-url http://localhost:8080/v1
+
+# Bot with Together.ai (OpenAI-compatible)
+ruby hackerbot.rb \
+  --llm-provider openai \
+  --openai-api-key your-together-api-key \
+  --openai-model meta-llama/Llama-2-13b-chat-hf \
+  --openai-base-url https://api.together.xyz/v1
 ```
 
 ### Social Engineering Training

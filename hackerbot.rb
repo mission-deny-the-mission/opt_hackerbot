@@ -16,6 +16,7 @@ def usage
   Print.std '  --ollama-port, -p PORT         Ollama server port (default: 11434)'
   Print.std '  --ollama-model, -m MODEL       Ollama model name (default: gemma3:1b)'
   Print.std '  --openai-api-key, -k KEY       OpenAI API key'
+  Print.std '  --openai-base-url URL          OpenAI API base URL (default: https://api.openai.com/v1)'
   Print.std '  --vllm-host HOST               VLLM server host (default: localhost)'
   Print.std '  --vllm-port PORT               VLLM server port (default: 8000)'
   Print.std '  --sglang-host HOST             SGLang server host (default: localhost)'
@@ -41,6 +42,7 @@ $ollama_host = 'localhost'
 $ollama_port = 11434
 $ollama_model = 'gemma3:1b'
 $openai_api_key = nil
+$openai_base_url = nil
 $vllm_host = 'localhost'
 $vllm_port = 8000
 $sglang_host = 'localhost'
@@ -59,6 +61,7 @@ opts = GetoptLong.new(
     [ '--ollama-port', '-p', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--ollama-model', '-m', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--openai-api-key', '-k', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--openai-base-url', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--vllm-host', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--vllm-port', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--sglang-host', GetoptLong::REQUIRED_ARGUMENT ],
@@ -91,6 +94,8 @@ begin
       $ollama_model = arg;
     when '--openai-api-key'
       $openai_api_key = arg;
+    when '--openai-base-url'
+      $openai_base_url = arg;
     when '--vllm-host'
       $vllm_host = arg;
     when '--vllm-port'
@@ -142,7 +147,7 @@ if __FILE__ == $0
     offline_mode: $offline_mode
   }
 
-  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $enable_rag_cag, rag_cag_config)
+  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $openai_base_url, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $enable_rag_cag, rag_cag_config)
   bots = bot_manager.read_bots
   bot_manager.start_bots
 end

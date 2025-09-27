@@ -63,6 +63,27 @@ class TestOpenAIClient < LLMClientTest
     assert_equal 'https://custom.openai.com/v1', base_url
   end
 
+  def test_custom_base_url_parameter
+    custom_base_url = 'https://api.custom-provider.com/v1'
+    client = OpenAIClient.new(@api_key, nil, nil, nil, nil, nil, nil, custom_base_url)
+    base_url = client.instance_variable_get(:@base_url)
+    assert_equal custom_base_url, base_url
+  end
+
+  def test_custom_base_url_with_trailing_slash
+    custom_base_url = 'https://api.custom-provider.com/v1/'
+    client = OpenAIClient.new(@api_key, nil, nil, nil, nil, nil, nil, custom_base_url)
+    base_url = client.instance_variable_get(:@base_url)
+    assert_equal 'https://api.custom-provider.com/v1', base_url
+  end
+
+  def test_custom_base_url_overrides_host_parameter
+    custom_base_url = 'https://api.custom-provider.com/v1'
+    client = OpenAIClient.new(@api_key, 'api.openai.com', nil, nil, nil, nil, nil, custom_base_url)
+    base_url = client.instance_variable_get(:@base_url)
+    assert_equal custom_base_url, base_url
+  end
+
   def test_generate_response_non_streaming_success
     client = OpenAIClient.new(@api_key)
     test_prompt = 'Hello, how are you?'

@@ -90,7 +90,7 @@ The central controller for bot instances and operations.
 class BotManager
   def initialize(irc_server_ip_address, llm_provider = 'ollama', 
                ollama_host = nil, ollama_port = nil, ollama_model = nil,
-               openai_api_key = nil, openai_model = nil,
+               openai_api_key = nil, openai_base_url = nil,
                vllm_host = nil, vllm_port = nil, vllm_model = nil,
                sglang_host = nil, sglang_port = nil, sglang_model = nil,
                enable_rag_cag = false, rag_cag_config = {})

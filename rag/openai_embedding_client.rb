@@ -11,7 +11,14 @@ class OpenAIEmbeddingClient < EmbeddingServiceInterface
     @api_key = config[:api_key]
     @model = config[:model] || 'text-embedding-ada-002'
     @host = config[:host] || 'api.openai.com'
-    @base_url = "https://#{@host}/v1"
+
+    # Use provided base_url, otherwise construct from host
+    @base_url = if config[:base_url]
+      # Remove trailing slash if present to ensure consistency
+      config[:base_url].end_with?('/') ? config[:base_url].chop : config[:base_url]
+    else
+      "https://#{@host}/v1"
+    end
 
     unless @api_key
       Print.err "OpenAI API key is required"

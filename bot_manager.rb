@@ -5,13 +5,14 @@ require_relative './providers/llm_client_factory.rb'
 require_relative './rag_cag_manager.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
+  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
     @irc_server_ip_address = irc_server_ip_address
     @llm_provider = llm_provider
     @ollama_host = ollama_host
     @ollama_port = ollama_port
     @ollama_model = ollama_model
     @openai_api_key = openai_api_key
+    @openai_base_url = openai_base_url
     @vllm_host = vllm_host
     @vllm_port = vllm_port
     @sglang_host = sglang_host
@@ -302,6 +303,7 @@ class BotManager
         ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || @ollama_host
         ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || @ollama_port.to_s).to_i
         openai_api_key_config = hackerbot.at_xpath('openai_api_key')&.text || @openai_api_key
+        openai_base_url_config = hackerbot.at_xpath('openai_base_url')&.text || @openai_base_url
         vllm_host_config = hackerbot.at_xpath('vllm_host')&.text || @vllm_host
         vllm_port_config = (hackerbot.at_xpath('vllm_port')&.text || @vllm_port.to_s).to_i
         sglang_host_config = hackerbot.at_xpath('sglang_host')&.text || @sglang_host
@@ -334,6 +336,7 @@ class BotManager
           @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
             'openai',
             api_key: openai_api_key_config,
+            base_url: openai_base_url_config,
             model: model_name,
             system_prompt: system_prompt,
             max_tokens: max_tokens,

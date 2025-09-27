@@ -27,7 +27,8 @@ module LLMClientFactory
         options[:system_prompt],
         options[:max_tokens],
         options[:temperature],
-        options[:streaming]
+        options[:streaming],
+        options[:base_url]
       )
     when 'vllm'
       VLLMClient.new(

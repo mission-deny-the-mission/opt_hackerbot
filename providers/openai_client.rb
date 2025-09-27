@@ -10,7 +10,7 @@ DEFAULT_OPENAI_TEMPERATURE = 0.7
 
 # OpenAI API client for LLM integration
 class OpenAIClient < LLMClient
-  def initialize(api_key, host = nil, model = nil, system_prompt = nil, max_tokens = nil, temperature = nil, streaming = nil)
+  def initialize(api_key, host = nil, model = nil, system_prompt = nil, max_tokens = nil, temperature = nil, streaming = nil, base_url = nil)
     # Set defaults if not provided
     @api_key = api_key
     @host = host || DEFAULT_OPENAI_HOST
@@ -19,7 +19,13 @@ class OpenAIClient < LLMClient
     # Call parent constructor
     super('openai', model, system_prompt, max_tokens || DEFAULT_OPENAI_MAX_TOKENS, temperature || DEFAULT_OPENAI_TEMPERATURE, streaming)
 
-    @base_url = "https://#{@host}/v1"
+    # Use provided base_url, otherwise construct from host
+    @base_url = if base_url
+      # Remove trailing slash if present to ensure consistency
+      base_url.end_with?('/') ? base_url.chop : base_url
+    else
+      "https://#{@host}/v1"
+    end
   end
 
   # Generate response from OpenAI

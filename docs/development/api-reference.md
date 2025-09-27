@@ -140,7 +140,7 @@ bot_manager = BotManager.new(
   irc_server_ip_address,     # IRC server address
   llm_provider,             # LLM provider name
   ollama_host, ollama_port, ollama_model,     # Ollama settings
-  openai_api_key, openai_model,              # OpenAI settings
+  openai_api_key, openai_base_url,           # OpenAI settings
   vllm_host, vllm_port, vllm_model,         # VLLM settings
   sglang_host, sglang_port, sglang_model,    # SGLang settings
   enable_rag_cag,           # Enable knowledge enhancement
@@ -312,6 +312,7 @@ ruby hackerbot.rb [OPTIONS]
 --ollama-port PORT           # Ollama server port
 --ollama-model MODEL         # Ollama model name
 --openai-api-key KEY         # OpenAI API key
+--openai-base-url URL        # OpenAI API base URL (default: https://api.openai.com/v1)
 --openai-model MODEL         # OpenAI model name
 --vllm-host HOST             # VLLM server host
 --vllm-port PORT             # VLLM server port
