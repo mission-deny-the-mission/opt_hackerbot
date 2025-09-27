@@ -1,20 +1,14 @@
 require 'nokogiri'
 require 'nori'
 require './print.rb'
-require './llm_client_factory.rb'
+require './ollama_client.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000)
+  def initialize(irc_server_ip_address, ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b')
     @irc_server_ip_address = irc_server_ip_address
-    @llm_provider = llm_provider
     @ollama_host = ollama_host
     @ollama_port = ollama_port
     @ollama_model = ollama_model
-    @openai_api_key = openai_api_key
-    @vllm_host = vllm_host
-    @vllm_port = vllm_port
-    @sglang_host = sglang_host
-    @sglang_port = sglang_port
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
     @max_history_length = 10
@@ -96,96 +90,26 @@ class BotManager
         # Initialize per-user chat history storage
         @bots[bot_name]['user_chat_history'] = {}
 
-        # Initialize LLM client for this bot based on provider
+        # Initialize Ollama client for this bot
         # You can customize the model per bot by adding a model attribute to the XML
-        provider = hackerbot.at_xpath('llm_provider')&.text || @llm_provider
         model_name = hackerbot.at_xpath('ollama_model')&.text || @ollama_model
         ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || @ollama_host
         ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || @ollama_port.to_s).to_i
-        openai_api_key_config = hackerbot.at_xpath('openai_api_key')&.text || @openai_api_key
-        vllm_host_config = hackerbot.at_xpath('vllm_host')&.text || @vllm_host
-        vllm_port_config = (hackerbot.at_xpath('vllm_port')&.text || @vllm_port.to_s).to_i
-        sglang_host_config = hackerbot.at_xpath('sglang_host')&.text || @sglang_host
-        sglang_port_config = (hackerbot.at_xpath('sglang_port')&.text || @sglang_port.to_s).to_i
-
-        system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
+        ollama_system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
         max_tokens = (hackerbot.at_xpath('max_tokens')&.text || DEFAULT_MAX_TOKENS).to_i
         temperature = (hackerbot.at_xpath('model_temperature')&.text || DEFAULT_TEMPERATURE).to_f
         num_thread = (hackerbot.at_xpath('num_thread')&.text || DEFAULT_NUM_THREAD).to_i
         keepalive = (hackerbot.at_xpath('keepalive')&.text || DEFAULT_KEEPALIVE).to_i
         streaming_config = hackerbot.at_xpath('streaming')&.text
         streaming_enabled = streaming_config.nil? ? DEFAULT_STREAMING : (streaming_config.downcase == 'true')
-
-        # Create the appropriate LLM client based on provider
-        case provider.downcase
-        when 'ollama'
-          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
-            'ollama',
-            host: ollama_host_config,
-            port: ollama_port_config,
-            model: model_name,
-            system_prompt: system_prompt,
-            max_tokens: max_tokens,
-            temperature: temperature,
-            num_thread: num_thread,
-            keepalive: keepalive,
-            streaming: streaming_enabled
-          )
-        when 'openai'
-          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
-            'openai',
-            api_key: openai_api_key_config,
-            model: model_name,
-            system_prompt: system_prompt,
-            max_tokens: max_tokens,
-            temperature: temperature,
-            streaming: streaming_enabled
-          )
-        when 'vllm'
-          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
-            'vllm',
-            host: vllm_host_config,
-            port: vllm_port_config,
-            model: model_name,
-            system_prompt: system_prompt,
-            max_tokens: max_tokens,
-            temperature: temperature,
-            streaming: streaming_enabled
-          )
-        when 'sglang'
-          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
-            'sglang',
-            host: sglang_host_config,
-            port: sglang_port_config,
-            model: model_name,
-            system_prompt: system_prompt,
-            max_tokens: max_tokens,
-            temperature: temperature,
-            streaming: streaming_enabled
-          )
-        else
-          # Default to Ollama if provider is not recognized
-          Print.err "Unknown LLM provider '#{provider}', defaulting to Ollama"
-          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
-            'ollama',
-            host: ollama_host_config,
-            port: ollama_port_config,
-            model: model_name,
-            system_prompt: system_prompt,
-            max_tokens: max_tokens,
-            temperature: temperature,
-            num_thread: num_thread,
-            keepalive: keepalive,
-            streaming: streaming_enabled
-          )
-        end
-
-        # Test connection to LLM provider
+        @bots[bot_name]['chat_ai'] = OllamaClient.new(ollama_host_config, ollama_port_config, model_name, ollama_system_prompt, max_tokens, temperature, num_thread, keepalive, streaming_enabled)
+        
+        # Test connection to Ollama
         unless @bots[bot_name]['chat_ai'].test_connection
-          Print.err "Warning: Cannot connect to #{provider} for bot #{bot_name}. Chat responses may not work."
+          Print.err "Warning: Cannot connect to Ollama for bot #{bot_name}. Chat responses may not work."
         end
 
-        create_bot(bot_name, system_prompt)
+        create_bot(bot_name, ollama_system_prompt)
       end
     end
 
@@ -213,7 +137,7 @@ class BotManager
     add_to_history = method(:add_to_history)
     clear_user_history = method(:clear_user_history)
     assemble_prompt = method(:assemble_prompt)
-
+    
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
         c.nick = bot_name
@@ -284,12 +208,12 @@ class BotManager
       on :message, /^(the answer is|answer):? .+$/i do |m|
         answer = m.message.chomp().match(/(?:the )?answer(?: is)?:? (.+)$/i)[1]
         current = bots_ref[bot_name]['current_attack']
-
+      
         quiz = nil
         if bots_ref[bot_name]['attacks'][current].key?('quiz') && bots_ref[bot_name]['attacks'][current]['quiz'].key?('answer')
           quiz = bots_ref[bot_name]['attacks'][current]['quiz']
         end
-
+      
         if quiz != nil
           correct_answer = quiz['answer'].clone
           if bots_ref[bot_name]['attacks'][current].key?('post_command_output')
@@ -307,17 +231,17 @@ class BotManager
           end
           correct_answer.chomp!
           Print.debug "#{correct_answer}====#{answer}"
-
+      
           if answer.strip.match?(/^(?:#{correct_answer})$/i)
             m.reply bots_ref[bot_name]['messages']['correct_answer']
             m.reply quiz['correct_answer_response']
-
+      
             if quiz.key?('trigger_next_attack')
               if bots_ref[bot_name]['current_attack'] < bots_ref[bot_name]['attacks'].length - 1
                 bots_ref[bot_name]['current_attack'] += 1
                 current = bots_ref[bot_name]['current_attack']
                 update_bot_state(bot_name, bots_ref, current)
-
+      
                 sleep(1)
                 if bots_ref[bot_name]['messages'].key?('show_attack_numbers')
                   m.reply "** ##{current + 1} **"
@@ -393,7 +317,7 @@ class BotManager
             current_attack = bots_ref[bot_name]['current_attack']
             attack_context = ''
             current_system_prompt = system_prompt
-
+            
             if current_attack < bots_ref[bot_name]['attacks'].length
               attack_context = "Current attack (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
               # Use attack-specific system prompt if available
@@ -670,4 +594,4 @@ def check_output_conditions(bot_name, bots, current, lines, m)
     end
   end
   current
-end
+end 

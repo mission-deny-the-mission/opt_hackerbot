@@ -1,40 +1,45 @@
 require 'net/http'
 require 'json'
 require './print.rb'
+require './llm_client.rb'
 
 # Default configuration constants for Ollama
-DEFAULT_SYSTEM_PROMPT = "You are a helpful cybersecurity training assistant.You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical."
-DEFAULT_NUM_THREAD = 8
-DEFAULT_KEEPALIVE = -1
-DEFAULT_MAX_TOKENS = 150
-DEFAULT_TEMPERATURE = 0.7
-DEFAULT_STREAMING = true
+DEFAULT_OLLAMA_HOST = 'localhost'
+DEFAULT_OLLAMA_PORT = 11434
+DEFAULT_OLLAMA_MODEL = 'gemma3:1b'
+DEFAULT_OLLAMA_NUM_THREAD = 8
+DEFAULT_OLLAMA_KEEPALIVE = -1
 
 # Ollama API client for LLM integration
-class OllamaClient
-  def initialize(host = 'localhost', port = 11434, model = 'gemma3:1b', system_prompt = nil, max_tokens = nil, temperature = nil, num_thread = nil, keepalive = nil, streaming = nil)
-    @host = host
-    @port = port
-    @model = model
+class OllamaClient < LLMClient
+  def initialize(host = nil, port = nil, model = nil, system_prompt = nil, max_tokens = nil, temperature = nil, num_thread = nil, keepalive = nil, streaming = nil)
+    # Set defaults if not provided
+    @host = host || DEFAULT_OLLAMA_HOST
+    @port = port || DEFAULT_OLLAMA_PORT
+    model = model || DEFAULT_OLLAMA_MODEL
+    num_thread = num_thread || DEFAULT_OLLAMA_NUM_THREAD
+    keepalive = keepalive || DEFAULT_OLLAMA_KEEPALIVE
+
+    # Call parent constructor
+    super('ollama', model, system_prompt, max_tokens, temperature, streaming)
+
     @base_url = "http://#{@host}:#{@port}"
-    @system_prompt = system_prompt || DEFAULT_SYSTEM_PROMPT
-    @max_tokens = max_tokens || DEFAULT_MAX_TOKENS
-    @temperature = temperature || DEFAULT_TEMPERATURE
-    @num_thread = num_thread || DEFAULT_NUM_THREAD
-    @keepalive = keepalive || DEFAULT_KEEPALIVE
-    @streaming = streaming.nil? ? DEFAULT_STREAMING : streaming
+    @num_thread = num_thread
+    @keepalive = keepalive
   end
 
-  # Only takes a prompt string and returns the response
+  # Generate response from Ollama
   def generate_response(prompt, stream_callback = nil)
-    if stream_callback
+    if @streaming && stream_callback
       return generate_streaming_response(prompt, stream_callback)
     end
+
     begin
       uri = URI("#{@base_url}/api/generate")
-      Print.info "Generating response using model: #{@model}"
+      Print.info "Generating response using Ollama model: #{@model}"
       Print.info "Prompt:"
       Print.info prompt
+
       request_body = {
         model: @model,
         prompt: prompt,
@@ -47,12 +52,14 @@ class OllamaClient
           num_thread: @num_thread
         }
       }
+
       http = Net::HTTP.new(@host, @port)
       http.open_timeout = 10
       http.read_timeout = 300
       request = Net::HTTP::Post.new(uri)
       request['Content-Type'] = 'application/json'
       request.body = request_body.to_json
+
       response = http.request(request)
       if response.code == '200'
         result = JSON.parse(response.body)
@@ -68,12 +75,14 @@ class OllamaClient
     end
   end
 
+  # Generate streaming response from Ollama
   def generate_streaming_response(prompt, stream_callback = nil)
     begin
       uri = URI("#{@base_url}/api/generate")
-      Print.info "Generating streaming response using model: #{@model}"
+      Print.info "Generating streaming response using Ollama model: #{@model}"
       Print.info "Prompt:"
       Print.info prompt
+
       request_body = {
         model: @model,
         prompt: prompt,
@@ -86,34 +95,41 @@ class OllamaClient
           num_thread: @num_thread
         }
       }
+
       http = Net::HTTP.new(@host, @port)
       http.open_timeout = 10
       http.read_timeout = 300
       request = Net::HTTP::Post.new(uri)
       request['Content-Type'] = 'application/json'
       request.body = request_body.to_json
+
       full_response = ''
       current_line = ''
+
       http.request(request) do |response|
         if response.code == '200'
           response.read_body do |chunk|
             chunk.each_line do |line|
               line.strip!
               next if line.empty?
+
               begin
                 data = JSON.parse(line)
                 if data['response']
                   text_chunk = data['response']
                   full_response << text_chunk
                   current_line << text_chunk
+
                   if stream_callback && !text_chunk.empty?
                     stream_callback.call(text_chunk)
                   end
+
                   if current_line.include?("\n")
                     lines = current_line.split("\n", -1)
                     current_line = lines.last
                   end
                 end
+
                 if data['done']
                   if !current_line.strip.empty? && stream_callback
                     stream_callback.call(current_line.strip)
@@ -138,6 +154,7 @@ class OllamaClient
     end
   end
 
+  # Test connection to Ollama server
   def test_connection
     begin
       uri = URI("#{@base_url}/api/tags")
@@ -152,14 +169,4 @@ class OllamaClient
       return false
     end
   end
-
-  # Update the system prompt dynamically
-  def update_system_prompt(new_prompt)
-    @system_prompt = new_prompt
-  end
-
-  # Get the current system prompt
-  def get_system_prompt
-    @system_prompt
-  end
-end 
+end
