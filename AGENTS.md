@@ -24,8 +24,6 @@ Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises
 ### Project Structure
 ```
 opt_hackerbot/
-├── core/               # Main application files
-├── llm/                # LLM client implementations  
 ├── rag/                # Retrieval-Augmented Generation
 ├── cag/                # Context-Aware Generation
 ├── knowledge_bases/    # Knowledge sources and processing
@@ -66,11 +64,5 @@ Bots are configured through XML files in `config/` with these key elements:
 - RAG and CAG can be controlled independently per bot
 - MITRE ATT&CK framework is included by default in all knowledge bases
 - Support for man pages and markdown files as additional knowledge sources
-
-## Getting Started
-1. Review configuration examples in `config/`
-2. Run `ruby setup_offline_rag_cag.rb` for initial setup
-3. Test with `ruby demo_*.rb` scripts
-4. Create custom configurations based on examples
 
 This framework provides flexible, offline-capable cybersecurity training with AI-powered conversations and comprehensive knowledge retrieval.
