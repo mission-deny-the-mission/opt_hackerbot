@@ -1,5 +1,6 @@
 require 'nokogiri'
 require 'nori'
+require 'cinch'
 require_relative './print.rb'
 require_relative './providers/llm_client_factory.rb'
 require_relative './rag_cag_manager.rb'
@@ -271,6 +272,24 @@ class BotManager
         @bots[bot_name]['messages'] = Nori.new.parse(hackerbot.at_xpath('//messages').to_s)['messages']
         Print.debug @bots[bot_name]['messages'].to_s
 
+        # Initialize personality system
+        initialize_personalities(bot_name)
+
+        # Parse personalities if they exist
+        personalities_node = hackerbot.at_xpath('//personalities')
+        if personalities_node
+          parse_personalities(bot_name, personalities_node)
+
+          # Set default personality
+          default_personality_node = hackerbot.at_xpath('//default_personality')
+          if default_personality_node
+            @bots[bot_name]['default_personality'] = default_personality_node.text
+          elsif !@bots[bot_name]['personalities'].empty?
+            # Use first personality as default
+            @bots[bot_name]['default_personality'] = @bots[bot_name]['personalities'].keys.first
+          end
+        end
+
         @bots[bot_name]['attacks'] = []
         hackerbot.xpath('//attack').each do |attack|
           attack_data = Nori.new.parse(attack.to_s)['attack']
@@ -310,6 +329,10 @@ class BotManager
         sglang_port_config = (hackerbot.at_xpath('sglang_port')&.text || @sglang_port.to_s).to_i
 
         system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
+
+        # Store global system prompt for fallback
+        @bots[bot_name]['global_system_prompt'] = system_prompt
+
         max_tokens = (hackerbot.at_xpath('max_tokens')&.text || DEFAULT_MAX_TOKENS).to_i
         temperature = (hackerbot.at_xpath('model_temperature')&.text || DEFAULT_TEMPERATURE).to_f
         num_thread = (hackerbot.at_xpath('num_thread')&.text || DEFAULT_NUM_THREAD).to_i
@@ -588,6 +611,84 @@ class BotManager
     end
   end
 
+  def parse_personalities(bot_name, personalities_node)
+    personalities_node.xpath('personality').each do |personality_node|
+      personality_name = personality_node.at_xpath('name')&.text
+      next unless personality_name
+
+      personality_config = {
+        'name' => personality_name,
+        'title' => personality_node.at_xpath('title')&.text || personality_name,
+        'description' => personality_node.at_xpath('description')&.text || '',
+        'system_prompt' => personality_node.at_xpath('system_prompt')&.text || @bots[bot_name]['global_system_prompt'],
+        'messages' => {}
+      }
+
+      # Parse personality-specific messages
+      %w[greeting help next previous goto ready say_ready correct_answer incorrect_answer no_quiz last_attack first_attack invalid getting_shell got_shell shell_fail_message repeat non_answer].each do |message_type|
+        message_node = personality_node.at_xpath(message_type)
+        if message_node
+          personality_config['messages'][message_type] = message_node.text
+        end
+      end
+
+      @bots[bot_name]['personalities'][personality_name] = personality_config
+      Print.debug "Loaded personality: #{personality_name}"
+    end
+  end
+
+  # Personality management methods
+  def initialize_personalities(bot_name)
+    @bots[bot_name]['personalities'] = {}
+    @bots[bot_name]['current_personalities'] = {} # Track current personality per user
+    @bots[bot_name]['default_personality'] = nil
+  end
+
+  def get_current_personality(bot_name, user_id)
+    return @bots[bot_name]['default_personality'] unless @bots[bot_name]['current_personalities'].key?(user_id)
+    @bots[bot_name]['current_personalities'][user_id]
+  end
+
+  def set_current_personality(bot_name, user_id, personality_name)
+    if @bots[bot_name]['personalities'].key?(personality_name)
+      @bots[bot_name]['current_personalities'][user_id] = personality_name
+      true
+    else
+      false
+    end
+  end
+
+  def get_personality_config(bot_name, personality_name)
+    @bots[bot_name]['personalities'][personality_name]
+  end
+
+  def list_personalities(bot_name)
+    @bots[bot_name]['personalities'].keys
+  end
+
+  def get_personality_system_prompt(bot_name, user_id)
+    current_personality = get_current_personality(bot_name, user_id)
+    if current_personality && @bots[bot_name]['personalities'].key?(current_personality)
+      @bots[bot_name]['personalities'][current_personality]['system_prompt']
+    else
+      # Fallback to global system prompt
+      @bots[bot_name]['global_system_prompt']
+    end
+  end
+
+  def get_personality_messages(bot_name, user_id, message_type)
+    current_personality = get_current_personality(bot_name, user_id)
+    if current_personality &&
+       @bots[bot_name]['personalities'].key?(current_personality) &&
+       @bots[bot_name]['personalities'][current_personality]['messages'] &&
+       @bots[bot_name]['personalities'][current_personality]['messages'][message_type]
+      @bots[bot_name]['personalities'][current_personality]['messages'][message_type]
+    else
+      # Fallback to global messages
+      @bots[bot_name]['messages'][message_type]
+    end
+  end
+
   def create_bot(bot_name, system_prompt)
     bots_ref = @bots
     irc_server_ip_address = @irc_server_ip_address
@@ -598,6 +699,12 @@ class BotManager
     clear_user_history = method(:clear_user_history)
     assemble_prompt = method(:assemble_prompt)
     get_enhanced_context = method(:get_enhanced_context)
+    get_personality_system_prompt = method(:get_personality_system_prompt)
+    get_personality_messages = method(:get_personality_messages)
+    get_current_personality = method(:get_current_personality)
+    set_current_personality = method(:set_current_personality)
+    list_personalities = method(:list_personalities)
+    get_personality_config = method(:get_personality_config)
 
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
@@ -609,7 +716,7 @@ class BotManager
 
       on :message, /hello/i do |m|
         m.reply "Hello, #{m.user.nick} (#{m.user.host})."
-        m.reply bots_ref[bot_name]['messages']['greeting']
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'greeting')
         current = bots_ref[bot_name]['current_attack']
 
         # prompt for the first attack
@@ -617,15 +724,52 @@ class BotManager
           m.reply "** ##{current + 1} **"
         end
         m.reply bots_ref[bot_name]['attacks'][current]['prompt']
-        m.reply bots_ref[bot_name]['messages']['say_ready'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'say_ready')
       end
 
       on :message, /help/i do |m|
-        m.reply bots_ref[bot_name]['messages']['help']
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'help')
+      end
+
+      # Personality management commands
+      on :message, /^personalities$/i do |m|
+        available_personalities = list_personalities.call(bot_name)
+        if available_personalities.empty?
+          m.reply "No personalities available for this bot."
+        else
+          current_personality = get_current_personality.call(bot_name, m.user.nick)
+          personality_list = available_personalities.map do |name|
+            config = get_personality_config.call(bot_name, name)
+            status = (name == current_personality) ? "[CURRENT]" : ""
+            "#{name} (#{config['title']}) #{status}"
+          end.join("\n")
+          m.reply "Available personalities:\n#{personality_list}"
+        end
+      end
+
+      on :message, /^personality$/i do |m|
+        current_personality = get_current_personality.call(bot_name, m.user.nick)
+        if current_personality
+          config = get_personality_config.call(bot_name, current_personality)
+          m.reply "Current personality: #{current_personality} (#{config['title']}) - #{config['description']}"
+        else
+          m.reply "No personality selected. Use 'personalities' to see available options."
+        end
+      end
+
+      on :message, /^(switch|personality) .+$/i do |m|
+        target_personality = m.message.chomp.split(' ', 2)[1]
+        if set_current_personality.call(bot_name, m.user.nick, target_personality)
+          config = get_personality_config.call(bot_name, target_personality)
+          m.reply "Switched to #{target_personality} personality (#{config['title']})"
+        else
+          available = list_personalities.call(bot_name)
+          m.reply "Unknown personality '#{target_personality}'. Available personalities: #{available.join(', ')}"
+        end
       end
 
       on :message, 'next' do |m|
-        m.reply bots_ref[bot_name]['messages']['next'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'next')
 
         # is this the last one?
         if bots_ref[bot_name]['current_attack'] < bots_ref[bot_name]['attacks'].length - 1
@@ -638,14 +782,14 @@ class BotManager
             m.reply "** ##{current + 1} **"
           end
           m.reply bots_ref[bot_name]['attacks'][current]['prompt']
-          m.reply bots_ref[bot_name]['messages']['say_ready'].sample
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'say_ready')
         else
-          m.reply bots_ref[bot_name]['messages']['last_attack'].sample
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'last_attack')
         end
       end
 
       on :message, /^(goto|attack) [0-9]+$/i do |m|
-        m.reply bots_ref[bot_name]['messages']['goto'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'goto')
         requested_index = m.message.chomp().split[1].to_i - 1
 
         Print.debug "requested_index = #{requested_index}, bots_ref[bot_name]['attacks'].length = #{bots_ref[bot_name]['attacks'].length}"
@@ -660,9 +804,9 @@ class BotManager
             m.reply "** ##{current + 1} **"
           end
           m.reply bots_ref[bot_name]['attacks'][current]['prompt']
-          m.reply bots_ref[bot_name]['messages']['say_ready'].sample
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'say_ready')
         else
-          m.reply bots_ref[bot_name]['messages']['invalid']
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'invalid')
         end
       end
 
@@ -694,7 +838,7 @@ class BotManager
           Print.debug "#{correct_answer}====#{answer}"
 
           if answer.strip.match?(/^(?:#{correct_answer})$/i)
-            m.reply bots_ref[bot_name]['messages']['correct_answer']
+            m.reply get_personality_messages.call(bot_name, m.user.nick, 'correct_answer')
             m.reply quiz['correct_answer_response']
 
             if quiz.key?('trigger_next_attack')
@@ -708,21 +852,21 @@ class BotManager
                   m.reply "** ##{current + 1} **"
                 end
                 m.reply bots_ref[bot_name]['attacks'][current]['prompt']
-                m.reply bots_ref[bot_name]['messages']['say_ready'].sample
+                m.reply get_personality_messages.call(bot_name, m.user.nick, 'say_ready')
               else
-                m.reply bots_ref[bot_name]['messages']['last_attack'].sample
+                m.reply get_personality_messages.call(bot_name, m.user.nick, 'last_attack')
               end
             end
           else
-            m.reply "#{bots_ref[bot_name]['messages']['incorrect_answer']} (#{answer})"
+            m.reply "#{get_personality_messages.call(bot_name, m.user.nick, 'incorrect_answer')} (#{answer})"
           end
         else
-          m.reply bots_ref[bot_name]['messages']['no_quiz']
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'no_quiz')
         end
       end
 
       on :message, 'previous' do |m|
-        m.reply bots_ref[bot_name]['messages']['previous'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'previous')
 
         # is this the last one?
         if bots_ref[bot_name]['current_attack'] > 0
@@ -735,9 +879,9 @@ class BotManager
             m.reply "** ##{current + 1} **"
           end
           m.reply bots_ref[bot_name]['attacks'][current]['prompt']
-          m.reply bots_ref[bot_name]['messages']['say_ready'].sample
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'say_ready')
         else
-          m.reply bots_ref[bot_name]['messages']['first_attack'].sample
+          m.reply get_personality_messages.call(bot_name, m.user.nick, 'first_attack')
         end
       end
 
@@ -748,7 +892,7 @@ class BotManager
             uptohere = '--> '
           end
 
-          m.reply "#{uptohere}attack #{index+1}: #{val['prompt']}"
+          m.reply "#{uptohere}#{index+1}: #{val['prompt']}"
         }
       end
 
@@ -771,22 +915,23 @@ class BotManager
 
       # fallback to Ollama LLM responses
       on :message do |m|
-        # Only process messages not related to controlling attacks
-        if m.message !~ /hello|help|next|previous|ready|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)/
+        # Only process messages not related to controlling attacks or personality management
+        if m.message !~ /hello|help|next|previous|ready|list|clear_history|show_history|^(goto|attack) [0-9]|(the answer is|answer)|personalities|^(switch|personality) .+$/
           begin
             user_id = m.user.nick
             current_attack = bots_ref[bot_name]['current_attack']
             attack_context = ''
-            current_system_prompt = system_prompt
+            # Get personality-specific system prompt
+            current_system_prompt = get_personality_system_prompt.call(bot_name, user_id)
 
             if current_attack < bots_ref[bot_name]['attacks'].length
-              attack_context = "Current attack (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
-              # Use attack-specific system prompt if available
+              attack_context = "Current topic (#{current_attack + 1}): #{bots_ref[bot_name]['attacks'][current_attack]['prompt']}"
+              # Use attack-specific system prompt if available, otherwise use personality prompt
               if bots_ref[bot_name]['attacks'][current_attack].key?('system_prompt')
                 current_system_prompt = bots_ref[bot_name]['attacks'][current_attack]['system_prompt']
-                # Update the OllamaClient's system prompt for this attack
-                bots_ref[bot_name]['chat_ai'].update_system_prompt(current_system_prompt)
               end
+              # Update the OllamaClient's system prompt
+              bots_ref[bot_name]['chat_ai'].update_system_prompt(current_system_prompt)
             end
             chat_context = get_chat_context.call(bot_name, user_id)
 
@@ -826,21 +971,21 @@ class BotManager
                 m.reply reaction
                 add_to_history.call(bot_name, user_id, m.message, reaction)
               elsif m.message.include?('?')
-                m.reply bots_ref[bot_name]['messages']['non_answer']
+                m.reply get_personality_messages.call(bot_name, user_id, 'non_answer')
               end
             end
           rescue Exception => e
             puts e.message
             puts e.backtrace.inspect
             if m.message.include?('?')
-              m.reply bots_ref[bot_name]['messages']['non_answer']
+              m.reply get_personality_messages.call(bot_name, user_id, 'non_answer')
             end
           end
         end
       end
 
       on :message, 'ready' do |m|
-        m.reply bots_ref[bot_name]['messages']['getting_shell'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'getting_shell')
         current = bots_ref[bot_name]['current_attack']
 
         if bots_ref[bot_name]['attacks'][current].key?('pre_shell')
@@ -911,7 +1056,7 @@ class BotManager
             end
 
             if got_shell
-              m.reply bots_ref[bot_name]['messages']['got_shell'].sample
+              m.reply get_personality_messages.call(bot_name, m.user.nick, 'got_shell')
 
               post_cmd = bots_ref[bot_name]['attacks'][current]['post_command']
               if post_cmd
@@ -961,7 +1106,7 @@ class BotManager
               if bots_ref[bot_name]['attacks'][current].key?('shell_fail_message')
                   m.reply bots_ref[bot_name]['attacks'][current]['shell_fail_message']
               else
-                  m.reply bots_ref[bot_name]['messages']['shell_fail_message']
+                  m.reply get_personality_messages.call(bot_name, m.user.nick, 'shell_fail_message')
               end
               # under specific situations reveal the error message to the user
               if defined?(lines) && lines =~ /command not found/
@@ -987,7 +1132,7 @@ class BotManager
           current = check_output_conditions(bot_name, bots_ref, current, post_output, m)
         end
 
-        m.reply bots_ref[bot_name]['messages']['repeat'].sample
+        m.reply get_personality_messages.call(bot_name, m.user.nick, 'repeat')
       end
     end
   end
