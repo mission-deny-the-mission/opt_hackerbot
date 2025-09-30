@@ -66,6 +66,7 @@ Bots are configured through XML files in `config/` with these key elements:
 - Implement proper error handling for external service connections
 - Follow the existing naming conventions (snake_case for files and methods)
 - Cache expensive operations (embedding generation, knowledge base queries)
+- DO NOT commit or push using git WIHTOUT being asked to
 
 ### Important Notes
 - System defaults to offline operation for security and reliability

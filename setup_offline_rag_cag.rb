@@ -30,14 +30,14 @@ class OfflineRAGCAGSetup
     # RAG Configuration
     rag: {
       vector_db: {
-        provider: "chromadb_offline",
+        provider: "chromadb",
         storage_path: "./knowledge_bases/offline/vector_db",
         persist_embeddings: true,
         compression_enabled: true,
         max_storage_size_mb: 2048  # 2GB
       },
       embedding_service: {
-        provider: "ollama_offline",
+        provider: "ollama",
         model: "nomic-embed-text",
         local_model_path: nil,
         cache_embeddings: true,
@@ -56,7 +56,7 @@ class OfflineRAGCAGSetup
     # CAG Configuration
     cag: {
       knowledge_graph: {
-        provider: "in_memory_offline",
+        provider: "in_memory",
         storage_path: "./knowledge_bases/offline/graph",
         persist_graph: true,
         load_from_file: true,
@@ -66,10 +66,11 @@ class OfflineRAGCAGSetup
         max_snapshots: 5
       },
       entity_extractor: {
-        provider: "rule_based_offline",
+        provider: "rule_based",
         custom_patterns: nil,
         cache_entities: true
       },
+      cag_settings: {
       graph_traversal: {
         max_depth: 3,
         max_nodes: 50,
@@ -180,7 +181,7 @@ class OfflineRAGCAGSetup
       create_directories
 
       # Setup RAG components
-      setup_rag_components if @setup_config[:rag][:embedding_service][:provider] == "ollama_offline"
+      setup_rag_components if @setup_config[:rag][:embedding_service][:provider] == "ollama"
 
       # Setup CAG components
       setup_cag_components
@@ -313,7 +314,7 @@ class OfflineRAGCAGSetup
     @progress_reporter.start_section("RAG Setup")
 
     # Download Ollama models if configured
-    if @setup_config[:downloads][:auto_download_models] && @setup_config[:rag][:embedding_service][:provider] == "ollama_offline"
+    if @setup_config[:downloads][:auto_download_models] && @setup_config[:rag][:embedding_service][:provider] == "ollama"
       download_ollama_models
     end
 

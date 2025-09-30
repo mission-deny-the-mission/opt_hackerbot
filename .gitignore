@@ -1,0 +1,86 @@
+# Nix
+result
+.direnv/
+shell.nix
+flake.lock
+
+# Ruby
+*.gem
+*.gems
+*.rbc
+/.config
+/coverage/
+/InstalledFiles
+/pkg/
+/spec/reports/
+/spec/examples.txt
+/test/tmp/
+/test/version_tmp/
+/tmp/
+
+# Gem dependencies
+/.bundle/
+/bundle/
+/.bundle/config
+.bundle/
+Gemfile.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+ircd.pid
+
+# Temporary files
+*.tmp
+*.temp
+/cache/
+
+# IRC server data
+/conf/modules/
+/conf/data/
+/logs/
+
+# Documentation build
+docs/_build/
+docs/.bundle/
+
+# Test artifacts
+/coverage/
+/spec/examples.txt
+/test/reports/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# Editor temp files
+.#*
+\#*#
+.*.swp
+.*.swo
+
+# Build artifacts
+*.o
+*.so
+*.dylib

@@ -58,13 +58,13 @@ class BotManager
     rag_config = if use_offline
       {
         vector_db: {
-          provider: 'chromadb_offline',
+          provider: 'chromadb',
           storage_path: './knowledge_bases/offline/vector_db',
           persist_embeddings: true,
           compression_enabled: true
         },
         embedding_service: {
-          provider: 'ollama_offline',
+          provider: 'ollama',
           model: 'nomic-embed-text',
           cache_embeddings: true,
           cache_path: './cache/embeddings',
@@ -101,14 +101,14 @@ class BotManager
     cag_config = if use_offline
       {
         knowledge_graph: {
-          provider: 'in_memory_offline',
+          provider: 'in_memory',
           storage_path: './knowledge_bases/offline/graph',
           persist_graph: true,
           load_from_file: true,
           compression_enabled: true
         },
         entity_extractor: {
-          provider: 'rule_based_offline',
+          provider: 'rule_based',
           cache_entities: true
         },
         cag_settings: {

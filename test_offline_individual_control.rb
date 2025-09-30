@@ -105,20 +105,20 @@ class TestOfflineIndividualControl
 
       # Test vector_db configuration
       vector_db_config = rag_config[:vector_db]
-      if vector_db_config[:provider] == "chromadb_offline"
-        Print.info "✓ RAG vector_db defaults to offline provider"
+      if vector_db_config[:provider] == "chromadb"
+        Print.info "✓ RAG vector_db defaults to chromadb provider"
       else
-        Print.err "✗ RAG vector_db should default to chromadb_offline"
+        Print.err "✗ RAG vector_db should default to chromadb"
         @failed += 1
         return
       end
 
       # Test knowledge_graph configuration
       knowledge_graph_config = cag_config[:knowledge_graph]
-      if knowledge_graph_config[:provider] == "in_memory_offline"
-        Print.info "✓ CAG knowledge_graph defaults to offline provider"
+      if knowledge_graph_config[:provider] == "in_memory"
+        Print.info "✓ CAG knowledge_graph defaults to in_memory provider"
       else
-        Print.err "✗ CAG knowledge_graph should default to in_memory_offline"
+        Print.err "✗ CAG knowledge_graph should default to in_memory"
         @failed += 1
         return
       end

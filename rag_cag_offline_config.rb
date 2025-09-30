@@ -35,13 +35,13 @@ class OfflineConfigurationManager
       rag: {
         offline_mode: true,  # Default to offline mode
         vector_db: {
-          provider: "chromadb_offline",
+          provider: "chromadb",
           storage_path: DEFAULT_KNOWLEDGE_BASE_PATH,
           persist_embeddings: true,
           compression_enabled: true
         },
         embedding_service: {
-          provider: "ollama_offline",
+          provider: "ollama",
           model: "nomic-embed-text",
           local_model_path: nil,
           cache_embeddings: true,
@@ -57,13 +57,13 @@ class OfflineConfigurationManager
       cag: {
         offline_mode: true,  # Default to offline mode
         knowledge_graph: {
-          provider: "in_memory_offline",
+          provider: "in_memory",
           storage_path: DEFAULT_KNOWLEDGE_BASE_PATH,
           persist_graph: true,
           load_from_file: true
         },
         entity_extractor: {
-          provider: "rule_based_offline",
+          provider: "rule_based",
           custom_patterns: nil,
           cache_entities: true
         },
