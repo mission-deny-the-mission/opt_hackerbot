@@ -60,13 +60,12 @@ restart-irc: stop-irc start-irc
 # Bot commands
 bot:
 	@echo "Starting Hackerbot with default settings..."
-	nix develop --command ruby hackerbot.rb --irc-server localhost --irc-port 6667
+	nix develop --command ruby hackerbot.rb --irc-server localhost
 
 bot-ollama:
 	@echo "Starting Hackerbot with Ollama..."
 	nix develop --command ruby hackerbot.rb \
 		--irc-server localhost \
-		--irc-port 6667 \
 		--llm-provider ollama \
 		--ollama-model gemma3:1b
 
@@ -74,7 +73,6 @@ bot-rag-cag:
 	@echo "Starting Hackerbot with RAG + CAG..."
 	nix develop --command ruby hackerbot.rb \
 		--irc-server localhost \
-		--irc-port 6667 \
 		--enable-rag-cag \
 		--llm-provider ollama \
 		--ollama-model gemma3:1b
