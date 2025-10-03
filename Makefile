@@ -49,11 +49,41 @@ setup:
 # IRC server management - use simple approach
 start-irc:
 	@echo "Starting IRC server..."
-	nix run .#start-irc-server
+	@if [ -f /tmp/ircd.pid ]; then \
+		if kill -0 $$(cat /tmp/ircd.pid) 2>/dev/null; then \
+			echo "IRC server is already running (PID: $$(cat /tmp/ircd.pid))"; \
+			exit 0; \
+		else \
+			echo "Removing stale PID file..."; \
+			rm -f /tmp/ircd.pid; \
+		fi; \
+	fi
+	@echo "Starting IRC server..."
+	@nohup python3 simple_irc_server.py > /tmp/ircd.log 2>&1 & echo $$! > /tmp/ircd.pid
+	@sleep 2
+	@if kill -0 $$(cat /tmp/ircd.pid) 2>/dev/null; then \
+		echo "IRC server started successfully on localhost:6667 (PID: $$(cat /tmp/ircd.pid))"; \
+		echo "Use 'make connect-irc' to connect with WeeChat"; \
+		echo "Log file: /tmp/ircd.log"; \
+	else \
+		echo "Failed to start IRC server. Check /tmp/ircd.log for details."; \
+		rm -f /tmp/ircd.pid; \
+	fi
 
 stop-irc:
 	@echo "Stopping IRC server..."
-	nix run .#stop-irc-server
+	@if [ -f /tmp/ircd.pid ]; then \
+		if kill -0 $$(cat /tmp/ircd.pid) 2>/dev/null; then \
+			kill $$(cat /tmp/ircd.pid); \
+			rm -f /tmp/ircd.pid; \
+			echo "IRC server stopped"; \
+		else \
+			echo "IRC server not running (stale PID file removed)"; \
+			rm -f /tmp/ircd.pid; \
+		fi; \
+	else \
+		echo "IRC server not running"; \
+	fi
 
 restart-irc: stop-irc start-irc
 
