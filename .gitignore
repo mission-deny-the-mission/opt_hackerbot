@@ -3,6 +3,7 @@ result
 .direnv/
 shell.nix
 flake.lock
+__pycache__
 
 # Ruby
 *.gem

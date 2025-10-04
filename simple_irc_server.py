@@ -19,7 +19,8 @@ import os
 # Global variables
 server_socket = None
 clients = {}
-channels = {"#hackerbot": set()}
+channels = {"#hackerbot": set()}  # Keys are lowercase for case-insensitive lookup
+channel_names = {"#hackerbot": "#hackerbot"}  # Maps lowercase channel names to original case names
 running = True
 
 class IRCClient:
@@ -57,36 +58,57 @@ class IRCClient:
 
     def join_channel(self, channel):
         """Join a channel."""
-        if channel in channels:
-            self.channels.add(channel)
-            channels[channel].add(self)
+        # Use lowercase for storage but preserve original case for display
+        channel_lower = channel.lower()
 
-            # Send join message to user
-            self.send(f":{self.nick}!~user@localhost JOIN {channel}")
+        # Create channel if it doesn't exist
+        if channel_lower not in channels:
+            channels[channel_lower] = set()
+            channel_names[channel_lower] = channel
 
-            # Send channel info
-            self.send_numeric("331", self.nick, f"{channel} :No topic is set")
-            self.send_numeric("353", self.nick, f"= {channel} :{' '.join([c.nick for c in channels[channel] if c.nick])}")
-            self.send_numeric("366", self.nick, f"{channel} :End of NAMES list")
+        # Use the canonical (original case) name for display
+        canonical_name = channel_names[channel_lower]
 
-            # Notify other users
-            for client in channels[channel]:
-                if client != self:
-                    client.send(f":{self.nick}!~user@localhost JOIN {channel}")
+        self.channels.add(channel_lower)
+        channels[channel_lower].add(self)
+
+        # Send join message to user
+        self.send(f":{self.nick}!~user@localhost JOIN {canonical_name}")
+
+        # Send channel info
+        self.send_numeric("331", self.nick, f"{canonical_name} :No topic is set")
+        self.send_numeric("353", self.nick, f"= {canonical_name} :{' '.join([c.nick for c in channels[channel_lower] if c.nick])}")
+        self.send_numeric("366", self.nick, f"{canonical_name} :End of NAMES list")
+
+        # Notify other users
+        for client in channels[channel_lower]:
+            if client != self:
+                client.send(f":{self.nick}!~user@localhost JOIN {canonical_name}")
 
     def part_channel(self, channel):
         """Leave a channel."""
-        if channel in self.channels:
-            self.channels.remove(channel)
-            if self in channels[channel]:
-                channels[channel].remove(self)
+        channel_lower = channel.lower()
+
+        if channel_lower in self.channels:
+            self.channels.remove(channel_lower)
+            if self in channels[channel_lower]:
+                channels[channel_lower].remove(self)
+
+            # Use canonical name for display
+            canonical_name = channel_names.get(channel_lower, channel)
 
             # Send part message
-            self.send(f":{self.nick}!~user@localhost PART {channel}")
+            self.send(f":{self.nick}!~user@localhost PART {canonical_name}")
 
             # Notify other users
-            for client in channels[channel]:
-                client.send(f":{self.nick}!~user@localhost PART {channel}")
+            for client in channels[channel_lower]:
+                client.send(f":{self.nick}!~user@localhost PART {canonical_name}")
+
+            # Clean up empty channel
+            if not channels[channel_lower]:
+                del channels[channel_lower]
+                if channel_lower in channel_names:
+                    del channel_names[channel_lower]
 
     def handle_message(self, message):
         """Handle incoming IRC message."""
@@ -99,7 +121,18 @@ class IRCClient:
 
         command = parts[0].upper()
 
-        if command == "NICK" and len(parts) > 1:
+        if command == "CAP" and len(parts) > 1:
+            # Handle capability negotiation
+            subcommand = parts[1].upper()
+            if subcommand == "LS":
+                self.send("CAP * LS :")
+            elif subcommand == "END":
+                pass  # CAP negotiation ended, proceed with registration
+            elif subcommand == "REQ":
+                # Acknowledge capability requests (accept all for simplicity)
+                self.send("CAP * ACK :")
+
+        elif command == "NICK" and len(parts) > 1:
             self.nick = parts[1]
             self.welcome()
 
@@ -123,11 +156,17 @@ class IRCClient:
             target = parts[1]
             msg = " ".join(parts[2:]).lstrip(":")
 
-            if target.startswith("#") and target in channels:
-                # Send to channel
-                for client in channels[target]:
-                    if client != self:
-                        client.send(f":{self.nick}!~user@localhost PRIVMSG {target} :{msg}")
+            if target.startswith("#"):
+                target_lower = target.lower()
+                if target_lower in channels:
+                    # Use canonical name for display
+                    canonical_name = channel_names.get(target_lower, target)
+                    # Send to channel
+                    for client in channels[target_lower]:
+                        if client != self:
+                            client.send(f":{self.nick}!~user@localhost PRIVMSG {canonical_name} :{msg}")
+                else:
+                    self.send_numeric("401", self.nick, f"{target} :No such nick/channel")
             else:
                 # Send to user (not implemented for simplicity)
                 self.send_numeric("401", self.nick, f"{target} :No such nick/channel")
@@ -149,15 +188,18 @@ class IRCClient:
             self.send_numeric("318", self.nick, f"{target} :End of WHOIS list")
 
         elif command == "LIST":
-            for channel in channels:
-                self.send_numeric("322", self.nick, f"{channel} {len(channels[channel])} :Development Channel")
+            for channel_lower in channels:
+                canonical_name = channel_names.get(channel_lower, channel_lower)
+                self.send_numeric("322", self.nick, f"{canonical_name} {len(channels[channel_lower])} :Development Channel")
             self.send_numeric("323", self.nick, ":End of LIST")
 
         elif command == "NAMES" and len(parts) > 1:
             channel = parts[1]
-            if channel in channels:
-                nicks = [c.nick for c in channels[channel] if c.nick]
-                self.send_numeric("353", self.nick, f"= {channel} :{' '.join(nicks)}")
+            channel_lower = channel.lower()
+            if channel_lower in channels:
+                canonical_name = channel_names.get(channel_lower, channel)
+                nicks = [c.nick for c in channels[channel_lower] if c.nick]
+                self.send_numeric("353", self.nick, f"= {canonical_name} :{' '.join(nicks)}")
             self.send_numeric("366", self.nick, f"{channel} :End of NAMES list")
 
     def disconnect(self):
@@ -166,8 +208,11 @@ class IRCClient:
             del clients[self]
 
         # Leave all channels
-        for channel in list(self.channels):
-            self.part_channel(channel)
+        for channel_lower in list(self.channels):
+            canonical_name = channel_names.get(channel_lower, channel_lower)
+            # Create a temporary channel object with the canonical name
+            temp_channel = canonical_name
+            self.part_channel(temp_channel)
 
         try:
             self.conn.close()
