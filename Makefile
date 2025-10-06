@@ -19,7 +19,14 @@ help:
 	@echo "Bot Commands:"
 	@echo "  bot          - Start Hackerbot with defaults"
 	@echo "  bot-ollama   - Start Hackerbot with Ollama"
+	@echo "  bot-hf       - Start Hackerbot with Hugging Face"
 	@echo "  bot-rag-cag  - Start Hackerbot with RAG + CAG"
+	@echo ""
+	@echo "Hugging Face Server:"
+	@echo "  start-hf     - Start Hugging Face inference server"
+	@echo "  stop-hf      - Stop Hugging Face inference server"
+	@echo "  restart-hf   - Restart Hugging Face inference server"
+	@echo "  status-hf    - Check Hugging Face server status"
 	@echo ""
 	@echo "Development:"
 	@echo "  test         - Run test suite"
@@ -87,6 +94,61 @@ stop-irc:
 
 restart-irc: stop-irc start-irc
 
+# Hugging Face server management
+setup-hf:
+	@echo "Setting up Hugging Face environment..."
+	@python3 setup_hf_environment.py
+
+start-hf:
+	@echo "Starting Hugging Face inference server..."
+	@if [ ! -f 'hf_env/bin/activate' ]; then \
+		echo "Hugging Face environment not found. Running setup first..."; \
+		python3 setup_hf_environment.py; \
+	fi
+	@source hf_env/bin/activate && cd hf_server && python3 hf_inference_server.py \
+		--model EleutherAI/gpt-neo-125m \
+		--host 127.0.0.1 \
+		--port 8899 \
+		--device auto > /tmp/hf_server.log 2>&1 & echo $$! > /tmp/hf_server.pid
+	@sleep 5
+	@if kill -0 $$(cat /tmp/hf_server.pid) 2>/dev/null; then \
+		echo "Hugging Face server started successfully on localhost:8899 (PID: $$(cat /tmp/hf_server.pid))"; \
+		echo "Log file: /tmp/hf_server.log"; \
+	else \
+		echo "Failed to start Hugging Face server. Check /tmp/hf_server.log for details."; \
+		rm -f /tmp/hf_server.pid; \
+	fi
+
+stop-hf:
+	@echo "Stopping Hugging Face server..."
+	@if [ -f /tmp/hf_server.pid ]; then \
+		if kill -0 $$(cat /tmp/hf_server.pid) 2>/dev/null; then \
+			kill $$(cat /tmp/hf_server.pid); \
+			rm -f /tmp/hf_server.pid; \
+			echo "Hugging Face server stopped"; \
+		else \
+			echo "Hugging Face server not running (stale PID file removed)"; \
+			rm -f /tmp/hf_server.pid; \
+		fi; \
+	else \
+		echo "Hugging Face server not running"; \
+	fi
+
+restart-hf: stop-hf start-hf
+
+status-hf:
+	@echo "Checking Hugging Face server status..."
+	@if [ -f /tmp/hf_server.pid ]; then \
+		if kill -0 $$(cat /tmp/hf_server.pid) 2>/dev/null; then \
+			echo "Hugging Face server is running (PID: $$(cat /tmp/hf_server.pid))"; \
+			curl -s http://127.0.0.1:8899/health | python3 -m json.tool || echo "Health check failed"; \
+		else \
+			echo "Hugging Face server PID file exists but process is not running"; \
+		fi; \
+	else \
+		echo "Hugging Face server is not running"; \
+	fi
+
 # Bot commands
 bot:
 	@echo "Starting Hackerbot with default settings..."
@@ -106,6 +168,25 @@ bot-rag-cag:
 		--enable-rag-cag \
 		--llm-provider ollama \
 		--ollama-model gemma3:1b
+
+bot-hf:
+	@echo "Starting Hackerbot with Hugging Face..."
+	nix develop --command ruby hackerbot.rb \
+		--irc-server localhost \
+		--llm-provider huggingface \
+		--hf-host 127.0.0.1 \
+		--hf-port 8899 \
+		--hf-model EleutherAI/gpt-neo-125m
+
+bot-hf-rag-cag:
+	@echo "Starting Hackerbot with Hugging Face + RAG + CAG..."
+	nix develop --command ruby hackerbot.rb \
+		--irc-server localhost \
+		--enable-rag-cag \
+		--llm-provider huggingface \
+		--hf-host 127.0.0.1 \
+		--hf-port 8899 \
+		--hf-model EleutherAI/gpt-neo-125m
 
 # Development commands
 test:
@@ -200,18 +281,33 @@ dev-setup: env setup start-irc
 	@echo "Use 'make bot' to start Hackerbot"
 	@echo ""
 
-# Check if IRC server is running
+# Check if servers are running
 status:
-	@echo "Checking IRC server status..."
+	@echo "Checking server status..."
+	@echo "======================"
+	@echo ""
+	@echo "IRC Server:"
 	@if [ -f /tmp/ircd.pid ]; then \
 		if kill -0 $$(cat /tmp/ircd.pid) 2>/dev/null; then \
-			echo "IRC server is running (PID: $$(cat /tmp/ircd.pid))"; \
+			echo "  ✓ IRC server is running (PID: $$(cat /tmp/ircd.pid))"; \
 		else \
-			echo "IRC server PID file exists but process is not running"; \
+			echo "  ✗ IRC server PID file exists but process is not running"; \
 		fi; \
 	else \
-		echo "IRC server is not running"; \
+		echo "  ✗ IRC server is not running"; \
 	fi
+	@echo ""
+	@echo "Hugging Face Server:"
+	@if [ -f /tmp/hf_server.pid ]; then \
+		if kill -0 $$(cat /tmp/hf_server.pid) 2>/dev/null; then \
+			echo "  ✓ Hugging Face server is running (PID: $$(cat /tmp/hf_server.pid))"; \
+		else \
+			echo "  ✗ Hugging Face server PID file exists but process is not running"; \
+		fi; \
+	else \
+		echo "  ✗ Hugging Face server is not running"; \
+	fi
+	@echo ""
 
 # Verify all components are working
 verify: clean setup env
@@ -220,6 +316,12 @@ verify: clean setup env
 	@echo "All components are ready for development."
 	@echo ""
 	@echo "To start development:"
+	@echo "1. make setup-hf    # Setup Hugging Face environment (one-time)"
+	@echo "2. make start-irc   # Start IRC server"
+	@echo "3. make start-hf    # Start Hugging Face server"
+	@echo "4. make connect-irc (in new terminal)"
+	@echo "5. make bot-hf      # Start Hackerbot with Hugging Face"
+	@echo ""
+	@echo "Or for quick testing (no ML):"
 	@echo "1. make start-irc"
-	@echo "2. make connect-irc (in new terminal)"
-	@echo "3. make bot (in new terminal)"
+	@echo "2. make bot-ollama (in new terminal)"

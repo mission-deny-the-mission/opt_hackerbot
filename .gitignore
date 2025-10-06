@@ -3,7 +3,10 @@ result
 .direnv/
 shell.nix
 flake.lock
+
+# Python
 __pycache__
+hf_env
 
 # Ruby
 *.gem
@@ -85,3 +88,6 @@ docs/.bundle/
 *.o
 *.so
 *.dylib
+
+# Model files
+hf_server/models/

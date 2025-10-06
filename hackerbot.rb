@@ -11,7 +11,7 @@ def usage
   Print.std ''
   Print.std 'OPTIONS:'
   Print.std '  --irc-server, -i HOST          IRC server IP address (default: localhost)'
-  Print.std '  --llm-provider, -l PROVIDER    LLM provider: ollama, openai, vllm, sglang (default: ollama)'
+  Print.std '  --llm-provider, -l PROVIDER    LLM provider: ollama, openai, vllm, sglang, huggingface (default: ollama)'
   Print.std '  --ollama-host, -o HOST         Ollama server host (default: localhost)'
   Print.std '  --ollama-port, -p PORT         Ollama server port (default: 11434)'
   Print.std '  --ollama-model, -m MODEL       Ollama model name (default: gemma3:1b)'
@@ -21,6 +21,10 @@ def usage
   Print.std '  --vllm-port PORT               VLLM server port (default: 8000)'
   Print.std '  --sglang-host HOST             SGLang server host (default: localhost)'
   Print.std '  --sglang-port PORT             SGLang server port (default: 30000)'
+  Print.std '  --hf-host HOST                 Hugging Face server host (default: 127.0.0.1)'
+  Print.std '  --hf-port PORT                 Hugging Face server port (default: 8899)'
+  Print.std '  --hf-model MODEL               Hugging Face model name (default: EleutherAI/gpt-neo-125m)'
+  Print.std '  --hf-timeout SECONDS           Hugging Face request timeout (default: 300)'
   Print.std '  --streaming, -s true|false     Enable/disable streaming (default: true)'
   Print.std '  --enable-rag-cag               Enable RAG + CAG capabilities (default: true)'
   Print.std '  --rag-only                     Enable only RAG system (disables CAG)'
@@ -47,6 +51,10 @@ $vllm_host = 'localhost'
 $vllm_port = 8000
 $sglang_host = 'localhost'
 $sglang_port = 30000
+$hf_host = '127.0.0.1'
+$hf_port = 8899
+$hf_model = 'EleutherAI/gpt-neo-125m'
+$hf_timeout = 300
 $enable_rag_cag = true
 $rag_only = false
 $cag_only = false
@@ -66,6 +74,10 @@ opts = GetoptLong.new(
     [ '--vllm-port', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--sglang-host', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--sglang-port', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--hf-host', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--hf-port', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--hf-model', GetoptLong::REQUIRED_ARGUMENT ],
+    [ '--hf-timeout', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--streaming', '-s', GetoptLong::REQUIRED_ARGUMENT ],
     [ '--enable-rag-cag', GetoptLong::NO_ARGUMENT ],
     [ '--rag-only', GetoptLong::NO_ARGUMENT ],
@@ -104,6 +116,14 @@ begin
       $sglang_host = arg;
     when '--sglang-port'
       $sglang_port = arg.to_i;
+    when '--hf-host'
+      $hf_host = arg;
+    when '--hf-port'
+      $hf_port = arg.to_i;
+    when '--hf-model'
+      $hf_model = arg;
+    when '--hf-timeout'
+      $hf_timeout = arg.to_i;
     when '--streaming'
       streaming_arg = arg.downcase
       if streaming_arg == 'true' || streaming_arg == 'false'
@@ -147,7 +167,7 @@ if __FILE__ == $0
     offline_mode: $offline_mode
   }
 
-  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $openai_base_url, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $enable_rag_cag, rag_cag_config)
+  bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $openai_base_url, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $hf_host, $hf_port, $hf_model, $hf_timeout, $enable_rag_cag, rag_cag_config)
   bots = bot_manager.read_bots
   bot_manager.start_bots
 end

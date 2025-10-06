@@ -6,7 +6,7 @@ require_relative './providers/llm_client_factory.rb'
 require_relative './rag_cag_manager.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
+  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, hf_host = '127.0.0.1', hf_port = 8899, hf_model = 'EleutherAI/gpt-neo-125m', hf_timeout = 300, enable_rag_cag = false, rag_cag_config = {})
     @irc_server_ip_address = irc_server_ip_address
     @llm_provider = llm_provider
     @ollama_host = ollama_host
@@ -18,6 +18,10 @@ class BotManager
     @vllm_port = vllm_port
     @sglang_host = sglang_host
     @sglang_port = sglang_port
+    @hf_host = hf_host
+    @hf_port = hf_port
+    @hf_model = hf_model
+    @hf_timeout = hf_timeout
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
     @max_history_length = 10
@@ -387,6 +391,18 @@ class BotManager
             max_tokens: max_tokens,
             temperature: temperature,
             streaming: streaming_enabled
+          )
+        when 'huggingface', 'hf'
+          @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
+            'huggingface',
+            host: @hf_host,
+            port: @hf_port,
+            model: model_name,
+            system_prompt: system_prompt,
+            max_tokens: max_tokens,
+            temperature: temperature,
+            streaming: streaming_enabled,
+            timeout: @hf_timeout
           )
         else
           # Default to Ollama if provider is not recognized

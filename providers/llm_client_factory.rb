@@ -3,6 +3,7 @@ require_relative './ollama_client.rb'
 require_relative './openai_client.rb'
 require_relative './vllm_client.rb'
 require_relative './sglang_client.rb'
+require_relative './huggingface_client.rb'
 
 module LLMClientFactory
   def self.create_client(provider, **options)
@@ -49,6 +50,17 @@ module LLMClientFactory
         options[:max_tokens],
         options[:temperature],
         options[:streaming]
+      )
+    when 'huggingface', 'hf'
+      HuggingFaceClient.new(
+        options[:host],
+        options[:port],
+        options[:model],
+        options[:system_prompt],
+        options[:max_tokens],
+        options[:temperature],
+        options[:streaming],
+        options[:timeout]
       )
     else
       raise ArgumentError, "Unsupported LLM provider: #{provider}"

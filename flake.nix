@@ -22,6 +22,10 @@
             python3
             weechat
 
+            # Basic Python packages (avoid heavy ML dependencies that cause build issues)
+            python311Packages.pip
+            python311Packages.virtualenv
+
             # System utilities
             curl
             wget
@@ -115,6 +119,8 @@ EOF
             alias stop-irc-server="if [ -f /tmp/ircd.pid ]; then if kill -0 \$(cat /tmp/ircd.pid 2>/dev/null) 2>/dev/null; then kill \$(cat /tmp/ircd.pid) && rm -f /tmp/ircd.pid && echo 'IRC server stopped'; else echo 'IRC server not running (stale PID file removed)'; rm -f /tmp/ircd.pid; fi; else echo 'IRC server not running'; fi"
             alias connect-irc="echo 'Use WeeChat to connect: /server add localhost localhost/6667; /connect localhost; /join #hackerbot' && weechat"
             alias install-gems="gem install --user-install --install-dir \"$GEM_HOME\" --bindir \"$GEM_HOME/bin\" ircinch nokogiri nori json httparty thwait kramdown"
+            alias setup-hf="echo 'Setting up Hugging Face environment...' && python3 setup_hf_environment.py"
+            alias start-hf-server="echo 'Starting Hugging Face server...' && source hf_env/bin/activate && cd hf_server && python3 hf_inference_server.py > /tmp/hf_server.log 2>&1 & echo \$! > /tmp/hf_server.pid && sleep 3 && if kill -0 \$(cat /tmp/hf_server.pid 2>/dev/null) 2>/dev/null; then echo 'HF server started on localhost:8899 (PID: '\$(cat /tmp/hf_server.pid)')'; else echo 'Failed to start HF server'; rm -f /tmp/hf_server.pid; fi"
 
             # Check if gems are installed and install if needed
             if ! gem list ircinch > /dev/null 2>&1; then

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bot_config>
+    <!-- Test Hugging Face Bot Configuration -->
+
+    <bot_info>
+        <name>Test-HF-Bot</name>
+        <nick>testhf</nick>
+        <user>huggingface</user>
+        <realname>Test Hugging Face Bot</realname>
+        <server>127.0.0.1</server>
+        <port>6667</port>
+        <channels>#hackerbot</channels>
+        <version>1.0.0</version>
+    </bot_info>
+
+    <!-- LLM Configuration -->
+    <llm_provider>huggingface</llm_provider>
+    <llm_config>
+        <host>127.0.0.1</host>
+        <port>8899</port>
+        <model>EleutherAI/gpt-neo-125m</model>
+        <max_tokens>50</max_tokens>
+        <temperature>0.7</temperature>
+        <streaming>true</streaming>
+        <timeout>60</timeout>
+
+        <!-- System prompt for cybersecurity training -->
+        <system_prompt>
+            You are a helpful cybersecurity training assistant. You help users learn about hacking techniques and security concepts. Be encouraging and educational in your responses. Keep explanations clear and practical.
+        </system_prompt>
+    </llm_config>
+
+    <!-- RAG and CAG Configuration -->
+    <rag_cag_enabled>true</rag_cag_enabled>
+
+    <!-- Knowledge Sources -->
+    <knowledge_sources>
+        <source>mitre_attack</source>
+        <source>man_pages</source>
+    </knowledge_sources>
+
+    <!-- Simple Attack Scenarios -->
+    <attacks>
+        <attack id="1" name="Basic Reconnaissance" difficulty="beginner">
+            <description>Learn basic information gathering</description>
+            <objectives>
+                <objective>Use nmap for port scanning</objective>
+                <objective>Identify open services</objective>
+            </objectives>
+        </attack>
+    </attacks>
+
+    <!-- Bot Behavior Settings -->
+    <behavior>
+        <response_delay>1.0</response_delay>
+        <max_conversation_length>5</max_conversation_length>
+        <idle_timeout>300</idle_timeout>
+        <learning_enabled>false</learning_enabled>
+    </behavior>
+
+    <!-- Performance Settings -->
+    <performance>
+        <cache_responses>true</cache_responses>
+        <cache_size>50</cache_size>
+        <max_concurrent_requests>3</max_concurrent_requests>
+    </performance>
+</bot_config>
