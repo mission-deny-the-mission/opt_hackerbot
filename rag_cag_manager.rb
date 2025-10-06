@@ -385,6 +385,7 @@ class RAGCAGManager
     @initialized = false
 
     Print.info "RAG + CAG Manager cleanup completed"
+    true
   end
 
   def reload_knowledge_base
@@ -451,21 +452,64 @@ class RAGCAGManager
   def truncate_intelligently(text, max_length)
     return text if text.length <= max_length
 
-    # Try to preserve complete sections by looking for section boundaries
-    sections = text.split(/(?=== )/)
+    # Split by section headers (=== SECTION NAME ===)
+    sections = []
+    current_section = ""
+
+    text.each_line do |line|
+      if line.match?(/^=== .* ===$/)
+        # Found section header, save previous section if not empty
+        unless current_section.strip.empty?
+          sections << current_section
+        end
+        current_section = line
+      else
+        current_section += line
+      end
+    end
+
+    # Add the last section
+    unless current_section.strip.empty?
+      sections << current_section
+    end
+
     result = ""
 
     sections.each do |section|
       if (result + section).length <= max_length
         result += section
       else
-        # If adding this section would exceed limit, see if we can add a partial version
+        # If adding this section would exceed limit, try to add partial content
         remaining_space = max_length - result.length
-        if remaining_space > 100 # Don't add very small fragments
-          result += section[0, remaining_space - 3] + "..."
+
+        if remaining_space > 50 # Reasonable minimum fragment size
+          # Try to preserve sentences within the section
+          sentences = section.split(/(?<=[.!?])\s+/)
+          partial_section = ""
+
+          sentences.each do |sentence|
+            if (partial_section + sentence).length <= remaining_space
+              partial_section += sentence
+            else
+              break
+            end
+          end
+
+          unless partial_section.strip.empty?
+            result += partial_section
+            if remaining_space - partial_section.length > 10
+              result += "..."
+            end
+          end
         end
         break
       end
+    end
+
+    # Ensure we don't return empty content
+    if result.strip.empty?
+      # Fallback: simple truncation with ellipsis
+      return text.length > 3 ? text[0, max_length - 3] + "..." : text
     end
 
     result

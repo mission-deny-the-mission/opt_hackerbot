@@ -1,3 +1,4 @@
+require 'set'
 require './cag/knowledge_graph_interface.rb'
 require './print.rb'
 

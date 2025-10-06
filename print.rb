@@ -29,6 +29,10 @@ class Print
     puts green(msg.to_s)
   end
 
+  def self.warn(msg)
+    puts yellow(msg.to_s)
+  end
+
   def self.std(msg)
     puts yellow(msg.to_s)
   end

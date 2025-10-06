@@ -19,12 +19,12 @@ def demonstrate_basic_configuration
     vector_db: {
       provider: 'chromadb',
       host: 'localhost',
-      port: 8000
+      port: 8000,
+      in_memory: true  # Use in-memory ChromaDB for offline demo
     },
     embedding_service: {
-      provider: 'openai',
-      api_key: 'demo_api_key',  # In real usage, use proper API key
-      model: 'text-embedding-ada-002'
+      provider: 'mock',  # Use mock provider for offline demo
+      model: 'mock-embedding'
     },
     rag_settings: {
       max_results: 3,
@@ -52,10 +52,18 @@ def demonstrate_basic_configuration
     enable_cag: true,
     rag_weight: 0.6,
     cag_weight: 0.4,
-    max_context_length: 2000,
+    max_context_length: 6000,
     enable_caching: true,
     cache_ttl: 1800,
-    auto_initialization: true
+    auto_initialization: true,
+    enable_knowledge_sources: true,
+    knowledge_sources_config: [
+      {
+        type: 'mitre_attack',
+        name: 'mitre_attack',
+        enabled: true
+      }
+    ]
   }
 
   puts "✓ Configuration created successfully"
@@ -74,7 +82,7 @@ def demonstrate_manager_initialization(rag_config, cag_config, unified_config)
   puts "Initializing RAG + CAG Manager..."
   manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
 
-  if manager.initialize
+  if manager.setup
     puts "✓ Manager initialized successfully"
 
     # Test connections
