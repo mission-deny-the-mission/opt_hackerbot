@@ -216,13 +216,7 @@ ruby test/quick_test.rb
 ruby test/test_llm_client_factory.rb
 ```
 
-### Contributing
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
 
-See [Contributing Guide](docs/development/contributing.md) for detailed guidelines.
 
 ## 📊 Performance & Requirements
 
@@ -260,12 +254,7 @@ See [Contributing Guide](docs/development/contributing.md) for detailed guidelin
 - **Discussions**: Join community conversations
 - **Examples**: Review configuration files in `config/`
 
-### Contributing
-We welcome contributions! Please see our [Contributing Guide](docs/development/contributing.md) for:
-- Code standards and patterns
-- Testing requirements
-- Documentation guidelines
-- Pull request process
+
 
 ## 📈 License
 
