@@ -322,7 +322,22 @@ class BotManager
         # Initialize LLM client for this bot based on provider
         # You can customize the model per bot by adding a model attribute to the XML
         provider = hackerbot.at_xpath('llm_provider')&.text || @llm_provider
-        model_name = hackerbot.at_xpath('ollama_model')&.text || @ollama_model
+
+        # Parse Hugging Face specific configuration if present
+        llm_config_node = hackerbot.at_xpath('llm_config')
+        if llm_config_node && provider.downcase == 'huggingface'
+          model_name = llm_config_node.at_xpath('model')&.text || @hf_model
+          hf_host_config = llm_config_node.at_xpath('host')&.text || @hf_host
+          hf_port_config = (llm_config_node.at_xpath('port')&.text || @hf_port.to_s).to_i
+          hf_timeout_config = (llm_config_node.at_xpath('timeout')&.text || @hf_timeout.to_s).to_i
+        else
+          # Legacy configuration parsing
+          model_name = hackerbot.at_xpath('ollama_model')&.text || @ollama_model
+          hf_host_config = @hf_host
+          hf_port_config = @hf_port
+          hf_timeout_config = @hf_timeout
+        end
+
         ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || @ollama_host
         ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || @ollama_port.to_s).to_i
         openai_api_key_config = hackerbot.at_xpath('openai_api_key')&.text || @openai_api_key
@@ -395,14 +410,14 @@ class BotManager
         when 'huggingface', 'hf'
           @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
             'huggingface',
-            host: @hf_host,
-            port: @hf_port,
+            host: hf_host_config,
+            port: hf_port_config,
             model: model_name,
             system_prompt: system_prompt,
             max_tokens: max_tokens,
             temperature: temperature,
             streaming: streaming_enabled,
-            timeout: @hf_timeout
+            timeout: hf_timeout_config
           )
         else
           # Default to Ollama if provider is not recognized
