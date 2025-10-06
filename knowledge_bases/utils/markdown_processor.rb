@@ -2,7 +2,7 @@
 
 require 'fileutils'
 require 'json'
-require 'kramdown'  # For markdown parsing - may need to be installed
+require 'time'
 require File.expand_path('../../../print.rb', __FILE__)
 
 # Utility class for processing markdown files and converting them to RAG/CAG format
@@ -35,7 +35,7 @@ class MarkdownProcessor
       begin
         cached_data = JSON.parse(File.read(cached_path))
         file_mtime = File.mtime(normalized_path)
-        cached_mtime = Time.parse(cached_data['file_mtime']) if cached_data['file_mtime']
+        cached_mtime = Time.parse(cached_data['file_mtime']) rescue nil if cached_data['file_mtime']
 
         # Use cache if file hasn't been modified and cache is less than 24 hours old
         if cached_mtime && file_mtime <= cached_mtime &&
@@ -53,8 +53,8 @@ class MarkdownProcessor
 
     # Cache the result
     cache_data = {
-      'timestamp' => Time.now.iso8601,
-      'file_mtime' => File.mtime(normalized_path).iso8601,
+      'timestamp' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
+      'file_mtime' => File.mtime(normalized_path).strftime('%Y-%m-%dT%H:%M:%S%z'),
       'file_path' => normalized_path,
       'file_size' => File.size(normalized_path),
       'content' => content,

@@ -3,6 +3,7 @@
 require 'open3'
 require 'fileutils'
 require 'json'
+require 'time'
 require File.expand_path('../../../print.rb', __FILE__)
 
 # Utility class for processing man pages and converting them to RAG/CAG format
@@ -34,7 +35,7 @@ class ManPageProcessor
     if content && !content.empty?
       # Cache the result
       cache_data = {
-        'timestamp' => Time.now.iso8601,
+        'timestamp' => Time.now.strftime('%Y-%m-%dT%H:%M:%S%z'),
         'man_name' => man_name,
         'section' => section,
         'content' => content
@@ -261,6 +262,7 @@ class ManPageProcessor
   end
 
   def format_man_page_as_document(content, metadata)
+    # Create header
     formatted = "Man Page: #{metadata['name']} (#{metadata['section']})\n\n"
 
     if metadata['title'] && metadata['title'] != 'Unknown'
@@ -276,7 +278,28 @@ class ManPageProcessor
     end
 
     formatted += "\n" + "=" * 60 + "\n\n"
-    formatted += content
+
+    # Add content with chunking to prevent text being too long
+    max_content_length = 3000  # Very conservative to avoid any text length issues
+
+    if content.length > max_content_length
+      # Truncate content and add indicator
+      truncated_content = content[0...max_content_length]
+      # Try to end at a sentence boundary, but be more aggressive
+      last_sentence_end = truncated_content.rindex(/[.!?]\s*\n/)
+      if last_sentence_end && last_sentence_end > max_content_length - 200
+        truncated_content = truncated_content[0...last_sentence_end + 1]
+      end
+      # If still too long, truncate at word boundary
+      if truncated_content.length > max_content_length - 100
+        last_space = truncated_content.rindex(/\s/)
+        truncated_content = truncated_content[0...last_space] if last_space
+      end
+      truncated_content += "\n\n[Note: Full man page truncated for length. Use 'man #{metadata['name']}' for complete documentation.]"
+      formatted += truncated_content
+    else
+      formatted += content
+    end
 
     formatted
   end

@@ -426,6 +426,20 @@ module MITREAttackKnowledge
 
       doc_content += "\nMitigation:\n#{pattern[:mitigation]}"
 
+      # Limit document length to avoid text too long errors
+      max_length = 7000
+      if doc_content.length > max_length
+        # Truncate to a reasonable length
+        truncated_content = doc_content[0...max_length]
+        # Try to end at a good breaking point
+        last_section_end = truncated_content.rindex(/\n\n/)
+        if last_section_end && last_section_end > max_length - 500
+          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
+        else
+          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
+        end
+      end
+
       documents << {
         id: "mitre_attack_#{pattern[:id]}",
         content: doc_content,
@@ -455,6 +469,20 @@ module MITREAttackKnowledge
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
       end
 
+      # Limit document length to avoid text too long errors
+      max_length = 7000
+      if doc_content.length > max_length
+        # Truncate to a reasonable length
+        truncated_content = doc_content[0...max_length]
+        # Try to end at a good breaking point
+        last_section_end = truncated_content.rindex(/\n\n/)
+        if last_section_end && last_section_end > max_length - 500
+          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
+        else
+          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
+        end
+      end
+
       documents << {
         id: "malware_#{malware[:name].downcase.gsub(/\s+/, '_')}",
         content: doc_content,
@@ -479,6 +507,20 @@ module MITREAttackKnowledge
       end
 
       doc_content += "\nDetection Methods:\n#{tool[:detection]}"
+
+      # Limit document length to avoid text too long errors
+      max_length = 7000
+      if doc_content.length > max_length
+        # Truncate to a reasonable length
+        truncated_content = doc_content[0...max_length]
+        # Try to end at a good breaking point
+        last_section_end = truncated_content.rindex(/\n\n/)
+        if last_section_end && last_section_end > max_length - 500
+          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
+        else
+          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
+        end
+      end
 
       documents << {
         id: "tool_#{tool[:name].downcase.gsub(/\s+/, '_')}",
@@ -508,6 +550,20 @@ module MITREAttackKnowledge
       defense[:attack_patterns].each do |pattern_id|
         pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
+      end
+
+      # Limit document length to avoid text too long errors
+      max_length = 7000
+      if doc_content.length > max_length
+        # Truncate to a reasonable length
+        truncated_content = doc_content[0...max_length]
+        # Try to end at a good breaking point
+        last_section_end = truncated_content.rindex(/\n\n/)
+        if last_section_end && last_section_end > max_length - 500
+          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
+        else
+          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
+        end
       end
 
       documents << {

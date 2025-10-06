@@ -135,8 +135,17 @@ class BotManager
     end
 
     # Override with user-provided configuration
-    rag_config.deep_merge!(@rag_cag_config[:rag]) if @rag_cag_config[:rag]
-    cag_config.deep_merge!(@rag_cag_config[:cag]) if @rag_cag_config[:cag]
+    if @rag_cag_config[:rag]
+      rag_config[:vector_db] = rag_config[:vector_db].merge(@rag_cag_config[:rag][:vector_db] || {})
+      rag_config[:embedding_service] = rag_config[:embedding_service].merge(@rag_cag_config[:rag][:embedding_service] || {})
+      rag_config[:rag_settings] = rag_config[:rag_settings].merge(@rag_cag_config[:rag][:rag_settings] || {})
+    end
+
+    if @rag_cag_config[:cag]
+      cag_config[:knowledge_graph] = cag_config[:knowledge_graph].merge(@rag_cag_config[:cag][:knowledge_graph] || {})
+      cag_config[:entity_extractor] = cag_config[:entity_extractor].merge(@rag_cag_config[:cag][:entity_extractor] || {})
+      cag_config[:cag_settings] = cag_config[:cag_settings].merge(@rag_cag_config[:cag][:cag_settings] || {})
+    end
 
     unified_config = {
       enable_rag: @rag_cag_config[:enable_rag],
@@ -144,17 +153,22 @@ class BotManager
       rag_weight: @rag_cag_config.fetch(:rag_weight, 0.6),
       cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
       max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
+      knowledge_base_name: @rag_cag_config.fetch(:knowledge_base_name, 'cybersecurity'),
       enable_caching: @rag_cag_config.fetch(:enable_caching, true),
       auto_initialization: @rag_cag_config.fetch(:auto_initialization, true),
       enable_knowledge_sources: @rag_cag_config.fetch(:enable_knowledge_sources, true),
       knowledge_sources_config: @rag_cag_config.fetch(:knowledge_sources_config, [])
     }
 
+    Print.info "Creating RAGCAGManager with unified_config knowledge_base_name: #{unified_config[:knowledge_base_name].inspect}"
     @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
 
+    Print.info "Setting up RAGCAGManager..."
     unless @rag_cag_manager.setup
       Print.err "Failed to initialize RAG + CAG Manager"
       @rag_cag_manager = nil
+    else
+      Print.info "✓ RAGCAGManager setup successful"
     end
   end
 
@@ -195,6 +209,10 @@ class BotManager
 
     # Get bot-specific context preferences
     context_options = {}
+    Print.info "Getting enhanced context for bot: #{bot_name}"
+    Print.info "Bot has rag_cag_config: #{@bots.dig(bot_name, 'rag_cag_config') ? 'YES' : 'NO'}"
+    Print.info "Bot rag_enabled: #{rag_enabled}, cag_enabled: #{cag_enabled}"
+
     if @bots.dig(bot_name, 'rag_cag_config')
       context_options = {
         max_rag_results: @bots.dig(bot_name, 'rag_cag_config', 'max_rag_results') || 5,
@@ -204,6 +222,7 @@ class BotManager
         include_cag_context: cag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false),
         custom_collection: @bots.dig(bot_name, 'rag_cag_config', 'collection_name')
       }
+      Print.info "Using bot-specific config, custom_collection: #{context_options[:custom_collection].inspect}"
     else
       # Use global settings if no bot-specific config
       context_options = {
@@ -212,8 +231,10 @@ class BotManager
         max_cag_nodes: 10,
         include_rag_context: rag_enabled != false,
         include_cag_context: cag_enabled != false,
-        custom_collection: nil
+        custom_collection: @rag_cag_config[:knowledge_base_name] || 'cybersecurity'
       }
+      Print.info "Using global config fallback, custom_collection: #{context_options[:custom_collection].inspect}"
+      Print.info "@rag_cag_config[:knowledge_base_name]: #{@rag_cag_config[:knowledge_base_name].inspect}"
     end
 
     # Get enhanced context from RAG + CAG manager

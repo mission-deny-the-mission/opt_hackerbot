@@ -107,6 +107,15 @@ bot-rag-cag:
 		--llm-provider ollama \
 		--ollama-model gemma3:1b
 
+bot-rag-only:
+	@echo "Starting Hackerbot with RAG only (recommended for testing)..."
+	nix develop --command ruby hackerbot.rb \
+		--irc-server localhost \
+		--enable-rag-cag \
+		--rag-only \
+		--llm-provider ollama \
+		--ollama-model gemma3:1b
+
 # Development commands
 test:
 	nix develop --command ruby test_all.rb

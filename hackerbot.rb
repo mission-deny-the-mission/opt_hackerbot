@@ -140,11 +140,49 @@ rescue GetoptLong::InvalidOption => e
 end
 
 if __FILE__ == $0
-  # Prepare RAG + CAG configuration
+  # Prepare RAG + CAG configuration with comprehensive knowledge sources
   rag_cag_config = {
     enable_rag: !$cag_only,  # Enable RAG unless CAG-only mode
     enable_cag: !$rag_only,  # Enable CAG unless RAG-only mode
-    offline_mode: $offline_mode
+    offline_mode: $offline_mode,
+    knowledge_base_name: 'cybersecurity',
+    rag: {
+      max_results: 5,
+      similarity_threshold: 0.2,  # Even lower threshold for better retrieval
+      chunk_size: 1000,
+      chunk_overlap: 200
+    },
+    knowledge_sources_config: [
+      # MITRE ATT&CK Framework
+      {
+        type: 'mitre_attack',
+        name: 'mitre_attack',
+        enabled: true,
+        description: 'MITRE ATT&CK framework knowledge base',
+        priority: 1
+      },
+      # Man pages temporarily disabled due to text length issues
+      # {
+      #   type: 'man_pages',
+      #   name: 'cybersecurity_man_pages',
+      #   enabled: false,
+      #   description: 'Common cybersecurity and security tool man pages',
+      #   priority: 2
+      # },
+      # Project documentation
+      {
+        type: 'markdown_files',
+        name: 'project_docs',
+        enabled: true,
+        description: 'Project documentation and guides',
+        priority: 3,
+        markdown_files: [
+          { path: 'README.md', collection_name: 'cybersecurity' },
+          { path: 'QUICKSTART.md', collection_name: 'cybersecurity' },
+          { path: 'docs/*.md', collection_name: 'cybersecurity' }
+        ]
+      }
+    ]
   }
 
   bot_manager = BotManager.new($irc_server_ip_address, $llm_provider, $ollama_host, $ollama_port, $ollama_model, $openai_api_key, $openai_base_url, $vllm_host, $vllm_port, $sglang_host, $sglang_port, $enable_rag_cag, rag_cag_config)

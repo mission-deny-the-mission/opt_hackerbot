@@ -12,8 +12,8 @@ class RAGCAGManager
     @rag_config = rag_config
     @cag_config = cag_config
     @unified_config = {
-      enable_rag: unified_config[:enable_rag] || true,
-      enable_cag: unified_config[:enable_cag] || true,
+      enable_rag: unified_config.key?(:enable_rag) ? unified_config[:enable_rag] : true,
+      enable_cag: unified_config.key?(:enable_cag) ? unified_config[:enable_cag] : true,
       rag_weight: unified_config[:rag_weight] || 0.6,
       cag_weight: unified_config[:cag_weight] || 0.4,
       max_context_length: unified_config[:max_context_length] || 4000,
@@ -31,6 +31,12 @@ class RAGCAGManager
     @rag_manager = nil
     @cag_manager = nil
     @knowledge_source_manager = nil
+
+    # Debug logging for unified_config
+    Print.info "RAGCAGManager initialized with unified_config:"
+    Print.info "  knowledge_base_name: #{@unified_config[:knowledge_base_name].inspect}"
+    Print.info "  enable_rag: #{@unified_config[:enable_rag].inspect}"
+    Print.info "  enable_cag: #{@unified_config[:enable_cag].inspect}"
   end
 
   def setup
@@ -196,6 +202,12 @@ class RAGCAGManager
       custom_collection: context_options[:custom_collection] || @unified_config[:knowledge_base_name]
     }.merge(context_options)
 
+    # Debug logging for collection name troubleshooting
+    Print.info "Original custom_collection: #{context_options[:custom_collection].inspect}"
+    Print.info "@unified_config[:knowledge_base_name]: #{@unified_config[:knowledge_base_name].inspect}"
+    Print.info "Final custom_collection: #{context_options[:custom_collection].inspect}"
+    Print.debug "=== END COLLECTION NAME DEBUG ==="
+
     Print.info "Getting enhanced context for query: #{query[0..50]}..."
 
     begin
@@ -205,6 +217,7 @@ class RAGCAGManager
       # Get RAG context
       if @unified_config[:enable_rag] && context_options[:include_rag_context] && @rag_manager
         Print.info "Retrieving RAG context..."
+        Print.info "Calling retrieve_relevant_context with collection: #{context_options[:custom_collection].inspect}"
         rag_context = @rag_manager.retrieve_relevant_context(
           query,
           context_options[:custom_collection],
