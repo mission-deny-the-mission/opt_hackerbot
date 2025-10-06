@@ -152,6 +152,7 @@ if __FILE__ == $0
       chunk_size: 1000,
       chunk_overlap: 200
     },
+    max_context_length: 16000,  # Increased from default 4000 to allow more comprehensive responses
     knowledge_sources_config: [
       # MITRE ATT&CK Framework
       {

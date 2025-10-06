@@ -62,6 +62,7 @@ class KnowledgePopulationTest
       enable_rag: true,
       enable_cag: false,
       knowledge_base_name: 'cybersecurity',
+      max_context_length: 16000,  # Increased for better knowledge retrieval
       enable_caching: true,
       auto_initialization: true,
       enable_knowledge_sources: true,

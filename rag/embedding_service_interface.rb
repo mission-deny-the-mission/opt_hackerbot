@@ -36,7 +36,10 @@ class EmbeddingServiceInterface
   def validate_text(text)
     raise ArgumentError, "Text cannot be nil" if text.nil?
     raise ArgumentError, "Text cannot be empty" if text.strip.empty?
-    raise ArgumentError, "Text is too long" if text.length > 8192
+    # Increased limit to accommodate comprehensive knowledge documents
+    # Default was 8192, increased to 32768 (32K) for better knowledge base support
+    max_length = ENV['RAG_MAX_TEXT_LENGTH']&.to_i || 32768
+    raise ArgumentError, "Text is too long (#{text.length} > #{max_length})" if text.length > max_length
   end
 
   def validate_texts(texts)
