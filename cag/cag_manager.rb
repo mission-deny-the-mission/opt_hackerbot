@@ -309,6 +309,16 @@ class CAGManager
 
     # Find nodes matching the entity
     matching_nodes = @knowledge_graph.find_nodes_by_property('name', entity[:value], 5)
+
+    # If no direct matches found, map entity to cybersecurity concepts
+    if matching_nodes.empty?
+      mapped_concepts = map_entity_to_concepts(entity)
+      mapped_concepts.each do |concept|
+        concept_nodes = @knowledge_graph.find_nodes_by_property('name', concept, 3)
+        matching_nodes.concat(concept_nodes)
+      end
+    end
+
     return context_nodes if matching_nodes.empty?
 
     matching_nodes.each do |node|
@@ -367,6 +377,66 @@ class CAGManager
     end
 
     context_parts.join("\n")
+  end
+
+  # Map extracted entities to relevant cybersecurity concepts
+  def map_entity_to_concepts(entity)
+    entity_type = entity[:type]
+    entity_value = entity[:value].downcase
+
+    mappings = {
+      'ip_address' => [
+        'Network Scanning', 'Reconnaissance', 'Command and Control',
+        'Lateral Movement', 'Command-Line Interface'
+      ],
+      'url' => [
+        'Malware Delivery', 'Phishing', 'Drive-by Compromise',
+        'Exploit Public-Facing Application', 'Initial Access'
+      ],
+      'hash' => [
+        'Malware Analysis', 'File Hashing', 'Forensic Analysis',
+        'Malware', 'Trojan'
+      ],
+      'filename' => [
+        'Malware', 'Trojan', 'Backdoor', 'Executable',
+        'Malware Delivery', 'Initial Access'
+      ],
+      'port' => [
+        'Network Scanning', 'Command and Control', 'Lateral Movement',
+        'Reconnaissance', 'Command-Line Interface'
+      ],
+      'email' => [
+        'Phishing', 'Spearphishing', 'Social Engineering',
+        'Initial Access', 'Malware Delivery'
+      ]
+    }
+
+    # Get base mappings for entity type
+    concepts = mappings[entity_type] || []
+
+    # Add specific mappings based on entity content
+    case entity_type
+    when 'url'
+      if entity_value.include?('malicious') || entity_value.include?('evil')
+        concepts << 'Malware' << 'Trojan'
+      elsif entity_value.include?('phish')
+        concepts << 'Phishing' << 'Social Engineering'
+      end
+    when 'filename'
+      if entity_value.include?('malware') || entity_value.include?('trojan')
+        concepts << 'Malware' << 'Trojan'
+      elsif entity_value.include?('dll') || entity_value.include?('exe')
+        concepts << 'Executable' << 'Malware'
+      end
+    when 'ip_address'
+      # Internal IP addresses might suggest lateral movement
+      if entity_value.start_with?('192.168.') || entity_value.start_with?('10.') || entity_value.start_with?('172.')
+        concepts << 'Lateral Movement'
+      end
+    end
+
+    # Remove duplicates and return
+    concepts.uniq
   end
 end
 

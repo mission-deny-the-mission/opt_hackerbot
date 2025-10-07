@@ -581,4 +581,308 @@ module MITREAttackKnowledge
 
     documents
   end
+
+  # Convert MITRE ATT&CK knowledge to RAG documents
+  def self.to_rag_documents
+    documents = []
+
+    # Add attack pattern documents
+    ATTACK_PATTERNS.each do |pattern|
+      doc_content = "Attack Pattern: #{pattern[:name]} (#{pattern[:id]})\n\n"
+      doc_content += "Tactic: #{pattern[:tactic]}\n\n"
+      doc_content += "Description:\n#{pattern[:description]}\n\n"
+
+      doc_content += "Techniques:\n"
+      pattern[:techniques].each do |technique|
+        doc_content += "- #{technique[:name]} (#{technique[:technique_id]})\n"
+        doc_content += "  #{technique[:description]}\n"
+      end
+
+      doc_content += "\nRelated Tools:\n"
+      pattern[:related_tools].each do |tool|
+        doc_content += "- #{tool}\n"
+      end
+
+      doc_content += "\nMitigation:\n#{pattern[:mitigation]}"
+
+      documents << {
+        id: "pattern_#{pattern[:id]}",
+        content: doc_content,
+        metadata: {
+          source: 'MITRE ATT&CK',
+          type: 'attack_pattern',
+          tactic: pattern[:tactic],
+          pattern_id: pattern[:id],
+          name: pattern[:name]
+        }
+      }
+    end
+
+    # Add malware family documents
+    MALWARE_FAMILIES.each do |malware|
+      doc_content = "Malware Family: #{malware[:name]}\n\n"
+      doc_content += "Type: #{malware[:type]}\n\n"
+      doc_content += "Description:\n#{malware[:description]}\n\n"
+
+      doc_content += "Capabilities:\n"
+      malware[:capabilities].each do |capability|
+        doc_content += "- #{capability}\n"
+      end
+
+      doc_content += "\nAttack Patterns:\n"
+      malware[:attack_patterns].each do |pattern_id|
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
+        doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
+      end
+
+      doc_content += "\nMitigation:\n#{malware[:mitigation]}"
+
+      documents << {
+        id: "malware_#{malware[:name].downcase.gsub(/\s+/, '_')}",
+        content: doc_content,
+        metadata: {
+          source: 'MITRE ATT&CK',
+          type: 'malware_family',
+          malware_type: malware[:type],
+          name: malware[:name]
+        }
+      }
+    end
+
+    # Add attack tool documents
+    ATTACK_TOOLS.each do |tool|
+      doc_content = "Attack Tool: #{tool[:name]}\n\n"
+      doc_content += "Type: #{tool[:type]}\n\n"
+      doc_content += "Description:\n#{tool[:description]}\n\n"
+
+      doc_content += "Capabilities:\n"
+      tool[:capabilities].each do |capability|
+        doc_content += "- #{capability}\n"
+      end
+
+      doc_content += "\nDetection Methods:\n#{tool[:detection]}"
+
+      documents << {
+        id: "tool_#{tool[:name].downcase.gsub(/\s+/, '_')}",
+        content: doc_content,
+        metadata: {
+          source: 'MITRE ATT&CK',
+          type: 'attack_tool',
+          tool_type: tool[:type],
+          name: tool[:name]
+        }
+      }
+    end
+
+    # Add defense documents
+    DEFENSES.each do |defense|
+      doc_content = "Security Defense: #{defense[:name]}\n\n"
+      doc_content += "Type: #{defense[:type]}\n\n"
+      doc_content += "Effectiveness: #{defense[:effectiveness]}\n\n"
+      doc_content += "Description:\n#{defense[:description]}\n\n"
+
+      doc_content += "Capabilities:\n"
+      defense[:capabilities].each do |capability|
+        doc_content += "- #{capability}\n"
+      end
+
+      doc_content += "\nMitigates Attack Patterns:\n"
+      defense[:attack_patterns].each do |pattern_id|
+        pattern_name = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }&.dig(:name)
+        doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
+      end
+
+      documents << {
+        id: "defense_#{defense[:name].downcase.gsub(/\s+/, '_')}",
+        content: doc_content,
+        metadata: {
+          source: 'MITRE ATT&CK',
+          type: 'defense',
+          defense_type: defense[:type],
+          effectiveness: defense[:effectiveness],
+          name: defense[:name]
+        }
+      }
+    end
+
+    documents
+  end
+
+  # Convert MITRE ATT&CK knowledge to CAG triplets
+  def self.to_cag_triplets
+    triplets = []
+
+    # Add attack pattern relationships
+    ATTACK_PATTERNS.each do |pattern|
+      # Pattern to tactic relationship
+      triplets << {
+        subject: pattern[:name],
+        relationship: "IS_TYPE",
+        object: pattern[:tactic],
+        properties: {
+          pattern_id: pattern[:id],
+          source: "MITRE ATT&CK"
+        }
+      }
+
+      # Pattern to techniques relationships
+      pattern[:techniques].each do |technique|
+        triplets << {
+          subject: technique[:name],
+          relationship: "IS_TECHNIQUE_OF",
+          object: pattern[:name],
+          properties: {
+            technique_id: technique[:technique_id],
+            source: "MITRE ATT&CK"
+          }
+        }
+      end
+
+      # Pattern to related tools relationships
+      pattern[:related_tools].each do |tool_name|
+        triplets << {
+          subject: pattern[:name],
+          relationship: "USES_TOOL",
+          object: tool_name,
+          properties: {
+            pattern_id: pattern[:id],
+            source: "MITRE ATT&CK"
+          }
+        }
+      end
+
+      # Pattern to mitigation relationships
+      triplets << {
+        subject: pattern[:mitigation],
+        relationship: "MITIGATES",
+        object: pattern[:name],
+        properties: {
+          pattern_id: pattern[:id],
+          source: "MITRE ATT&CK"
+        }
+      }
+    end
+
+    # Add malware family relationships
+    MALWARE_FAMILIES.each do |malware|
+      # Malware to type relationship
+      triplets << {
+        subject: malware[:name],
+        relationship: "IS_TYPE",
+        object: malware[:type],
+        properties: {
+          source: "MITRE ATT&CK"
+        }
+      }
+
+      # Malware to attack patterns relationships
+      malware[:attack_patterns].each do |pattern_id|
+        pattern = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }
+        if pattern
+          triplets << {
+            subject: malware[:name],
+            relationship: "IMPLEMENTS",
+            object: pattern[:name],
+            properties: {
+              pattern_id: pattern_id,
+              source: "MITRE ATT&CK"
+            }
+          }
+        end
+      end
+
+      # Malware to mitigation relationships
+      triplets << {
+        subject: malware[:mitigation],
+        relationship: "MITIGATES",
+        object: malware[:name],
+        properties: {
+          source: "MITRE ATT&CK"
+        }
+      }
+    end
+
+    # Add attack tool relationships
+    ATTACK_TOOLS.each do |tool|
+      # Tool to type relationship
+      triplets << {
+        subject: tool[:name],
+        relationship: "IS_TYPE",
+        object: tool[:type],
+        properties: {
+          source: "MITRE ATT&CK"
+        }
+      }
+
+      # Tool to attack patterns relationships
+      tool[:attack_patterns].each do |pattern_id|
+        pattern = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }
+        if pattern
+          triplets << {
+            subject: tool[:name],
+            relationship: "USED_IN",
+            object: pattern[:name],
+            properties: {
+              pattern_id: pattern_id,
+              source: "MITRE ATT&CK"
+            }
+          }
+        end
+      end
+    end
+
+    # Add defense relationships
+    DEFENSES.each do |defense|
+      # Defense to type relationship
+      triplets << {
+        subject: defense[:name],
+        relationship: "IS_TYPE",
+        object: defense[:type],
+        properties: {
+          effectiveness: defense[:effectiveness],
+          source: "MITRE ATT&CK"
+        }
+      }
+
+      # Defense to attack patterns relationships
+      defense[:attack_patterns].each do |pattern_id|
+        pattern = ATTACK_PATTERNS.find { |p| p[:id] == pattern_id }
+        if pattern
+          triplets << {
+            subject: defense[:name],
+            relationship: "MITIGATES",
+            object: pattern[:name],
+            properties: {
+              pattern_id: pattern_id,
+              effectiveness: defense[:effectiveness],
+              source: "MITRE ATT&CK"
+            }
+          }
+        end
+      end
+    end
+
+    # Add some common cybersecurity entities and relationships
+    common_entities = [
+      { name: "IP Address", type: "Network Entity" },
+      { name: "URL", type: "Network Entity" },
+      { name: "Hash", type: "Forensic Artifact" },
+      { name: "Filename", type: "File System Entity" },
+      { name: "Port", type: "Network Entity" },
+      { name: "Email", type: "Communication Entity" }
+    ]
+
+    common_entities.each do |entity|
+      triplets << {
+        subject: entity[:name],
+        relationship: "IS_TYPE",
+        object: entity[:type],
+        properties: {
+          source: "Cybersecurity Ontology"
+        }
+      }
+    end
+
+    triplets
+  end
 end
