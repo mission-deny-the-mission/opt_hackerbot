@@ -2,6 +2,7 @@ require './rag/rag_manager.rb'
 require './cag/cag_manager.rb'
 require './knowledge_bases/mitre_attack_knowledge.rb'
 require './knowledge_bases/knowledge_source_manager.rb'
+require './knowledge_bases/utils/man_page_processor.rb'
 require './print.rb'
 
 # Unified RAG + CAG Manager for integrated knowledge retrieval and context-aware generation
@@ -114,60 +115,68 @@ class RAGCAGManager
     success = true
 
     # Load knowledge from all sources
+    all_rag_documents = []
+    all_cag_triplets = []
+
     if @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
       Print.info "Loading knowledge from all sources..."
-      unless @knowledge_source_manager.load_all_knowledge
+      if @knowledge_source_manager.load_all_knowledge
+        # Get documents and triplets from all sources
+        all_rag_documents = @knowledge_source_manager.get_all_rag_documents
+        all_cag_triplets = @knowledge_source_manager.get_all_cag_triplets
+
+        Print.info "Retrieved #{all_rag_documents.length} RAG documents and #{all_cag_triplets.length} CAG triplets from sources"
+      else
         Print.err "Failed to load knowledge from sources"
         success = false
       end
+    end
 
-      # Get documents and triplets from all sources
-      all_rag_documents = @knowledge_source_manager.get_all_rag_documents
-      all_cag_triplets = @knowledge_source_manager.get_all_cag_triplets
+    # If no knowledge was loaded from sources, fall back to legacy knowledge
+    if all_rag_documents.empty? && all_cag_triplets.empty?
+      Print.info "Using FALLBACK knowledge base with MITRE ATT&CK and system man pages..."
+      Print.debug "No knowledge loaded from sources, using fallback"
 
-      Print.info "Retrieved #{all_rag_documents.length} RAG documents and #{all_cag_triplets.length} CAG triplets from sources"
+      # Load and combine knowledge from multiple sources
+      # Add MITRE ATT&CK knowledge
+      Print.info "Loading MITRE ATT&CK knowledge..."
+      mitre_rag_documents = MITREAttackKnowledge.to_rag_documents
+      mitre_cag_triplets = MITREAttackKnowledge.to_cag_triplets
 
-      # Initialize RAG knowledge base
-      if @unified_config[:enable_rag] && @rag_manager && !all_rag_documents.empty?
-        unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], all_rag_documents)
-          Print.err "Failed to add RAG knowledge base"
-          success = false
-        end
+      all_rag_documents.concat(mitre_rag_documents)
+      all_cag_triplets.concat(mitre_cag_triplets)
+      Print.info "Loaded #{mitre_rag_documents.length} MITRE RAG documents and #{mitre_cag_triplets.length} triplets"
+      Print.debug "MITRE RAG documents sample: #{mitre_rag_documents.first(2).map { |d| d[:id] }}"
+      Print.debug "MITRE CAG triplets sample: #{mitre_cag_triplets.first(2).map { |t| "#{t[:subject]}->#{t[:object]}" }}"
+
+      # Add man page knowledge for essential system commands
+      Print.info "Loading system man page knowledge..."
+      man_page_triplets = add_system_man_pages_to_knowledge()
+      all_cag_triplets.concat(man_page_triplets)
+      Print.info "Loaded #{man_page_triplets.length} man page triplets for system commands"
+      Print.debug "Man page triplets sample: #{man_page_triplets.first(3).map { |t| "#{t[:subject]}->#{t[:object]}" if t[:subject] && t[:object] }.compact}"
+    end
+
+    # Initialize RAG knowledge base
+    if @unified_config[:enable_rag] && @rag_manager && !all_rag_documents.empty?
+      Print.info "Loading RAG documents..."
+      Print.info "Generated #{all_rag_documents.length} RAG documents"
+
+      unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], all_rag_documents)
+        Print.err "Failed to add RAG knowledge base"
+        success = false
       end
+    end
 
-      # Initialize CAG knowledge base
-      if @unified_config[:enable_cag] && @cag_manager && !all_cag_triplets.empty?
-        unless @cag_manager.create_knowledge_base_from_triplets(all_cag_triplets)
-          Print.err "Failed to create CAG knowledge base"
-          success = false
-        end
-      end
-    else
-      # Fallback to legacy MITRE Attack knowledge only
-      Print.info "Using legacy MITRE Attack knowledge base..."
+    # Initialize CAG knowledge base
+    if @unified_config[:enable_cag] && @cag_manager && !all_cag_triplets.empty?
+      Print.info "Loading CAG knowledge triplets..."
+      Print.info "Generated #{all_cag_triplets.length} CAG knowledge triplets"
+      Print.debug "Total triplets to load: #{all_cag_triplets.length}"
 
-      # Initialize RAG knowledge base
-      if @unified_config[:enable_rag] && @rag_manager
-        Print.info "Loading RAG documents..."
-        rag_documents = MITREAttackKnowledge.to_rag_documents
-        Print.info "Generated #{rag_documents.length} RAG documents"
-
-        unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], rag_documents)
-          Print.err "Failed to add RAG knowledge base"
-          success = false
-        end
-      end
-
-      # Initialize CAG knowledge base
-      if @unified_config[:enable_cag] && @cag_manager
-        Print.info "Loading CAG knowledge triplets..."
-        cag_triplets = MITREAttackKnowledge.to_cag_triplets
-        Print.info "Generated #{cag_triplets.length} CAG knowledge triplets"
-
-        unless @cag_manager.create_knowledge_base_from_triplets(cag_triplets)
-          Print.err "Failed to create CAG knowledge base"
-          success = false
-        end
+      unless @cag_manager.create_knowledge_base_from_triplets(all_cag_triplets)
+        Print.err "Failed to create CAG knowledge base"
+        success = false
       end
     end
 
@@ -178,6 +187,98 @@ class RAGCAGManager
     end
 
     success
+  end
+
+  # Add system man pages to the knowledge base
+  def add_system_man_pages_to_knowledge
+    man_pages_to_add = [
+      'lsattr', 'chattr', 'chmod', 'ls', 'cat', 'grep', 'find',
+      'ps', 'netstat', 'iptables', 'ssh', 'scp', 'curl', 'wget'
+    ]
+
+    man_processor = ManPageProcessor.new
+    all_triplets = []
+
+    man_pages_to_add.each do |man_page|
+      exists = man_processor.man_page_exists?(man_page)
+      Print.debug "Man page #{man_page}: #{exists ? 'EXISTS' : 'MISSING'}"
+      if exists
+        triplets = man_processor.to_cag_triplets(man_page)
+        if triplets && triplets.any?
+          all_triplets.concat(triplets)
+          Print.debug "Added #{triplets.length} triplets for #{man_page}"
+        end
+      else
+        Print.warn "Man page not found: #{man_page}"
+      end
+    end
+
+    # Add security relationships for system commands
+    security_relationships = generate_man_page_security_relationships(all_triplets)
+    all_triplets.concat(security_relationships)
+
+    all_triplets
+  end
+
+  def generate_man_page_security_relationships(existing_triplets)
+    relationships = []
+
+    # File system security commands
+    file_security_commands = ['chattr', 'lsattr', 'chmod', 'ls', 'find']
+    file_security_commands.each do |cmd|
+      relationships << {
+        subject: cmd,
+        relationship: "IS_TYPE",
+        object: "File System Security",
+        properties: { category: "system_command", security_relevance: "high" }
+      }
+    end
+
+    # Network security commands
+    network_security_commands = ['netstat', 'iptables', 'ssh', 'scp', 'curl', 'wget']
+    network_security_commands.each do |cmd|
+      relationships << {
+        subject: cmd,
+        relationship: "IS_TYPE",
+        object: "Network Security",
+        properties: { category: "system_command", security_relevance: "high" }
+      }
+    end
+
+    # Process monitoring commands
+    process_commands = ['ps', 'grep']
+    process_commands.each do |cmd|
+      relationships << {
+        subject: cmd,
+        relationship: "IS_TYPE",
+        object: "System Monitoring",
+        properties: { category: "system_command", security_relevance: "medium" }
+      }
+    end
+
+    # Security relationships
+    relationships << {
+      subject: "File System Security",
+      relationship: "MITIGATES",
+      object: "Unauthorized Access",
+      properties: { technique: "T1222" }
+    }
+
+    relationships << {
+      subject: "Network Security",
+      relationship: "MITIGATES",
+      object: "Network Attacks",
+      properties: { technique: "T1040" }
+    }
+
+    relationships << {
+      subject: "System Monitoring",
+      relationship: "DETECTS",
+      object: "Suspicious Activity",
+      properties: { technique: "T1059" }
+    }
+
+    relationships
   end
 
   def get_enhanced_context(query, context_options = {})
