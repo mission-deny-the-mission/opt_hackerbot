@@ -1,0 +1,4378 @@
+{
+  "performance_report": {
+    "test_metadata": {
+      "total_queries": 120,
+      "test_date": "2025-10-17 04:17:37",
+      "ruby_version": "3.1.7",
+      "platform": "x86_64-linux"
+    },
+    "system_info": {
+      "initialization_time": 5.915,
+      "rag_enabled": true,
+      "cag_enabled": true,
+      "knowledge_base_stats": {
+        "unified_config": {
+          "enable_rag": true,
+          "enable_cag": true,
+          "rag_weight": 0.6,
+          "cag_weight": 0.4,
+          "max_context_length": 4000,
+          "knowledge_base_name": "performance_test",
+          "enable_caching": false,
+          "cache_ttl": 3600,
+          "auto_initialization": true,
+          "enable_knowledge_sources": true,
+          "knowledge_sources_config": null
+        },
+        "initialized": true,
+        "cache_size": 0,
+        "rag_enabled": "#<RAGManager:0x00007fdd7ec65350>",
+        "cag_enabled": "#<CAGManager:0x00007fdd7af03bd8>",
+        "rag_collections": [],
+        "rag_connected": true,
+        "cag_graph_stats": {
+          "node_count": 984,
+          "relationship_count": 124,
+          "labels_count": 1,
+          "initialized": true
+        },
+        "cag_connected": true
+      }
+    },
+    "detailed_results": [
+      {
+        "query_number": 1,
+        "query": "What is T1059.001 Command and Scripting Interpreter PowerShell?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.0032045189873315394,
+          "memory_usage": 0.0,
+          "result_length": 1572,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023551129997940734,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006634560995735228,
+          "memory_usage": 0.0,
+          "result_length": 2150,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 2,
+        "query": "Explain MITRE ATT&CK technique T1190 Exploit Public-Facing Application",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.0039801359962439165,
+          "memory_usage": 0.0,
+          "result_length": 1838,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0033278909977525473,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0061324990092543885,
+          "memory_usage": 0.0,
+          "result_length": 2423,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 3,
+        "query": "How does lateral movement T1021.002 SMB/Windows Admin Shares work?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.0042687879904406145,
+          "memory_usage": 0.0,
+          "result_length": 1251,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027537020068848506,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.010410895003587939,
+          "memory_usage": 0.0,
+          "result_length": 1832,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 4,
+        "query": "What are the mitigation strategies for T1548.002 Abuse Elevation Control Mechanism Bypass UAC?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.005322507000528276,
+          "memory_usage": 0.0,
+          "result_length": 8099,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00252322900632862,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.008732232003239915,
+          "memory_usage": 0.0,
+          "result_length": 3524,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 5,
+        "query": "Describe the attack pattern T1055.001 Process Injection Dynamic-link Library Injection",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.003545810002833605,
+          "memory_usage": 0.0,
+          "result_length": 1878,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0025443690101383254,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006011851990479045,
+          "memory_usage": 0.0,
+          "result_length": 2479,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 6,
+        "query": "What is the difference between T1057 Process Discovery and T1082 System Information Discovery?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.00485416800074745,
+          "memory_usage": 0.0,
+          "result_length": 2112,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024323289981111884,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007057916998746805,
+          "memory_usage": 0.0,
+          "result_length": 2721,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 7,
+        "query": "How does T1566.001 Phishing Spearphishing Attachment work?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.004508808997343294,
+          "memory_usage": 0.0,
+          "result_length": 1561,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002470841005560942,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.009081027004867792,
+          "memory_usage": 0.0,
+          "result_length": 2134,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 8,
+        "query": "Explain defense evasion technique T1027 Obfuscated Files or Information",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.003791241004364565,
+          "memory_usage": 0.0,
+          "result_length": 1839,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022010749962646514,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0063763070065760985,
+          "memory_usage": 0.0,
+          "result_length": 2425,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 9,
+        "query": "What are the indicators of compromise for T1053.005 Scheduled Task/Job Scheduled Task",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.00488014699658379,
+          "memory_usage": 0.0,
+          "result_length": 5028,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002784238997264765,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007578224001917988,
+          "memory_usage": 0.0,
+          "result_length": 3980,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 10,
+        "query": "How does credential dumping T1003.001 OS Credential Dumping LSASS Memory work?",
+        "category": "MITRE ATT&CK",
+        "rag": {
+          "response_time": 0.003926414996385574,
+          "memory_usage": 0.0,
+          "result_length": 1595,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028558039921335876,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007435415987856686,
+          "memory_usage": 0.0,
+          "result_length": 2188,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 11,
+        "query": "How do I use nmap to perform a comprehensive port scan?",
+        "category": "Security Tools",
+        "rag": {
+          "response_time": 0.003687585995066911,
+          "memory_usage": 0.0,
+          "result_length": 785,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.004064734996063635,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006468640000093728,
+          "memory_usage": 0.0,
+          "result_length": 1355,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 12,
+        "query": "What are the best nmap options for service version detection?",
+        "category": "Security Tools",
+        "rag": {
+          "response_time": 0.004648861999157816,
+          "memory_usage": 0.0,
+          "result_length": 2200,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0018628990073921159,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006956937009817921,
+          "memory_usage": 0.0,
+          "result_length": 2776,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 13,
+        "query": "How can I use Wireshark to analyze network traffic for security incidents?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004781730996910483,
+          "memory_usage": 0.0,
+          "result_length": 1998,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026484239933779463,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007307556006708182,
+          "memory_usage": 0.0,
+          "result_length": 2587,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 14,
+        "query": "What are the essential Metasploit commands for penetration testing?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.0034726730082184076,
+          "memory_usage": 0.0,
+          "result_length": 4923,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022052929998608306,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0072755560104269534,
+          "memory_usage": 0.0,
+          "result_length": 3569,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 15,
+        "query": "How do I configure Burp Suite for web application security testing?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.00445662101265043,
+          "memory_usage": 0.0,
+          "result_length": 2199,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002365011998335831,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006993696995778009,
+          "memory_usage": 0.0,
+          "result_length": 2781,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 16,
+        "query": "What are the most useful SQLMap commands for SQL injection testing?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003994762999354862,
+          "memory_usage": 0.0,
+          "result_length": 4761,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.001979207998374477,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005495392004377209,
+          "memory_usage": 0.0,
+          "result_length": 3978,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 17,
+        "query": "How can I use Nikto to scan web servers for vulnerabilities?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004679410005337559,
+          "memory_usage": 0.0,
+          "result_length": 1958,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024922409938881174,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006894160003867,
+          "memory_usage": 0.0,
+          "result_length": 2533,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 18,
+        "query": "What are the best practices for using John the Ripper for password cracking?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.00411780399736017,
+          "memory_usage": 0.0,
+          "result_length": 4784,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002504725009202957,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006801655996241607,
+          "memory_usage": 0.0,
+          "result_length": 3995,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 19,
+        "query": "How do I use Aircrack-ng for wireless security testing?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004102504986803979,
+          "memory_usage": 0.0,
+          "result_length": 1022,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002602929002023302,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007306814004550688,
+          "memory_usage": 0.0,
+          "result_length": 1592,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 20,
+        "query": "What are the essential commands for using Hashcat for GPU-accelerated cracking?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004156387003604323,
+          "memory_usage": 0.0,
+          "result_length": 4923,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024189630057662725,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00682788499398157,
+          "memory_usage": 0.0,
+          "result_length": 3569,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 21,
+        "query": "What is the difference between TCP and UDP in network security?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004485134995775297,
+          "memory_usage": 0.0,
+          "result_length": 1838,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028142459923401475,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0070370379980886355,
+          "memory_usage": 0.0,
+          "result_length": 2416,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 22,
+        "query": "How does a man-in-the-middle attack work on wireless networks?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.0034327680041315034,
+          "memory_usage": 0.0,
+          "result_length": 2112,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00234054600878153,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006716917006997392,
+          "memory_usage": 0.0,
+          "result_length": 2689,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 23,
+        "query": "What are the common network protocols and their security implications?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.0035957840009359643,
+          "memory_usage": 0.0,
+          "result_length": 1857,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002550942008383572,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00741751299938187,
+          "memory_usage": 0.0,
+          "result_length": 2442,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 24,
+        "query": "How does DNSSEC protect against DNS spoofing attacks?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0043862790043931454,
+          "memory_usage": 0.0,
+          "result_length": 1057,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023795989982318133,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006057046994101256,
+          "memory_usage": 0.0,
+          "result_length": 1625,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 25,
+        "query": "What is the difference between stateful and stateless firewalls?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004649814000003971,
+          "memory_usage": 0.0,
+          "result_length": 1571,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002917951002018526,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006350367999402806,
+          "memory_usage": 0.0,
+          "result_length": 2150,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 26,
+        "query": "How does network segmentation improve security posture?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.0034566730028018355,
+          "memory_usage": 0.0,
+          "result_length": 1136,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002606425987323746,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006329207986709662,
+          "memory_usage": 0.0,
+          "result_length": 1706,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 27,
+        "query": "What are the best practices for securing network infrastructure?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004178078001132235,
+          "memory_usage": 0.0,
+          "result_length": 1857,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002823062997777015,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006036788996425457,
+          "memory_usage": 0.0,
+          "result_length": 2436,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 28,
+        "query": "How does VLAN hopping attack work and how to prevent it?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004185701996902935,
+          "memory_usage": 0.0,
+          "result_length": 1958,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0018547539948485792,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006474431007518433,
+          "memory_usage": 0.0,
+          "result_length": 2529,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 29,
+        "query": "What is the role of intrusion detection systems in network security?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004328610986704007,
+          "memory_usage": 0.0,
+          "result_length": 2200,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002638235004269518,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0059004229988204315,
+          "memory_usage": 0.0,
+          "result_length": 2783,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 30,
+        "query": "How does SSL/TLS encryption protect network communications?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004430080996826291,
+          "memory_usage": 0.0,
+          "result_length": 1561,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003140568995149806,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005948393009020947,
+          "memory_usage": 0.0,
+          "result_length": 2135,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 31,
+        "query": "What is the difference between symmetric and asymmetric encryption?",
+        "category": "Cryptography",
+        "rag": {
+          "response_time": 0.0037359770067268983,
+          "memory_usage": 0.0,
+          "result_length": 1595,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028733469953294843,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.008202076001907699,
+          "memory_usage": 0.0,
+          "result_length": 2177,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 32,
+        "query": "How does RSA encryption work and what are its key sizes?",
+        "category": "Cryptography",
+        "rag": {
+          "response_time": 0.004608144998201169,
+          "memory_usage": 0.0,
+          "result_length": 2678,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002741860007517971,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006031169003108516,
+          "memory_usage": 0.0,
+          "result_length": 3249,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 33,
+        "query": "What are the weaknesses of DES and why was AES developed?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004079232006915845,
+          "memory_usage": 0.0,
+          "result_length": 2201,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023675470001762733,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006873730992083438,
+          "memory_usage": 0.0,
+          "result_length": 2773,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 34,
+        "query": "How does public key infrastructure (PKI) work?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004395226002088748,
+          "memory_usage": 0.0,
+          "result_length": 1137,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002336257995921187,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006710124012897722,
+          "memory_usage": 0.0,
+          "result_length": 1698,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 35,
+        "query": "What is the difference between hashing and encryption?",
+        "category": "Cryptography",
+        "rag": {
+          "response_time": 0.003686363997985609,
+          "memory_usage": 0.0,
+          "result_length": 564,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023362079955404624,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0059908029943471774,
+          "memory_usage": 0.0,
+          "result_length": 1133,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 36,
+        "query": "How does digital signature verification work?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.005294866001349874,
+          "memory_usage": 0.0,
+          "result_length": 461,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028066320082871243,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006267361997743137,
+          "memory_usage": 0.0,
+          "result_length": 1021,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 37,
+        "query": "What are the best practices for key management in cryptography?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004785088007338345,
+          "memory_usage": 0.0,
+          "result_length": 1889,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00246387800143566,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007875993003835902,
+          "memory_usage": 0.0,
+          "result_length": 2467,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 38,
+        "query": "How does elliptic curve cryptography improve security?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0036908829933963716,
+          "memory_usage": 0.0,
+          "result_length": 1226,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028114010056015104,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005566385996644385,
+          "memory_usage": 0.0,
+          "result_length": 1795,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 39,
+        "query": "What is the difference between block ciphers and stream ciphers?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004422938000061549,
+          "memory_usage": 0.0,
+          "result_length": 8184,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002460823001456447,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007602830999530852,
+          "memory_usage": 0.0,
+          "result_length": 3938,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 40,
+        "query": "How does quantum computing threaten current cryptographic systems?",
+        "category": "Cryptography",
+        "rag": {
+          "response_time": 0.004609208001056686,
+          "memory_usage": 0.0,
+          "result_length": 1809,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0029147950117476285,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007955203007441014,
+          "memory_usage": 0.0,
+          "result_length": 2390,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 41,
+        "query": "What are the phases of the incident response lifecycle?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.004314193007303402,
+          "memory_usage": 0.0,
+          "result_length": 1108,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0030956249975133687,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007080219002091326,
+          "memory_usage": 0.0,
+          "result_length": 1678,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 42,
+        "query": "How do you create an effective incident response plan?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.0033722040097927675,
+          "memory_usage": 0.0,
+          "result_length": 785,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002347920002648607,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006676901000901125,
+          "memory_usage": 0.0,
+          "result_length": 1354,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 43,
+        "query": "What are the key steps in digital evidence collection?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.005069873004686087,
+          "memory_usage": 0.0,
+          "result_length": 1878,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002518881010473706,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007135181993362494,
+          "memory_usage": 0.0,
+          "result_length": 2447,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 44,
+        "query": "How do you perform malware analysis during incident response?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.003815075004240498,
+          "memory_usage": 0.0,
+          "result_length": 1560,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0037552240100922063,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005811616996652447,
+          "memory_usage": 0.0,
+          "result_length": 2136,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 45,
+        "query": "What are the best practices for containment and eradication?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.003584021993447095,
+          "memory_usage": 0.0,
+          "result_length": 1809,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021951929957140237,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005993206999846734,
+          "memory_usage": 0.0,
+          "result_length": 2384,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 46,
+        "query": "How do you conduct post-incident analysis and lessons learned?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.003663911993498914,
+          "memory_usage": 0.0,
+          "result_length": 4210,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022739910054951906,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005555805008043535,
+          "memory_usage": 0.0,
+          "result_length": 1937,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 47,
+        "query": "What tools are essential for incident response teams?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.004436813993379474,
+          "memory_usage": 0.0,
+          "result_length": 1149,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002650819005793892,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0062701869901502505,
+          "memory_usage": 0.0,
+          "result_length": 1717,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 48,
+        "query": "How do you prioritize incidents based on severity?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.0035048029967583716,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002292917008162476,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005936299989116378,
+          "memory_usage": 0.0,
+          "result_length": 535,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 49,
+        "query": "What are the legal considerations in incident response?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.004699236000305973,
+          "memory_usage": 0.0,
+          "result_length": 121,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026676809939090163,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006908577008289285,
+          "memory_usage": 0.0,
+          "result_length": 691,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 50,
+        "query": "How do you coordinate with law enforcement during security incidents?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.0039421440014848486,
+          "memory_usage": 0.0,
+          "result_length": 5640,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024212680000346154,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0063596060062991455,
+          "memory_usage": 0.0,
+          "result_length": 3852,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 51,
+        "query": "What is the difference between vulnerability scanning and penetration testing?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004183368000667542,
+          "memory_usage": 0.0,
+          "result_length": 2111,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002557252999395132,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.008420757003477775,
+          "memory_usage": 0.0,
+          "result_length": 2704,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 52,
+        "query": "How do you prioritize vulnerabilities using CVSS scores?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004570745004457422,
+          "memory_usage": 0.0,
+          "result_length": 785,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003099812995060347,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006825750999269076,
+          "memory_usage": 0.0,
+          "result_length": 1356,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 53,
+        "query": "What are the common vulnerability assessment methodologies?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.003527987006236799,
+          "memory_usage": 0.0,
+          "result_length": 387,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026818769983947277,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006938531994819641,
+          "memory_usage": 0.0,
+          "result_length": 961,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 54,
+        "query": "How do you conduct a comprehensive web application vulnerability assessment?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.0032322810002369806,
+          "memory_usage": 0.0,
+          "result_length": 1227,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002440034004393965,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007454551989212632,
+          "memory_usage": 0.0,
+          "result_length": 1818,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 55,
+        "query": "What are the best practices for vulnerability management programs?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.003933758998755366,
+          "memory_usage": 0.0,
+          "result_length": 4823,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0028242150001460686,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006449944994528778,
+          "memory_usage": 0.0,
+          "result_length": 3969,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 56,
+        "query": "How do you use Nessus for network vulnerability scanning?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.004515281994827092,
+          "memory_usage": 0.0,
+          "result_length": 1470,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00257531700481195,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005358544993214309,
+          "memory_usage": 0.0,
+          "result_length": 2042,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 57,
+        "query": "What is the difference between authenticated and unauthenticated scanning?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004615969999576919,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026622299919836223,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006725372004439123,
+          "memory_usage": 0.0,
+          "result_length": 1517,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 58,
+        "query": "How do you validate and remediate discovered vulnerabilities?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003828430999419652,
+          "memory_usage": 0.0,
+          "result_length": 785,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027202889905311167,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005982155998935923,
+          "memory_usage": 0.0,
+          "result_length": 1361,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 59,
+        "query": "What are the limitations of automated vulnerability scanners?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004579803004162386,
+          "memory_usage": 0.0,
+          "result_length": 1135,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002370593007071875,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006756390997907147,
+          "memory_usage": 0.0,
+          "result_length": 1711,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 60,
+        "query": "How do you integrate vulnerability assessment into DevSecOps pipelines?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.0037666449934476987,
+          "memory_usage": 0.0,
+          "result_length": 927,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002919203005149029,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006623961991863325,
+          "memory_usage": 0.0,
+          "result_length": 1513,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 61,
+        "query": "What are the phases of a penetration testing engagement?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004378052995889448,
+          "memory_usage": 0.0,
+          "result_length": 927,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022193190088728443,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007224398999824189,
+          "memory_usage": 0.0,
+          "result_length": 1498,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 62,
+        "query": "How do you perform reconnaissance and information gathering?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003972882012021728,
+          "memory_usage": 0.0,
+          "result_length": 121,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024186730006476864,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005730222997954115,
+          "memory_usage": 0.0,
+          "result_length": 696,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 63,
+        "query": "What are the common web application attack techniques?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0032805719965836033,
+          "memory_usage": 0.0,
+          "result_length": 1561,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0036626189976232126,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006121528000221588,
+          "memory_usage": 0.0,
+          "result_length": 2130,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 64,
+        "query": "How do you exploit buffer overflow vulnerabilities?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003165065005305223,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027469799970276654,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006449173000873998,
+          "memory_usage": 0.0,
+          "result_length": 536,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 65,
+        "query": "What are the best practices for privilege escalation?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004573259997414425,
+          "memory_usage": 0.0,
+          "result_length": 1669,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024104179901769385,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005953322004643269,
+          "memory_usage": 0.0,
+          "result_length": 2237,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 66,
+        "query": "How do you perform social engineering penetration tests?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.003713935991981998,
+          "memory_usage": 0.0,
+          "result_length": 518,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021711679873988032,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005997173997457139,
+          "memory_usage": 0.0,
+          "result_length": 1089,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 67,
+        "query": "What are the techniques for bypassing security controls?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.0044682120060315356,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026964440039591864,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007246801003930159,
+          "memory_usage": 0.0,
+          "result_length": 1499,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 68,
+        "query": "How do you document penetration testing findings?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004353416996309534,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003305669000837952,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0066537780076032504,
+          "memory_usage": 0.0,
+          "result_length": 534,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 69,
+        "query": "What are the ethical considerations in penetration testing?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.0033087650081142783,
+          "memory_usage": 0.0,
+          "result_length": 461,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002804376999847591,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005846039988682605,
+          "memory_usage": 0.0,
+          "result_length": 1035,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 70,
+        "query": "How do you perform post-exploitation activities safely?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0043719020031858236,
+          "memory_usage": 0.0,
+          "result_length": 517,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021520220034290105,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006825531003414653,
+          "memory_usage": 0.0,
+          "result_length": 1087,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 71,
+        "query": "What are the essential security controls for modern organizations?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.00399513500451576,
+          "memory_usage": 0.0,
+          "result_length": 2201,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002703828999074176,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007214741999632679,
+          "memory_usage": 0.0,
+          "result_length": 2782,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 72,
+        "query": "How do you implement the principle of least privilege?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0038878229970578104,
+          "memory_usage": 0.0,
+          "result_length": 785,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002374940988374874,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006395352000254206,
+          "memory_usage": 0.0,
+          "result_length": 1354,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 73,
+        "query": "What are the best practices for secure coding?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.003752648990484886,
+          "memory_usage": 0.0,
+          "result_length": 1808,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003299788004369475,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007190446005552076,
+          "memory_usage": 0.0,
+          "result_length": 2369,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 74,
+        "query": "How do you create effective security awareness training programs?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004111061993171461,
+          "memory_usage": 0.0,
+          "result_length": 1669,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002839073000359349,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006513974993140437,
+          "memory_usage": 0.0,
+          "result_length": 2249,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 75,
+        "query": "What are the key components of a security operations center (SOC)?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.005024276993935928,
+          "memory_usage": 0.0,
+          "result_length": 1838,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022625389974564314,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00703415198950097,
+          "memory_usage": 0.0,
+          "result_length": 2419,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 76,
+        "query": "How do you implement defense-in-depth security architecture?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003379488000064157,
+          "memory_usage": 0.0,
+          "result_length": 1227,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0029218879935797304,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006928935006726533,
+          "memory_usage": 0.0,
+          "result_length": 1802,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 77,
+        "query": "What are the best practices for cloud security?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.0037288040039129555,
+          "memory_usage": 0.0,
+          "result_length": 1250,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023939969978528097,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00682652200339362,
+          "memory_usage": 0.0,
+          "result_length": 1812,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 78,
+        "query": "How do you secure mobile devices in enterprise environments?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004789206010173075,
+          "memory_usage": 0.0,
+          "result_length": 1470,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00224996599717997,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007339645992033184,
+          "memory_usage": 0.0,
+          "result_length": 2045,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 79,
+        "query": "What are the essential elements of a security policy framework?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004192836000584066,
+          "memory_usage": 0.0,
+          "result_length": 2200,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002901109997765161,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006667774010566063,
+          "memory_usage": 0.0,
+          "result_length": 2778,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 80,
+        "query": "How do you measure the effectiveness of security controls?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004107825996470638,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00270470000396017,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005974230996798724,
+          "memory_usage": 0.0,
+          "result_length": 1501,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 81,
+        "query": "What is zero-trust architecture and how does it work?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0037752709904452786,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022500269988086075,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006824237992987037,
+          "memory_usage": 0.0,
+          "result_length": 1496,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 82,
+        "query": "How do threat hunting techniques differ from traditional security monitoring?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004235496002365835,
+          "memory_usage": 0.0,
+          "result_length": 1560,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0032661750010447577,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006019445994752459,
+          "memory_usage": 0.0,
+          "result_length": 2152,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 83,
+        "query": "What are the challenges in securing IoT devices?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0033207870001206174,
+          "memory_usage": 0.0,
+          "result_length": 1217,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023221119918162003,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007826179993571714,
+          "memory_usage": 0.0,
+          "result_length": 1780,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 84,
+        "query": "How does machine learning improve threat detection?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0037353559891926125,
+          "memory_usage": 0.0,
+          "result_length": 1226,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0024787059955997393,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006943020998733118,
+          "memory_usage": 0.0,
+          "result_length": 1792,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 85,
+        "query": "What are the best practices for securing containerized applications?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004518998001003638,
+          "memory_usage": 0.0,
+          "result_length": 2200,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023512659972766414,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006549441997776739,
+          "memory_usage": 0.0,
+          "result_length": 2783,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 86,
+        "query": "How do you implement secure software development lifecycle (SSDLC)?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.00384273799136281,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027018649998353794,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0073744109977269545,
+          "memory_usage": 0.0,
+          "result_length": 1510,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 87,
+        "query": "What is the role of deception technology in cybersecurity?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004463464007130824,
+          "memory_usage": 0.0,
+          "result_length": 121,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0023317489976761863,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00682708399835974,
+          "memory_usage": 0.0,
+          "result_length": 694,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 88,
+        "query": "How do you secure microservices architecture?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0035551470064092427,
+          "memory_usage": 0.0,
+          "result_length": 138,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002470970997819677,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005698844994185492,
+          "memory_usage": 0.0,
+          "result_length": 698,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 89,
+        "query": "What are the emerging threats in cloud-native environments?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.006416932999854907,
+          "memory_usage": 0.0,
+          "result_length": 1733,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002287305993377231,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006790845000068657,
+          "memory_usage": 0.0,
+          "result_length": 2307,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 90,
+        "query": "How does behavioral analytics improve security monitoring?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004360139995696954,
+          "memory_usage": 0.0,
+          "result_length": 518,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002769332000752911,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005877839997992851,
+          "memory_usage": 0.0,
+          "result_length": 1091,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 91,
+        "query": "A user reports suspicious activity on their account. What investigation steps should you take?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004424290003953502,
+          "memory_usage": 0.0,
+          "result_length": 4931,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002446034995955415,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007847269997000694,
+          "memory_usage": 0.0,
+          "result_length": 3892,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 92,
+        "query": "How would you respond to a ransomware attack on critical infrastructure?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004560065004625358,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021557290019700304,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.010061208013212308,
+          "memory_usage": 0.0,
+          "result_length": 1515,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 93,
+        "query": "What steps would you take to secure a newly discovered web application vulnerability?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004780288989422843,
+          "memory_usage": 0.0,
+          "result_length": 2116,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002776865992927924,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006795734996558167,
+          "memory_usage": 0.0,
+          "result_length": 2716,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 94,
+        "query": "How do you investigate a potential data breach in a cloud environment?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004061218001879752,
+          "memory_usage": 0.0,
+          "result_length": 927,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0029572850035037845,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007014535993221216,
+          "memory_usage": 0.0,
+          "result_length": 1512,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 95,
+        "query": "What is your approach to securing a remote workforce during a pandemic?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003895707006449811,
+          "memory_usage": 0.0,
+          "result_length": 1807,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002663092003786005,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007230742005049251,
+          "memory_usage": 0.0,
+          "result_length": 2393,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 96,
+        "query": "How would you handle a sophisticated APT attack targeting your organization?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004363005005870946,
+          "memory_usage": 0.0,
+          "result_length": 1888,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0031793019879842177,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006055453995941207,
+          "memory_usage": 0.0,
+          "result_length": 2479,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 97,
+        "query": "What are the steps to secure a compromised Active Directory environment?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004151237997575663,
+          "memory_usage": 0.0,
+          "result_length": 2111,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027179760072613135,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007445444993209094,
+          "memory_usage": 0.0,
+          "result_length": 2698,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 98,
+        "query": "How do you respond to a DDoS attack against your web services?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003820205994998105,
+          "memory_usage": 0.0,
+          "result_length": 1889,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0026291179965483025,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.00660328300727997,
+          "memory_usage": 0.0,
+          "result_length": 2466,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 99,
+        "query": "What investigation process would you follow for insider threat detection?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003355822991579771,
+          "memory_usage": 0.0,
+          "result_length": 1595,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021177180024096742,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0067864270095014945,
+          "memory_usage": 0.0,
+          "result_length": 2183,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 100,
+        "query": "How do you secure a supply chain against third-party risks?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004160735988989472,
+          "memory_usage": 0.0,
+          "result_length": 1571,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027105909975944087,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0075637970003299415,
+          "memory_usage": 0.0,
+          "result_length": 2145,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 101,
+        "query": "How do you use Volatility for memory forensics analysis?",
+        "category": "Incident Response",
+        "rag": {
+          "response_time": 0.003733502991963178,
+          "memory_usage": 0.0,
+          "result_length": 1570,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002866314011043869,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0062050760025158525,
+          "memory_usage": 0.0,
+          "result_length": 2141,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 102,
+        "query": "What are the advanced features of Kali Linux for penetration testing?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004243830990162678,
+          "memory_usage": 0.0,
+          "result_length": 2112,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0021605180081678554,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006509457001811825,
+          "memory_usage": 0.0,
+          "result_length": 2696,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 103,
+        "query": "How do you configure Snort for effective intrusion detection?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004753517991048284,
+          "memory_usage": 0.0,
+          "result_length": 1573,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002468778009642847,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0064628589898347855,
+          "memory_usage": 0.0,
+          "result_length": 2149,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 104,
+        "query": "What are the best practices for using ELK stack for security monitoring?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.003575796989025548,
+          "memory_usage": 0.0,
+          "result_length": 2320,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003448426999966614,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007038199997623451,
+          "memory_usage": 0.0,
+          "result_length": 2907,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 105,
+        "query": "How do you use OSQuery for endpoint security monitoring?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004624296008842066,
+          "memory_usage": 0.0,
+          "result_length": 1876,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002776736000669189,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007199251995189115,
+          "memory_usage": 0.0,
+          "result_length": 2447,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 106,
+        "query": "What are the advanced techniques for using Splunk in security operations?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003967381999245845,
+          "memory_usage": 0.0,
+          "result_length": 2008,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002535512001486495,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0059548850113060325,
+          "memory_usage": 0.0,
+          "result_length": 2596,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 107,
+        "query": "How do you configure Suricata for network intrusion detection?",
+        "category": "Network Security",
+        "rag": {
+          "response_time": 0.0038745769998058677,
+          "memory_usage": 0.0,
+          "result_length": 1561,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003192146003129892,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006111439011874609,
+          "memory_usage": 0.0,
+          "result_length": 2138,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 108,
+        "query": "What are the best practices for using OpenVAS for vulnerability management?",
+        "category": "Vulnerability Assessment",
+        "rag": {
+          "response_time": 0.004711309011327103,
+          "memory_usage": 0.0,
+          "result_length": 1659,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.00222946799476631,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007443139998940751,
+          "memory_usage": 0.0,
+          "result_length": 2249,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 109,
+        "query": "How do you use MISP for threat intelligence sharing?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.0034463839983800426,
+          "memory_usage": 0.0,
+          "result_length": 1227,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002568584997789003,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006869251999887638,
+          "memory_usage": 0.0,
+          "result_length": 1794,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 110,
+        "query": "What are the advanced features of Security Onion for security monitoring?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.004233370986185037,
+          "memory_usage": 0.0,
+          "result_length": 8183,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027052509976783767,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007208059003460221,
+          "memory_usage": 0.0,
+          "result_length": 3938,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 111,
+        "query": "What are the key requirements of GDPR for data protection?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.003571990004274994,
+          "memory_usage": 0.0,
+          "result_length": 2201,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002218927998910658,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007948519996716641,
+          "memory_usage": 0.0,
+          "result_length": 2774,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 112,
+        "query": "How do you achieve compliance with PCI DSS for payment processing?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.003941963994293474,
+          "memory_usage": 0.0,
+          "result_length": 2112,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0022427730000345036,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007286066000233404,
+          "memory_usage": 0.0,
+          "result_length": 2693,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 113,
+        "query": "What are the security controls required by HIPAA?",
+        "category": "Security Best Practices",
+        "rag": {
+          "response_time": 0.004109137997147627,
+          "memory_usage": 0.0,
+          "result_length": 1056,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002682638994883746,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006676940989564173,
+          "memory_usage": 0.0,
+          "result_length": 1620,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 114,
+        "query": "How do you implement NIST Cybersecurity Framework?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.004182545992080122,
+          "memory_usage": 0.0,
+          "result_length": 461,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002528158001950942,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006601981003768742,
+          "memory_usage": 0.0,
+          "result_length": 1026,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 115,
+        "query": "What are the requirements for ISO 27001 certification?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.0049648059939499944,
+          "memory_usage": 0.0,
+          "result_length": 1595,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002210792008554563,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0066925809951499104,
+          "memory_usage": 0.0,
+          "result_length": 2164,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 116,
+        "query": "How do you comply with SOX requirements for IT security?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.0040154320013243705,
+          "memory_usage": 0.0,
+          "result_length": 1839,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.0027840489929076284,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.005815252996399067,
+          "memory_usage": 0.0,
+          "result_length": 2410,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 117,
+        "query": "What are the security considerations for CCPA compliance?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.004787783007486723,
+          "memory_usage": 0.0,
+          "result_length": 928,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002394698007265106,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.006343885994283482,
+          "memory_usage": 0.0,
+          "result_length": 1500,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 118,
+        "query": "How do you implement controls for FISMA compliance?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.0038857189938426018,
+          "memory_usage": 0.0,
+          "result_length": 1137,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003027767001185566,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007338613999309018,
+          "memory_usage": 0.0,
+          "result_length": 1703,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 119,
+        "query": "What are the requirements for CMMC in defense contracting?",
+        "category": "General Security",
+        "rag": {
+          "response_time": 0.003866332001052797,
+          "memory_usage": 0.0,
+          "result_length": 1573,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.002823233007802628,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.0067608289973577484,
+          "memory_usage": 0.0,
+          "result_length": 2146,
+          "success": true,
+          "error": null
+        }
+      },
+      {
+        "query_number": 120,
+        "query": "How do you achieve compliance with industry-specific security standards?",
+        "category": "Compliance",
+        "rag": {
+          "response_time": 0.0034205650008516386,
+          "memory_usage": 0.0,
+          "result_length": 5641,
+          "success": true,
+          "error": null
+        },
+        "cag": {
+          "response_time": 0.003037636008230038,
+          "memory_usage": 0.0,
+          "result_length": 0,
+          "success": true,
+          "error": null
+        },
+        "unified": {
+          "response_time": 0.007887725994805805,
+          "memory_usage": 0.0,
+          "result_length": 3982,
+          "success": true,
+          "error": null
+        }
+      }
+    ]
+  },
+  "test_results": {
+    "rag": {
+      "response_times": [
+        0.0032045189873315394,
+        0.0039801359962439165,
+        0.0042687879904406145,
+        0.005322507000528276,
+        0.003545810002833605,
+        0.00485416800074745,
+        0.004508808997343294,
+        0.003791241004364565,
+        0.00488014699658379,
+        0.003926414996385574,
+        0.003687585995066911,
+        0.004648861999157816,
+        0.004781730996910483,
+        0.0034726730082184076,
+        0.00445662101265043,
+        0.003994762999354862,
+        0.004679410005337559,
+        0.00411780399736017,
+        0.004102504986803979,
+        0.004156387003604323,
+        0.004485134995775297,
+        0.0034327680041315034,
+        0.0035957840009359643,
+        0.0043862790043931454,
+        0.004649814000003971,
+        0.0034566730028018355,
+        0.004178078001132235,
+        0.004185701996902935,
+        0.004328610986704007,
+        0.004430080996826291,
+        0.0037359770067268983,
+        0.004608144998201169,
+        0.004079232006915845,
+        0.004395226002088748,
+        0.003686363997985609,
+        0.005294866001349874,
+        0.004785088007338345,
+        0.0036908829933963716,
+        0.004422938000061549,
+        0.004609208001056686,
+        0.004314193007303402,
+        0.0033722040097927675,
+        0.005069873004686087,
+        0.003815075004240498,
+        0.003584021993447095,
+        0.003663911993498914,
+        0.004436813993379474,
+        0.0035048029967583716,
+        0.004699236000305973,
+        0.0039421440014848486,
+        0.004183368000667542,
+        0.004570745004457422,
+        0.003527987006236799,
+        0.0032322810002369806,
+        0.003933758998755366,
+        0.004515281994827092,
+        0.004615969999576919,
+        0.003828430999419652,
+        0.004579803004162386,
+        0.0037666449934476987,
+        0.004378052995889448,
+        0.003972882012021728,
+        0.0032805719965836033,
+        0.003165065005305223,
+        0.004573259997414425,
+        0.003713935991981998,
+        0.0044682120060315356,
+        0.004353416996309534,
+        0.0033087650081142783,
+        0.0043719020031858236,
+        0.00399513500451576,
+        0.0038878229970578104,
+        0.003752648990484886,
+        0.004111061993171461,
+        0.005024276993935928,
+        0.003379488000064157,
+        0.0037288040039129555,
+        0.004789206010173075,
+        0.004192836000584066,
+        0.004107825996470638,
+        0.0037752709904452786,
+        0.004235496002365835,
+        0.0033207870001206174,
+        0.0037353559891926125,
+        0.004518998001003638,
+        0.00384273799136281,
+        0.004463464007130824,
+        0.0035551470064092427,
+        0.006416932999854907,
+        0.004360139995696954,
+        0.004424290003953502,
+        0.004560065004625358,
+        0.004780288989422843,
+        0.004061218001879752,
+        0.003895707006449811,
+        0.004363005005870946,
+        0.004151237997575663,
+        0.003820205994998105,
+        0.003355822991579771,
+        0.004160735988989472,
+        0.003733502991963178,
+        0.004243830990162678,
+        0.004753517991048284,
+        0.003575796989025548,
+        0.004624296008842066,
+        0.003967381999245845,
+        0.0038745769998058677,
+        0.004711309011327103,
+        0.0034463839983800426,
+        0.004233370986185037,
+        0.003571990004274994,
+        0.003941963994293474,
+        0.004109137997147627,
+        0.004182545992080122,
+        0.0049648059939499944,
+        0.0040154320013243705,
+        0.004787783007486723,
+        0.0038857189938426018,
+        0.003866332001052797,
+        0.0034205650008516386
+      ],
+      "memory_usage": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "load_times": [],
+      "result_lengths": [
+        1572,
+        1838,
+        1251,
+        8099,
+        1878,
+        2112,
+        1561,
+        1839,
+        5028,
+        1595,
+        785,
+        2200,
+        1998,
+        4923,
+        2199,
+        4761,
+        1958,
+        4784,
+        1022,
+        4923,
+        1838,
+        2112,
+        1857,
+        1057,
+        1571,
+        1136,
+        1857,
+        1958,
+        2200,
+        1561,
+        1595,
+        2678,
+        2201,
+        1137,
+        564,
+        461,
+        1889,
+        1226,
+        8184,
+        1809,
+        1108,
+        785,
+        1878,
+        1560,
+        1809,
+        4210,
+        1149,
+        0,
+        121,
+        5640,
+        2111,
+        785,
+        387,
+        1227,
+        4823,
+        1470,
+        928,
+        785,
+        1135,
+        927,
+        927,
+        121,
+        1561,
+        0,
+        1669,
+        518,
+        928,
+        0,
+        461,
+        517,
+        2201,
+        785,
+        1808,
+        1669,
+        1838,
+        1227,
+        1250,
+        1470,
+        2200,
+        928,
+        928,
+        1560,
+        1217,
+        1226,
+        2200,
+        928,
+        121,
+        138,
+        1733,
+        518,
+        4931,
+        928,
+        2116,
+        927,
+        1807,
+        1888,
+        2111,
+        1889,
+        1595,
+        1571,
+        1570,
+        2112,
+        1573,
+        2320,
+        1876,
+        2008,
+        1561,
+        1659,
+        1227,
+        8183,
+        2201,
+        2112,
+        1056,
+        461,
+        1595,
+        1839,
+        928,
+        1137,
+        1573,
+        5641
+      ],
+      "success_count": 120,
+      "error_count": 0
+    },
+    "cag": {
+      "response_times": [
+        0.0023551129997940734,
+        0.0033278909977525473,
+        0.0027537020068848506,
+        0.00252322900632862,
+        0.0025443690101383254,
+        0.0024323289981111884,
+        0.002470841005560942,
+        0.0022010749962646514,
+        0.002784238997264765,
+        0.0028558039921335876,
+        0.004064734996063635,
+        0.0018628990073921159,
+        0.0026484239933779463,
+        0.0022052929998608306,
+        0.002365011998335831,
+        0.001979207998374477,
+        0.0024922409938881174,
+        0.002504725009202957,
+        0.002602929002023302,
+        0.0024189630057662725,
+        0.0028142459923401475,
+        0.00234054600878153,
+        0.002550942008383572,
+        0.0023795989982318133,
+        0.002917951002018526,
+        0.002606425987323746,
+        0.002823062997777015,
+        0.0018547539948485792,
+        0.002638235004269518,
+        0.003140568995149806,
+        0.0028733469953294843,
+        0.002741860007517971,
+        0.0023675470001762733,
+        0.002336257995921187,
+        0.0023362079955404624,
+        0.0028066320082871243,
+        0.00246387800143566,
+        0.0028114010056015104,
+        0.002460823001456447,
+        0.0029147950117476285,
+        0.0030956249975133687,
+        0.002347920002648607,
+        0.002518881010473706,
+        0.0037552240100922063,
+        0.0021951929957140237,
+        0.0022739910054951906,
+        0.002650819005793892,
+        0.002292917008162476,
+        0.0026676809939090163,
+        0.0024212680000346154,
+        0.002557252999395132,
+        0.003099812995060347,
+        0.0026818769983947277,
+        0.002440034004393965,
+        0.0028242150001460686,
+        0.00257531700481195,
+        0.0026622299919836223,
+        0.0027202889905311167,
+        0.002370593007071875,
+        0.002919203005149029,
+        0.0022193190088728443,
+        0.0024186730006476864,
+        0.0036626189976232126,
+        0.0027469799970276654,
+        0.0024104179901769385,
+        0.0021711679873988032,
+        0.0026964440039591864,
+        0.003305669000837952,
+        0.002804376999847591,
+        0.0021520220034290105,
+        0.002703828999074176,
+        0.002374940988374874,
+        0.003299788004369475,
+        0.002839073000359349,
+        0.0022625389974564314,
+        0.0029218879935797304,
+        0.0023939969978528097,
+        0.00224996599717997,
+        0.002901109997765161,
+        0.00270470000396017,
+        0.0022500269988086075,
+        0.0032661750010447577,
+        0.0023221119918162003,
+        0.0024787059955997393,
+        0.0023512659972766414,
+        0.0027018649998353794,
+        0.0023317489976761863,
+        0.002470970997819677,
+        0.002287305993377231,
+        0.002769332000752911,
+        0.002446034995955415,
+        0.0021557290019700304,
+        0.002776865992927924,
+        0.0029572850035037845,
+        0.002663092003786005,
+        0.0031793019879842177,
+        0.0027179760072613135,
+        0.0026291179965483025,
+        0.0021177180024096742,
+        0.0027105909975944087,
+        0.002866314011043869,
+        0.0021605180081678554,
+        0.002468778009642847,
+        0.003448426999966614,
+        0.002776736000669189,
+        0.002535512001486495,
+        0.003192146003129892,
+        0.00222946799476631,
+        0.002568584997789003,
+        0.0027052509976783767,
+        0.002218927998910658,
+        0.0022427730000345036,
+        0.002682638994883746,
+        0.002528158001950942,
+        0.002210792008554563,
+        0.0027840489929076284,
+        0.002394698007265106,
+        0.003027767001185566,
+        0.002823233007802628,
+        0.003037636008230038
+      ],
+      "memory_usage": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "load_times": [],
+      "result_lengths": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      "success_count": 120,
+      "error_count": 0
+    },
+    "unified": {
+      "response_times": [
+        0.006634560995735228,
+        0.0061324990092543885,
+        0.010410895003587939,
+        0.008732232003239915,
+        0.006011851990479045,
+        0.007057916998746805,
+        0.009081027004867792,
+        0.0063763070065760985,
+        0.007578224001917988,
+        0.007435415987856686,
+        0.006468640000093728,
+        0.006956937009817921,
+        0.007307556006708182,
+        0.0072755560104269534,
+        0.006993696995778009,
+        0.005495392004377209,
+        0.006894160003867,
+        0.006801655996241607,
+        0.007306814004550688,
+        0.00682788499398157,
+        0.0070370379980886355,
+        0.006716917006997392,
+        0.00741751299938187,
+        0.006057046994101256,
+        0.006350367999402806,
+        0.006329207986709662,
+        0.006036788996425457,
+        0.006474431007518433,
+        0.0059004229988204315,
+        0.005948393009020947,
+        0.008202076001907699,
+        0.006031169003108516,
+        0.006873730992083438,
+        0.006710124012897722,
+        0.0059908029943471774,
+        0.006267361997743137,
+        0.007875993003835902,
+        0.005566385996644385,
+        0.007602830999530852,
+        0.007955203007441014,
+        0.007080219002091326,
+        0.006676901000901125,
+        0.007135181993362494,
+        0.005811616996652447,
+        0.005993206999846734,
+        0.005555805008043535,
+        0.0062701869901502505,
+        0.005936299989116378,
+        0.006908577008289285,
+        0.0063596060062991455,
+        0.008420757003477775,
+        0.006825750999269076,
+        0.006938531994819641,
+        0.007454551989212632,
+        0.006449944994528778,
+        0.005358544993214309,
+        0.006725372004439123,
+        0.005982155998935923,
+        0.006756390997907147,
+        0.006623961991863325,
+        0.007224398999824189,
+        0.005730222997954115,
+        0.006121528000221588,
+        0.006449173000873998,
+        0.005953322004643269,
+        0.005997173997457139,
+        0.007246801003930159,
+        0.0066537780076032504,
+        0.005846039988682605,
+        0.006825531003414653,
+        0.007214741999632679,
+        0.006395352000254206,
+        0.007190446005552076,
+        0.006513974993140437,
+        0.00703415198950097,
+        0.006928935006726533,
+        0.00682652200339362,
+        0.007339645992033184,
+        0.006667774010566063,
+        0.005974230996798724,
+        0.006824237992987037,
+        0.006019445994752459,
+        0.007826179993571714,
+        0.006943020998733118,
+        0.006549441997776739,
+        0.0073744109977269545,
+        0.00682708399835974,
+        0.005698844994185492,
+        0.006790845000068657,
+        0.005877839997992851,
+        0.007847269997000694,
+        0.010061208013212308,
+        0.006795734996558167,
+        0.007014535993221216,
+        0.007230742005049251,
+        0.006055453995941207,
+        0.007445444993209094,
+        0.00660328300727997,
+        0.0067864270095014945,
+        0.0075637970003299415,
+        0.0062050760025158525,
+        0.006509457001811825,
+        0.0064628589898347855,
+        0.007038199997623451,
+        0.007199251995189115,
+        0.0059548850113060325,
+        0.006111439011874609,
+        0.007443139998940751,
+        0.006869251999887638,
+        0.007208059003460221,
+        0.007948519996716641,
+        0.007286066000233404,
+        0.006676940989564173,
+        0.006601981003768742,
+        0.0066925809951499104,
+        0.005815252996399067,
+        0.006343885994283482,
+        0.007338613999309018,
+        0.0067608289973577484,
+        0.007887725994805805
+      ],
+      "memory_usage": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "load_times": [],
+      "result_lengths": [
+        2150,
+        2423,
+        1832,
+        3524,
+        2479,
+        2721,
+        2134,
+        2425,
+        3980,
+        2188,
+        1355,
+        2776,
+        2587,
+        3569,
+        2781,
+        3978,
+        2533,
+        3995,
+        1592,
+        3569,
+        2416,
+        2689,
+        2442,
+        1625,
+        2150,
+        1706,
+        2436,
+        2529,
+        2783,
+        2135,
+        2177,
+        3249,
+        2773,
+        1698,
+        1133,
+        1021,
+        2467,
+        1795,
+        3938,
+        2390,
+        1678,
+        1354,
+        2447,
+        2136,
+        2384,
+        1937,
+        1717,
+        535,
+        691,
+        3852,
+        2704,
+        1356,
+        961,
+        1818,
+        3969,
+        2042,
+        1517,
+        1361,
+        1711,
+        1513,
+        1498,
+        696,
+        2130,
+        536,
+        2237,
+        1089,
+        1499,
+        534,
+        1035,
+        1087,
+        2782,
+        1354,
+        2369,
+        2249,
+        2419,
+        1802,
+        1812,
+        2045,
+        2778,
+        1501,
+        1496,
+        2152,
+        1780,
+        1792,
+        2783,
+        1510,
+        694,
+        698,
+        2307,
+        1091,
+        3892,
+        1515,
+        2716,
+        1512,
+        2393,
+        2479,
+        2698,
+        2466,
+        2183,
+        2145,
+        2141,
+        2696,
+        2149,
+        2907,
+        2447,
+        2596,
+        2138,
+        2249,
+        1794,
+        3938,
+        2774,
+        2693,
+        1620,
+        1026,
+        2164,
+        2410,
+        1500,
+        1703,
+        2146,
+        3982
+      ],
+      "success_count": 120,
+      "error_count": 0
+    }
+  },
+  "statistics": {
+    "rag": {
+      "response_times": {
+        "count": 120,
+        "mean": 0.004,
+        "median": 0.004,
+        "min": 0.003,
+        "max": 0.006,
+        "p95": 0.005,
+        "p99": 0.005,
+        "std_dev": 0.001
+      },
+      "memory_usage": {
+        "count": 120,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "std_dev": 0.0
+      },
+      "result_lengths": {
+        "count": 120,
+        "mean": 1859,
+        "median": 1573,
+        "min": 0,
+        "max": 8184,
+        "p95": 5028,
+        "p99": 8183,
+        "std_dev": 1537.75
+      }
+    },
+    "cag": {
+      "response_times": {
+        "count": 120,
+        "mean": 0.003,
+        "median": 0.003,
+        "min": 0.002,
+        "max": 0.004,
+        "p95": 0.003,
+        "p99": 0.004,
+        "std_dev": 0.0
+      },
+      "memory_usage": {
+        "count": 120,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "std_dev": 0.0
+      },
+      "result_lengths": {
+        "count": 120,
+        "mean": 0,
+        "median": 0,
+        "min": 0,
+        "max": 0,
+        "p95": 0,
+        "p99": 0,
+        "std_dev": 0.0
+      }
+    },
+    "unified": {
+      "response_times": {
+        "count": 120,
+        "mean": 0.007,
+        "median": 0.007,
+        "min": 0.005,
+        "max": 0.01,
+        "p95": 0.008,
+        "p99": 0.01,
+        "std_dev": 0.001
+      },
+      "memory_usage": {
+        "count": 120,
+        "mean": 0.0,
+        "median": 0.0,
+        "min": 0.0,
+        "max": 0.0,
+        "p95": 0.0,
+        "p99": 0.0,
+        "std_dev": 0.0
+      },
+      "result_lengths": {
+        "count": 120,
+        "mean": 2155,
+        "median": 2150,
+        "min": 534,
+        "max": 3995,
+        "p95": 3938,
+        "p99": 3982,
+        "std_dev": 822.274
+      }
+    }
+  }
+}

@@ -1,13 +1,16 @@
-require './rag/rag_manager.rb'
-require './cag/cag_manager.rb'
-require './knowledge_bases/mitre_attack_knowledge.rb'
-require './knowledge_bases/knowledge_source_manager.rb'
-require './print.rb'
+require './rag/rag_manager'
+require './cag/cag_manager'
+require './knowledge_bases/mitre_attack_knowledge'
+require './knowledge_bases/knowledge_source_manager'
+require './knowledge_bases/utils/man_page_processor'
+require './knowledge_bases/utils/markdown_processor'
+require './print'
 
 # Unified RAG + CAG Manager for integrated knowledge retrieval and context-aware generation
 class RAGCAGManager
   # Public accessors
   attr_reader :initialized, :cag_manager, :rag_manager, :knowledge_source_manager
+
   def initialize(rag_config, cag_config, unified_config = {})
     @rag_config = rag_config
     @cag_config = cag_config
@@ -22,7 +25,7 @@ class RAGCAGManager
       cache_ttl: unified_config[:cache_ttl] || 3600, # 1 hour
       auto_initialization: unified_config[:auto_initialization] || true,
       enable_knowledge_sources: unified_config[:enable_knowledge_sources] || true,
-      knowledge_sources_config: unified_config[:knowledge_sources_config] || []
+      knowledge_sources_config: unified_config[:knowledge_sources_config]
     }
 
     @cache = {}
@@ -33,7 +36,7 @@ class RAGCAGManager
     @knowledge_source_manager = nil
 
     # Debug logging for unified_config
-    Print.info "RAGCAGManager initialized with unified_config:"
+    Print.info 'RAGCAGManager initialized with unified_config:'
     Print.info "  knowledge_base_name: #{@unified_config[:knowledge_base_name].inspect}"
     Print.info "  enable_rag: #{@unified_config[:enable_rag].inspect}"
     Print.info "  enable_cag: #{@unified_config[:enable_cag].inspect}"
@@ -42,13 +45,13 @@ class RAGCAGManager
   def setup
     return if @initialized
 
-    Print.info "Initializing RAG + CAG Manager..."
+    Print.info 'Initializing RAG + CAG Manager...'
 
     success = true
 
     # Initialize RAG if enabled
     if @unified_config[:enable_rag]
-      Print.info "Initializing RAG component..."
+      Print.info 'Initializing RAG component...'
       @rag_manager = RAGManager.new(
         @rag_config[:vector_db],
         @rag_config[:embedding_service],
@@ -56,14 +59,14 @@ class RAGCAGManager
       )
 
       unless @rag_manager.setup
-        Print.err "Failed to initialize RAG Manager"
+        Print.err 'Failed to initialize RAG Manager'
         success = false
       end
     end
 
     # Initialize CAG if enabled
     if @unified_config[:enable_cag]
-      Print.info "Initializing CAG component..."
+      Print.info 'Initializing CAG component...'
       @cag_manager = CAGManager.new(
         @cag_config[:knowledge_graph],
         @cag_config[:entity_extractor],
@@ -71,33 +74,31 @@ class RAGCAGManager
       )
 
       unless @cag_manager.setup
-        Print.err "Failed to initialize CAG Manager"
+        Print.err 'Failed to initialize CAG Manager'
         success = false
       end
     end
 
     # Initialize knowledge source manager if enabled
     if @unified_config[:enable_knowledge_sources]
-      Print.info "Initializing Knowledge Source Manager..."
+      Print.info 'Initializing Knowledge Source Manager...'
       @knowledge_source_manager = KnowledgeSourceManager.new(@unified_config)
 
       sources_config = @unified_config[:knowledge_sources_config] || default_knowledge_sources_config
       unless @knowledge_source_manager.initialize_sources(sources_config)
-        Print.err "Failed to initialize Knowledge Source Manager"
+        Print.err 'Failed to initialize Knowledge Source Manager'
         success = false
       end
     end
 
     if success
       @initialized = true
-      Print.info "RAG + CAG Manager initialized successfully"
+      Print.info 'RAG + CAG Manager initialized successfully'
 
       # Auto-initialize knowledge base if configured
-      if @unified_config[:auto_initialization]
-        initialize_knowledge_base
-      end
+      initialize_knowledge_base if @unified_config[:auto_initialization]
     else
-      Print.err "RAG + CAG Manager initialization failed"
+      Print.err 'RAG + CAG Manager initialization failed'
     end
 
     success
@@ -115,9 +116,9 @@ class RAGCAGManager
 
     # Load knowledge from all sources
     if @unified_config[:enable_knowledge_sources] && @knowledge_source_manager
-      Print.info "Loading knowledge from all sources..."
+      Print.info 'Loading knowledge from all sources...'
       unless @knowledge_source_manager.load_all_knowledge
-        Print.err "Failed to load knowledge from sources"
+        Print.err 'Failed to load knowledge from sources'
         success = false
       end
 
@@ -128,53 +129,51 @@ class RAGCAGManager
       Print.info "Retrieved #{all_rag_documents.length} RAG documents and #{all_cag_triplets.length} CAG triplets from sources"
 
       # Initialize RAG knowledge base
-      if @unified_config[:enable_rag] && @rag_manager && !all_rag_documents.empty?
-        unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], all_rag_documents)
-          Print.err "Failed to add RAG knowledge base"
-          success = false
-        end
+      if @unified_config[:enable_rag] && @rag_manager && !all_rag_documents.empty? && !@rag_manager.add_knowledge_base(
+        @unified_config[:knowledge_base_name], all_rag_documents
+      )
+        Print.err 'Failed to add RAG knowledge base'
+        success = false
       end
 
       # Initialize CAG knowledge base
-      if @unified_config[:enable_cag] && @cag_manager && !all_cag_triplets.empty?
-        unless @cag_manager.create_knowledge_base_from_triplets(all_cag_triplets)
-          Print.err "Failed to create CAG knowledge base"
-          success = false
-        end
+      if @unified_config[:enable_cag] && @cag_manager && !all_cag_triplets.empty? && !@cag_manager.create_knowledge_base_from_triplets(all_cag_triplets)
+        Print.err 'Failed to create CAG knowledge base'
+        success = false
       end
     else
       # Fallback to legacy MITRE Attack knowledge only
-      Print.info "Using legacy MITRE Attack knowledge base..."
+      Print.info 'Using legacy MITRE Attack knowledge base...'
 
       # Initialize RAG knowledge base
       if @unified_config[:enable_rag] && @rag_manager
-        Print.info "Loading RAG documents..."
+        Print.info 'Loading RAG documents...'
         rag_documents = MITREAttackKnowledge.to_rag_documents
         Print.info "Generated #{rag_documents.length} RAG documents"
 
         unless @rag_manager.add_knowledge_base(@unified_config[:knowledge_base_name], rag_documents)
-          Print.err "Failed to add RAG knowledge base"
+          Print.err 'Failed to add RAG knowledge base'
           success = false
         end
       end
 
       # Initialize CAG knowledge base
       if @unified_config[:enable_cag] && @cag_manager
-        Print.info "Loading CAG knowledge triplets..."
+        Print.info 'Loading CAG knowledge triplets...'
         cag_triplets = MITREAttackKnowledge.to_cag_triplets
         Print.info "Generated #{cag_triplets.length} CAG knowledge triplets"
 
         unless @cag_manager.create_knowledge_base_from_triplets(cag_triplets)
-          Print.err "Failed to create CAG knowledge base"
+          Print.err 'Failed to create CAG knowledge base'
           success = false
         end
       end
     end
 
     if success
-      Print.info "Knowledge base initialization completed successfully"
+      Print.info 'Knowledge base initialization completed successfully'
     else
-      Print.err "Knowledge base initialization failed"
+      Print.err 'Knowledge base initialization failed'
     end
 
     success
@@ -206,34 +205,34 @@ class RAGCAGManager
     Print.info "Original custom_collection: #{context_options[:custom_collection].inspect}"
     Print.info "@unified_config[:knowledge_base_name]: #{@unified_config[:knowledge_base_name].inspect}"
     Print.info "Final custom_collection: #{context_options[:custom_collection].inspect}"
-    Print.debug "=== END COLLECTION NAME DEBUG ==="
+    Print.debug '=== END COLLECTION NAME DEBUG ==='
 
     Print.info "Getting enhanced context for query: #{query[0..50]}..."
 
     begin
-      rag_context = ""
-      cag_context = ""
+      rag_context = ''
+      cag_context = ''
 
       # Get RAG context
       if @unified_config[:enable_rag] && context_options[:include_rag_context] && @rag_manager
-        Print.info "Retrieving RAG context..."
+        Print.info 'Retrieving RAG context...'
         Print.info "Calling retrieve_relevant_context with collection: #{context_options[:custom_collection].inspect}"
         rag_context = @rag_manager.retrieve_relevant_context(
           query,
           context_options[:custom_collection],
           context_options[:max_rag_results]
-        ) || ""
+        ) || ''
         Print.info "RAG context length: #{rag_context.length} characters"
       end
 
       # Get CAG context
       if @unified_config[:enable_cag] && context_options[:include_cag_context] && @cag_manager
-        Print.info "Retrieving CAG context..."
+        Print.info 'Retrieving CAG context...'
         cag_context = @cag_manager.get_context_for_query(
           query,
           context_options[:max_cag_depth],
           context_options[:max_cag_nodes]
-        ) || ""
+        ) || ''
         Print.info "CAG context length: #{cag_context.length} characters"
       end
 
@@ -249,7 +248,7 @@ class RAGCAGManager
 
       Print.info "Enhanced context generated with total length: #{enhanced_context.length} characters"
       enhanced_context
-    rescue => e
+    rescue StandardError => e
       Print.err "Error getting enhanced context: #{e.message}"
       Print.err e.backtrace.inspect
       nil
@@ -270,7 +269,7 @@ class RAGCAGManager
     if @unified_config[:enable_rag] && @rag_manager && !documents.empty?
       Print.info "Adding #{documents.length} custom RAG documents..."
       unless @rag_manager.add_knowledge_base(collection_name, documents)
-        Print.err "Failed to add custom RAG documents"
+        Print.err 'Failed to add custom RAG documents'
         success = false
       end
     end
@@ -279,7 +278,7 @@ class RAGCAGManager
     if @unified_config[:enable_cag] && @cag_manager && !triplets.empty?
       Print.info "Adding #{triplets.length} custom CAG triplets..."
       unless @cag_manager.create_knowledge_base_from_triplets(triplets)
-        Print.err "Failed to add custom CAG triplets"
+        Print.err 'Failed to add custom CAG triplets'
         success = false
       end
     end
@@ -309,7 +308,7 @@ class RAGCAGManager
 
     return [] unless @unified_config[:enable_cag] && @cag_manager
 
-    Print.info "Extracting entities from query..."
+    Print.info 'Extracting entities from query...'
     entities = @cag_manager.extract_entities(query, entity_types)
     Print.info "Extracted #{entities.length} entities"
     entities
@@ -357,7 +356,7 @@ class RAGCAGManager
   end
 
   def test_connections
-    Print.info "Testing RAG + CAG Manager connections..."
+    Print.info 'Testing RAG + CAG Manager connections...'
 
     rag_ok = true
     cag_ok = true
@@ -379,35 +378,27 @@ class RAGCAGManager
   end
 
   def cleanup
-    Print.info "Cleaning up RAG + CAG Manager..."
+    Print.info 'Cleaning up RAG + CAG Manager...'
 
-    if @rag_manager
-      @rag_manager.cleanup
-    end
+    @rag_manager.cleanup if @rag_manager
 
-    if @cag_manager
-      @cag_manager.cleanup
-    end
+    @cag_manager.cleanup if @cag_manager
 
-    if @knowledge_source_manager
-      @knowledge_source_manager.cleanup
-    end
+    @knowledge_source_manager.cleanup if @knowledge_source_manager
 
     @cache.clear
     @cache_timestamps.clear
     @initialized = false
 
-    Print.info "RAG + CAG Manager cleanup completed"
+    Print.info 'RAG + CAG Manager cleanup completed'
     true
   end
 
   def reload_knowledge_base
-    Print.info "Reloading knowledge base..."
+    Print.info 'Reloading knowledge base...'
 
     # Delete existing collections and knowledge
-    if @rag_manager
-      @rag_manager.delete_collection(@unified_config[:knowledge_base_name])
-    end
+    @rag_manager.delete_collection(@unified_config[:knowledge_base_name]) if @rag_manager
 
     # Clear cache
     @cache.clear
@@ -424,29 +415,29 @@ class RAGCAGManager
 
     # Add weighted sections based on configuration
     if @unified_config[:enable_rag] && !rag_context.strip.empty?
-      combined_parts << "=== RETRIEVED DOCUMENTS ==="
+      combined_parts << '=== RETRIEVED DOCUMENTS ==='
       combined_parts << rag_context
-      combined_parts << ""
+      combined_parts << ''
     end
 
     if @unified_config[:enable_cag] && !cag_context.strip.empty?
-      combined_parts << "=== KNOWLEDGE GRAPH CONTEXT ==="
+      combined_parts << '=== KNOWLEDGE GRAPH CONTEXT ==='
       combined_parts << cag_context
-      combined_parts << ""
+      combined_parts << ''
     end
 
     # Add query context
-    combined_parts << "=== ORIGINAL QUERY ==="
+    combined_parts << '=== ORIGINAL QUERY ==='
     combined_parts << query
-    combined_parts << ""
+    combined_parts << ''
 
     # Add context usage instructions
-    combined_parts << "=== CONTEXT USAGE INSTRUCTIONS ==="
-    combined_parts << "Use the above retrieved documents and knowledge graph context to provide an informed response. "
-    combined_parts << "Prioritize information from retrieved documents for factual accuracy. "
-    combined_parts << "Use knowledge graph relationships to provide additional context and connections. "
-    combined_parts << "If the retrieved information is incomplete or ambiguous, acknowledge this limitation. "
-    combined_parts << "Always cite specific attack patterns, techniques, or mitigation strategies when relevant."
+    combined_parts << '=== CONTEXT USAGE INSTRUCTIONS ==='
+    combined_parts << 'Use the above retrieved documents and knowledge graph context to provide an informed response. '
+    combined_parts << 'Prioritize information from retrieved documents for factual accuracy. '
+    combined_parts << 'Use knowledge graph relationships to provide additional context and connections. '
+    combined_parts << 'If the retrieved information is incomplete or ambiguous, acknowledge this limitation. '
+    combined_parts << 'Always cite specific attack patterns, techniques, or mitigation strategies when relevant.'
 
     # Join and truncate if necessary
     full_context = combined_parts.join("\n")
@@ -467,14 +458,12 @@ class RAGCAGManager
 
     # Split by section headers (=== SECTION NAME ===)
     sections = []
-    current_section = ""
+    current_section = ''
 
     text.each_line do |line|
       if line.match?(/^=== .* ===$/)
         # Found section header, save previous section if not empty
-        unless current_section.strip.empty?
-          sections << current_section
-        end
+        sections << current_section unless current_section.strip.empty?
         current_section = line
       else
         current_section += line
@@ -482,11 +471,9 @@ class RAGCAGManager
     end
 
     # Add the last section
-    unless current_section.strip.empty?
-      sections << current_section
-    end
+    sections << current_section unless current_section.strip.empty?
 
-    result = ""
+    result = ''
 
     sections.each do |section|
       if (result + section).length <= max_length
@@ -498,21 +485,17 @@ class RAGCAGManager
         if remaining_space > 50 # Reasonable minimum fragment size
           # Try to preserve sentences within the section
           sentences = section.split(/(?<=[.!?])\s+/)
-          partial_section = ""
+          partial_section = ''
 
           sentences.each do |sentence|
-            if (partial_section + sentence).length <= remaining_space
-              partial_section += sentence
-            else
-              break
-            end
+            break unless (partial_section + sentence).length <= remaining_space
+
+            partial_section += sentence
           end
 
           unless partial_section.strip.empty?
             result += partial_section
-            if remaining_space - partial_section.length > 10
-              result += "..."
-            end
+            result += '...' if remaining_space - partial_section.length > 10
           end
         end
         break
@@ -522,7 +505,7 @@ class RAGCAGManager
     # Ensure we don't return empty content
     if result.strip.empty?
       # Fallback: simple truncation with ellipsis
-      return text.length > 3 ? text[0, max_length - 3] + "..." : text
+      return text.length > 3 ? text[0, max_length - 3] + '...' : text
     end
 
     result
@@ -544,9 +527,7 @@ class RAGCAGManager
     expired_keys = []
 
     @cache_timestamps.each do |key, timestamp|
-      if (current_time - timestamp).to_i > @unified_config[:cache_ttl]
-        expired_keys << key
-      end
+      expired_keys << key if (current_time - timestamp).to_i > @unified_config[:cache_ttl]
     end
 
     expired_keys.each do |key|
@@ -554,15 +535,15 @@ class RAGCAGManager
       @cache_timestamps.delete(key)
     end
 
-    if expired_keys.any?
-      Print.debug "Cleaned up #{expired_keys.length} expired cache entries"
-    end
+    return unless expired_keys.any?
+
+    Print.debug "Cleaned up #{expired_keys.length} expired cache entries"
   end
 
-  private
-
   def default_knowledge_sources_config
-    [
+    Print.info 'Generating default knowledge sources configuration...'
+
+    sources = [
       {
         type: 'mitre_attack',
         name: 'mitre_attack',
@@ -571,6 +552,129 @@ class RAGCAGManager
         priority: 1
       }
     ]
+
+    # Add man pages source with auto-discovery of common security tools
+    man_pages_discovered = auto_discover_man_pages
+    Print.info "Man pages discovered: #{man_pages_discovered}"
+    if man_pages_discovered
+      sources << {
+        type: 'man_pages',
+        name: 'man_pages',
+        enabled: true,
+        description: 'System manual pages for security tools',
+        priority: 2,
+        man_pages: get_default_man_pages
+      }
+    end
+
+    # Add markdown files source for lab sheets and documentation
+    markdown_discovered = auto_discover_markdown_files
+    Print.info "Markdown files discovered: #{markdown_discovered}"
+    if markdown_discovered
+      sources << {
+        type: 'markdown_files',
+        name: 'markdown_files',
+        enabled: true,
+        description: 'Lab sheets and documentation in markdown format',
+        priority: 3,
+        markdown_files: get_default_markdown_files
+      }
+    end
+
+    Print.info "Final sources configuration: #{sources.length} sources"
+    sources
+  end
+
+  def auto_discover_man_pages
+    return false unless system('which man > /dev/null 2>&1')
+
+    # Check if we can access man pages
+    system('man man > /dev/null 2>&1')
+  end
+
+  def get_default_man_pages
+    # Common security-related man pages to include by default
+    security_man_pages = [
+      { name: 'nmap', section: 1 },
+      { name: 'curl', section: 1 },
+      { name: 'wget', section: 1 },
+      { name: 'ssh', section: 1 },
+      { name: 'scp', section: 1 },
+      { name: 'rsync', section: 1 },
+      { name: 'git', section: 1 },
+      { name: 'python', section: 1 },
+      { name: 'python3', section: 1 },
+      { name: 'ruby', section: 1 },
+      { name: 'bash', section: 1 },
+      { name: 'netcat', section: 1 },
+      { name: 'nc', section: 1 },
+      { name: 'tcpdump', section: 1 },
+      { name: 'wireshark', section: 1 },
+      { name: 'metasploit', section: 1 },
+      { name: 'msfconsole', section: 1 },
+      { name: 'burpsuite', section: 1 },
+      { name: 'sqlmap', section: 1 },
+      { name: 'nikto', section: 1 }
+    ]
+
+    # Filter to only include man pages that actually exist
+    available_man_pages = []
+    processor = ManPageProcessor.new
+
+    security_man_pages.each do |man_config|
+      if processor.man_page_exists?(man_config[:name], man_config[:section])
+        available_man_pages << man_config.merge(collection_name: 'security_tools')
+      end
+    end
+
+    Print.info "Auto-discovered #{available_man_pages.length} security tool man pages"
+    available_man_pages
+  end
+
+  def auto_discover_markdown_files
+    # Check for common documentation directories
+    doc_dirs = [
+      File.join(Dir.pwd, 'docs'),
+      File.join(Dir.pwd, 'documentation'),
+      File.join(Dir.pwd, 'lab_sheets'),
+      File.join(Dir.pwd, 'labs'),
+      File.join(Dir.pwd, 'exercises')
+    ]
+
+    doc_dirs.any? { |dir| Dir.exist?(dir) }
+  end
+
+  def get_default_markdown_files
+    markdown_files = []
+    processor = MarkdownProcessor.new
+
+    # Check for documentation in common directories
+    doc_dirs = [
+      { path: File.join(Dir.pwd, 'docs'), collection: 'documentation' },
+      { path: File.join(Dir.pwd, 'lab_sheets'), collection: 'lab_sheets' },
+      { path: File.join(Dir.pwd, 'labs'), collection: 'labs' },
+      { path: File.join(Dir.pwd, 'exercises'), collection: 'exercises' }
+    ]
+
+    doc_dirs.each do |dir_config|
+      next unless Dir.exist?(dir_config[:path])
+
+      begin
+        files = processor.list_markdown_files(dir_config[:path])
+        files.each do |file_info|
+          markdown_files << {
+            path: file_info[:path],
+            collection_name: dir_config[:collection],
+            tags: ['auto_discovered', dir_config[:collection]]
+          }
+        end
+        Print.info "Auto-discovered #{files.length} markdown files in #{dir_config[:path]}"
+      rescue StandardError => e
+        Print.warn "Error scanning directory #{dir_config[:path]}: #{e.message}"
+      end
+    end
+
+    markdown_files
   end
 
   def add_man_page_to_sources(man_name, section = nil, collection_name = 'default_man_pages')
@@ -586,11 +690,11 @@ class RAGCAGManager
         enabled: true,
         description: 'Unix/Linux man pages',
         priority: 2,
-        man_pages: []  # Start empty
+        man_pages: [] # Start empty
       }
 
       unless @knowledge_source_manager.add_knowledge_source(man_source_config)
-        Print.err "Failed to add man pages knowledge source"
+        Print.err 'Failed to add man pages knowledge source'
         return false
       end
 
@@ -614,11 +718,11 @@ class RAGCAGManager
         enabled: true,
         description: 'Markdown documentation files',
         priority: 3,
-        markdown_files: []  # Start empty
+        markdown_files: [] # Start empty
       }
 
       unless @knowledge_source_manager.add_knowledge_source(md_source_config)
-        Print.err "Failed to add markdown files knowledge source"
+        Print.err 'Failed to add markdown files knowledge source'
         return false
       end
 
