@@ -15,7 +15,7 @@
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
             # Ruby and development tools
-            ruby_3_1
+            ruby_3_3
             bundix
 
             # IRC server and client

@@ -85,3 +85,6 @@ docs/.bundle/
 *.o
 *.so
 *.dylib
+
+# test reports
+test/
