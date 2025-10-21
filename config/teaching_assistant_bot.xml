@@ -14,7 +14,7 @@
     <rag>
       <max_rag_results>8</max_rag_results>
       <include_rag_context>true</include_rag_context>
-      <collection_name>cybersecurity_teaching</collection_name>
+      <collection_name>cybersecurity</collection_name>
     </rag>
 
     <cag>
