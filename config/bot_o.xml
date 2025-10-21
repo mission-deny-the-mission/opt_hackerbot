@@ -479,4 +479,29 @@ Mounting read-only can be an effective way of protecting resources that you don'
 		<shell_fail_message>:) Failed to get shell... flag{20f7a04d773995f6a76bba80623c2d13}</shell_fail_message>
 	</attack>
 
+	<!-- Knowledge Sources Configuration -->
+	<knowledge_sources>
+		<!-- MITRE ATT&CK Framework -->
+		<source>
+			<type>mitre_attack</type>
+			<name>mitre_attack</name>
+			<enabled>true</enabled>
+			<description>MITRE ATT&amp;CK framework knowledge base</description>
+			<priority>1</priority>
+		</source>
+
+		<!-- Man Pages Knowledge Source -->
+		<source>
+			<type>man_pages</type>
+			<name>linux_man_pages</name>
+			<enabled>true</enabled>
+			<description>Linux command reference manual pages</description>
+			<priority>2</priority>
+			<config>
+				<man_page_directories>/usr/share/man</man_page_directories>
+				<sections>1,2,8</sections>
+			</config>
+		</source>
+	</knowledge_sources>
+
 </hackerbot>
