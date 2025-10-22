@@ -98,7 +98,6 @@ This PRD documents two-phase enhancement of the Hackerbot LLM knowledge enhancem
 **Epic 2 Goals**:
 - Implement modern Cache-Augmented Generation system from scratch
 - Create CAG system based on current research (KV cache precomputation)
-- Develop hybrid CAG-RAG routing system for optimal performance
 - Validate CAG performance improvements over RAG (target: 50-80% latency reduction)
 - Provide alternative knowledge enhancement approach for specific use cases
 
@@ -106,7 +105,6 @@ This PRD documents two-phase enhancement of the Hackerbot LLM knowledge enhancem
 - Validate at least one production-ready knowledge enhancement system
 - Provide both RAG and CAG options for different use cases
 - Establish comprehensive performance metrics and baselines
-- Enable intelligent routing between RAG and CAG based on query characteristics
 - Complete SecGen integration with robust LLM knowledge enhancement
 
 **Background Context**:
@@ -117,9 +115,9 @@ The Hackerbot project originally implemented both RAG (Retrieval-Augmented Gener
 
 **Modern CAG Research**: Recent advances in CAG technology have shown that pre-loading knowledge into long-context LLM windows with KV cache precomputation can provide significant performance advantages (50-80% latency reduction) over traditional RAG approaches. This new implementation approach eliminates the need for complex knowledge graphs and focuses on efficient cache management.
 
-**Two-Phase Approach**: 
+**Two-Phase Approach**:
 1. **Epic 1** validates and optimizes the existing RAG system, ensuring it meets production requirements
-2. **Epic 2** implements a modern CAG system from scratch based on current research, providing both an alternative approach and hybrid routing capabilities
+2. **Epic 2** implements a modern CAG system from scratch based on current research, providing an alternative approach
 
 This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement capabilities while exploring cutting-edge approaches for optimal performance in cybersecurity training scenarios. The RAG system provides a proven baseline, while the new CAG implementation offers performance advantages for specific use cases.
 
@@ -159,11 +157,9 @@ This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement
 
 **FR9**: The CAG system shall provide significant latency improvements over RAG (target: 50-80% reduction).
 
-**FR10**: The system shall support hybrid CAG-RAG routing with intelligent system selection based on query characteristics.
+**FR10**: The CAG system shall support offline operation with pre-computed caches.
 
-**FR11**: The CAG system shall support offline operation with pre-computed caches.
-
-**FR12**: The system shall provide comprehensive test coverage (≥80%) for CAG system components.
+**FR11**: The system shall provide comprehensive test coverage (≥80%) for CAG system components.
 
 ### 2.2 Non-Functional Requirements
 
@@ -201,8 +197,6 @@ This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement
 
 **NFR14**: All changes shall be testable in the existing Nix development environment without additional infrastructure requirements.
 
-**NFR15**: Hybrid CAG-RAG routing shall make intelligent decisions based on query characteristics and system performance.
-
 ### 2.3 Compatibility Requirements
 
 **Epic 1 Compatibility (RAG System)**:
@@ -229,9 +223,7 @@ This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement
 
 **CR9**: All enhancements shall maintain full compatibility with the existing IRC bot interface and command structure.
 
-**CR10**: Hybrid CAG-RAG routing shall be transparent to end users and configurable per bot instance.
-
-**CR11**: Both systems shall support the same knowledge base sources and formats.
+**CR10**: Both systems shall support the same knowledge base sources and formats.
 
 ---
 
@@ -303,7 +295,7 @@ This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement
 **Testing Integration Strategy**:
 - Test files in test/ directory following existing patterns
 - Epic 1 test files: test/test_rag_comprehensive.rb, test/test_rag_performance.rb
-- Epic 2 test files: test/test_cag_comprehensive.rb, test/test_cag_performance.rb, test/test_hybrid_system.rb
+- Epic 2 test files: test/test_cag_comprehensive.rb, test/test_cag_performance.rb
 - Integration with existing test runner: test/run_tests.rb
 - Tests must run in Nix development environment
 
@@ -329,8 +321,7 @@ opt_hackerbot/
 │   ├── test_rag_comprehensive.rb     # Epic 1
 │   ├── test_rag_performance.rb       # Epic 1
 │   ├── test_cag_comprehensive.rb     # Epic 2
-│   ├── test_cag_performance.rb       # Epic 2
-│   └── test_hybrid_system.rb         # Epic 2
+│   └── test_cag_performance.rb       # Epic 2
 └── docs/                         # Documentation updates
 ```
 
@@ -561,7 +552,6 @@ so that stakeholders have clear guidance for production deployment.
 
 **Integration Requirements**:
 - Maintain compatibility with existing RAG system
-- Support hybrid CAG-RAG routing
 - Preserve all existing LLM provider integrations
 - Ensure offline operation capability
 - No breaking changes to existing functionality
@@ -587,16 +577,15 @@ so that I have clear technical specifications for implementation.
 
 ---
 
-### Story 2.2-2.10: CAG Implementation Stories
+### Story 2.2-2.9: CAG Implementation Stories
 
-[Complete set of 9 additional stories for CAG system implementation, covering:]
+[Complete set of 8 additional stories for CAG system implementation, covering:]
 - Knowledge base loader for CAG
-- Context manager implementation  
+- Context manager implementation
 - Cache manager with KV cache precomputation
 - Inference engine
 - CAG manager coordinator
 - Comprehensive test suite
-- Hybrid CAG-RAG system
 - Performance validation and optimization
 - Documentation and integration guide
 
@@ -616,7 +605,6 @@ so that I have clear technical specifications for implementation.
 ✅ **Preferred** (target outcome):
 - CAG system fully optimized with target performance achieved
 - Comprehensive test coverage (≥80%)
-- Hybrid CAG-RAG system operational
 - Complete documentation and integration guides
 - Performance characteristics well understood and documented
 
@@ -639,8 +627,6 @@ so that I have clear technical specifications for implementation.
 **IRC (Internet Relay Chat)**: Text-based communication protocol used for bot-user interaction.
 
 **MITRE ATT&CK**: Comprehensive knowledge base of adversary tactics and techniques used in cybersecurity training.
-
-**Hybrid CAG-RAG System**: Intelligent routing system that selects between CAG and RAG approaches based on query characteristics, knowledge base size, and performance requirements.
 
 ---
 

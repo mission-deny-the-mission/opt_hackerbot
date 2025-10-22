@@ -81,25 +81,18 @@ Cache-Augmented Generation (CAG) is an alternative to Retrieval-Augmented Genera
    - Cache efficiency and memory usage testing
    - Integration testing with existing IRC bot framework
 
-5. **Hybrid CAG-RAG System**
-   - Intelligent routing between CAG and RAG based on query characteristics
-   - Fallback mechanisms for CAG limitations
-   - Configuration management for system selection
-   - Performance monitoring and optimization
-
 **How It Integrates**:
 - CAG system implemented in new cag/ directory alongside existing rag/ directory
 - Shared knowledge sources from knowledge_bases/sources/
 - Integration with existing LLM client interfaces
-- Bot manager enhanced to support both RAG and CAG modes
-- Configuration system extended to support CAG/RAG selection
+- Bot manager enhanced to support CAG mode
+- Configuration system extended to enable CAG
 
 **Success Criteria**:
 - ✅ CAG system functional with comparable knowledge retrieval quality to RAG
 - ✅ Query latency significantly reduced compared to RAG (target: 50-80% improvement)
 - ✅ System complexity reduced (no vector database dependency)
 - ✅ Memory usage optimized for typical knowledge base sizes
-- ✅ Hybrid system operational with intelligent routing
 - ✅ Existing RAG system remains fully functional
 - ✅ Offline operation capability maintained
 - ✅ Comprehensive test coverage (≥80%) for CAG components
@@ -185,36 +178,25 @@ Cache-Augmented Generation (CAG) is an alternative to Retrieval-Augmented Genera
 
 ---
 
-### Story 2.8: Implement Hybrid CAG-RAG System
-**Priority**: Medium
-**Estimated Effort**: 4-5 days
-**Dependencies**: Story 2.7, Epic 1 complete
-
-**Brief Description**: Implement intelligent routing system to choose between CAG and RAG based on query characteristics, knowledge base size, and performance requirements. Create fallback mechanisms and configuration management.
-
-**File**: [2.8.implement-hybrid-cag-rag.story.md](2.8.implement-hybrid-cag-rag.story.md)
-
----
-
-### Story 2.9: Performance Validation and Optimization
+### Story 2.8: Performance Validation and Optimization
 **Priority**: High
 **Estimated Effort**: 3-4 days
 **Dependencies**: Story 2.7
 
 **Brief Description**: Conduct comprehensive performance testing comparing CAG vs RAG systems. Optimize CAG performance based on findings and validate that latency improvement targets are met.
 
-**File**: [2.9.cag-performance-validation.story.md](2.9.cag-performance-validation.story.md)
+**File**: [2.8.cag-performance-validation.story.md](2.8.cag-performance-validation.story.md)
 
 ---
 
-### Story 2.10: Document CAG System and Integration Guide
+### Story 2.9: Document CAG System and Integration Guide
 **Priority**: Medium
 **Estimated Effort**: 2-3 days
-**Dependencies**: Story 2.9
+**Dependencies**: Story 2.8
 
 **Brief Description**: Create comprehensive documentation for CAG system including architecture overview, configuration guide, performance characteristics, and integration instructions. Update existing documentation to reflect CAG capabilities.
 
-**File**: [2.10.document-cag-system.story.md](2.10.document-cag-system.story.md)
+**File**: [2.9.document-cag-system.story.md](2.9.document-cag-system.story.md)
 
 ---
 
@@ -342,7 +324,6 @@ Cache-Augmented Generation (CAG) is an alternative to Retrieval-Augmented Genera
 **Preferred (Target Outcome)**:
 - CAG system fully optimized with target performance achieved
 - Comprehensive test coverage (≥80%)
-- Hybrid CAG-RAG system operational
 - Complete documentation and integration guides
 - Performance characteristics well understood and documented
 
@@ -373,29 +354,27 @@ Cache-Augmented Generation (CAG) is an alternative to Retrieval-Augmented Genera
 - **Days 22-24**: Story 2.6 - CAG manager coordinator
 - **Days 25-28**: Story 2.7 - CAG test suite creation
 
-### Week 5: Advanced Features and Documentation
-- **Days 29-31**: Story 2.8 - Hybrid CAG-RAG system
-- **Days 32-33**: Story 2.9 - Performance validation
-- **Days 34-35**: Story 2.10 - Documentation completion
+### Week 4-5: Performance Validation and Documentation
+- **Days 29-31**: Story 2.8 - Performance validation
+- **Days 32-33**: Story 2.9 - Documentation completion
 
 **Critical Checkpoints**:
 - **Day 7**: Knowledge base loader functional with document preprocessing
 - **Day 14**: Context and cache management architecture validated
 - **Day 21**: Core CAG system operational with basic functionality
 - **Day 28**: Comprehensive testing framework complete
-- **Day 35**: Epic 2 complete with production-ready CAG system
+- **Day 33**: Epic 2 complete with production-ready CAG system
 
 ---
 
 ## Notes
 
 - This epic builds on the foundation established in Epic 1
-- RAG system remains as fallback and for comparison purposes
+- RAG system remains available for comparison purposes
 - Focus on practical implementation for cybersecurity training use cases
 - Consider long-context model availability and limitations
 - Memory management and optimization are critical for success
 - Performance validation should use same query set as Epic 1 for comparison
-- Hybrid system approach provides flexibility for different use cases
 - Documentation should enable easy adoption and configuration
 
 ---
