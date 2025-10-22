@@ -3,10 +3,10 @@ require 'nori'
 require 'cinch'
 require_relative './print.rb'
 require_relative './providers/llm_client_factory.rb'
-require_relative './rag_cag_manager.rb'
+require_relative './rag_manager.rb'
 
 class BotManager
-  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag_cag = false, rag_cag_config = {})
+  def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag = false, rag_config = {})
     @irc_server_ip_address = irc_server_ip_address
     @llm_provider = llm_provider
     @ollama_host = ollama_host
@@ -21,42 +21,44 @@ class BotManager
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
     @max_history_length = 10
-    @enable_rag_cag = enable_rag_cag
-    @rag_cag_config = rag_cag_config
-    @rag_cag_manager = nil
+    @enable_rag = enable_rag
+    @rag_config = rag_config
+    @rag_manager = nil
 
-    # Set default offline mode and independent RAG/CAG settings
-    @rag_cag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
-    @rag_cag_config[:enable_rag] = rag_cag_config.fetch(:enable_rag, true)  # Default to both enabled
-    @rag_cag_config[:enable_cag] = rag_cag_config.fetch(:enable_cag, true)  # Default to both enabled
+    # Set default offline mode
+    @rag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
+    @rag_config[:enable_rag] = rag_config.fetch(:enable_rag, true)  # Default to enabled
 
-    # Initialize RAG + CAG manager if enabled
-    if @enable_rag_cag
-      initialize_rag_cag_manager
+    # Initialize RAG manager if enabled
+    if @enable_rag
+      initialize_rag_manager
     end
   end
 
-  def initialize_rag_cag_manager
-    Print.info "Initializing RAG + CAG Manager..."
-
-    # Load offline configuration to determine defaults
-    require './rag_cag_offline_config'
-    offline_config_manager = OfflineConfigurationManager.new
+  def initialize_rag_manager
+    Print.info "Initializing RAG Manager..."
 
     # Determine if we should use offline mode
-    use_offline = case @rag_cag_config[:offline_mode]
+    use_offline = case @rag_config[:offline_mode]
                   when 'offline'
                     true
                   when 'online'
                     false
                   else # 'auto'
-                    offline_config_manager.detect_connectivity == :offline
+                    # Simple connectivity check
+                    begin
+                      require 'socket'
+                      Socket.getaddrinfo('localhost', nil)
+                      use_offline = false
+                    rescue
+                      use_offline = true
+                    end
                   end
 
-    Print.info "Using #{use_offline ? 'offline' : 'online'} mode for RAG + CAG systems"
+    Print.info "Using #{use_offline ? 'offline' : 'online'} mode for RAG system"
 
     # Default RAG configuration with offline as default
-    rag_config = if use_offline
+    rag_settings = if use_offline
       {
         vector_db: {
           provider: 'chromadb',
@@ -98,77 +100,34 @@ class BotManager
       }
     end
 
-    # Default CAG configuration with offline as default
-    cag_config = if use_offline
-      {
-        knowledge_graph: {
-          provider: 'in_memory',
-          storage_path: './knowledge_bases/offline/graph',
-          persist_graph: true,
-          load_from_file: true,
-          compression_enabled: true
-        },
-        entity_extractor: {
-          provider: 'rule_based',
-          cache_entities: true
-        },
-        cag_settings: {
-          max_context_depth: 2,
-          max_context_nodes: 20,
-          enable_caching: true
-        }
-      }
-    else
-      {
-        knowledge_graph: {
-          provider: 'in_memory'
-        },
-        entity_extractor: {
-          provider: 'rule_based'
-        },
-        cag_settings: {
-          max_context_depth: 2,
-          max_context_nodes: 20,
-          enable_caching: true
-        }
-      }
-    end
-
     # Override with user-provided configuration
-    if @rag_cag_config[:rag]
-      rag_config[:vector_db] = rag_config[:vector_db].merge(@rag_cag_config[:rag][:vector_db] || {})
-      rag_config[:embedding_service] = rag_config[:embedding_service].merge(@rag_cag_config[:rag][:embedding_service] || {})
-      rag_config[:rag_settings] = rag_config[:rag_settings].merge(@rag_cag_config[:rag][:rag_settings] || {})
+    if @rag_config[:rag]
+      rag_settings[:vector_db] = rag_settings[:vector_db].merge(@rag_config[:rag][:vector_db] || {})
+      rag_settings[:embedding_service] = rag_settings[:embedding_service].merge(@rag_config[:rag][:embedding_service] || {})
+      rag_settings[:rag_settings] = rag_settings[:rag_settings].merge(@rag_config[:rag][:rag_settings] || {})
     end
 
-    if @rag_cag_config[:cag]
-      cag_config[:knowledge_graph] = cag_config[:knowledge_graph].merge(@rag_cag_config[:cag][:knowledge_graph] || {})
-      cag_config[:entity_extractor] = cag_config[:entity_extractor].merge(@rag_cag_config[:cag][:entity_extractor] || {})
-      cag_config[:cag_settings] = cag_config[:cag_settings].merge(@rag_cag_config[:cag][:cag_settings] || {})
-    end
-
-    unified_config = {
-      enable_rag: @rag_cag_config[:enable_rag],
-      enable_cag: @rag_cag_config[:enable_cag],
-      rag_weight: @rag_cag_config.fetch(:rag_weight, 0.6),
-      cag_weight: @rag_cag_config.fetch(:cag_weight, 0.4),
-      max_context_length: @rag_cag_config.fetch(:max_context_length, 4000),
-      knowledge_base_name: @rag_cag_config.fetch(:knowledge_base_name, 'cybersecurity'),
-      enable_caching: @rag_cag_config.fetch(:enable_caching, true),
-      auto_initialization: @rag_cag_config.fetch(:auto_initialization, true),
-      enable_knowledge_sources: @rag_cag_config.fetch(:enable_knowledge_sources, true),
-      knowledge_sources_config: @rag_cag_config.fetch(:knowledge_sources_config, [])
+    config = {
+      enable_rag: @rag_config[:enable_rag],
+      max_context_length: @rag_config.fetch(:max_context_length, 4000),
+      knowledge_base_name: @rag_config.fetch(:knowledge_base_name, 'cybersecurity'),
+      enable_caching: @rag_config.fetch(:enable_caching, true),
+      auto_initialization: @rag_config.fetch(:auto_initialization, true),
+      enable_knowledge_sources: @rag_config.fetch(:enable_knowledge_sources, true),
+      knowledge_sources_config: @rag_config.fetch(:knowledge_sources_config, []),
+      max_results: @rag_config.fetch(:max_results, 5),
+      similarity_threshold: @rag_config.fetch(:similarity_threshold, 0.7)
     }
 
-    Print.info "Creating RAGCAGManager with unified_config knowledge_base_name: #{unified_config[:knowledge_base_name].inspect}"
-    @rag_cag_manager = RAGCAGManager.new(rag_config, cag_config, unified_config)
+    Print.info "Creating RAGOnlyManager with config knowledge_base_name: #{config[:knowledge_base_name].inspect}"
+    @rag_manager = RAGOnlyManager.new(rag_settings, config)
 
-    Print.info "Setting up RAGCAGManager..."
-    unless @rag_cag_manager.setup
-      Print.err "Failed to initialize RAG + CAG Manager"
-      @rag_cag_manager = nil
+    Print.info "Setting up RAGOnlyManager..."
+    unless @rag_manager.setup
+      Print.err "Failed to initialize RAG Manager"
+      @rag_manager = nil
     else
-      Print.info "✓ RAGCAGManager setup successful"
+      Print.info "✓ RAGOnlyManager setup successful"
     end
   end
 
@@ -194,51 +153,36 @@ class BotManager
   end
 
   def get_enhanced_context(bot_name, user_message)
-    return nil unless @enable_rag_cag && @rag_cag_manager
+    return nil unless @enable_rag && @rag_manager
 
-    # Check if bot has specific RAG + CAG configuration
-    rag_cag_enabled = @bots.dig(bot_name, 'rag_cag_enabled')
-    return nil if rag_cag_enabled == false
-
-    # Get bot-specific RAG and CAG settings
+    # Check if bot has specific RAG configuration
     rag_enabled = @bots.dig(bot_name, 'rag_enabled')
-    cag_enabled = @bots.dig(bot_name, 'cag_enabled')
-
-    # If neither RAG nor CAG is enabled for this bot, return nil
-    return nil if rag_enabled == false && cag_enabled == false
+    return nil if rag_enabled == false
 
     # Get bot-specific context preferences
     context_options = {}
     Print.info "Getting enhanced context for bot: #{bot_name}"
-    Print.info "Bot has rag_cag_config: #{@bots.dig(bot_name, 'rag_cag_config') ? 'YES' : 'NO'}"
-    Print.info "Bot rag_enabled: #{rag_enabled}, cag_enabled: #{cag_enabled}"
+    Print.info "Bot has rag_config: #{@bots.dig(bot_name, 'rag_config') ? 'YES' : 'NO'}"
+    Print.info "Bot rag_enabled: #{rag_enabled}"
 
-    if @bots.dig(bot_name, 'rag_cag_config')
+    if @bots.dig(bot_name, 'rag_config')
       context_options = {
-        max_rag_results: @bots.dig(bot_name, 'rag_cag_config', 'max_rag_results') || 5,
-        max_cag_depth: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_depth') || 2,
-        max_cag_nodes: @bots.dig(bot_name, 'rag_cag_config', 'max_cag_nodes') || 10,
-        include_rag_context: rag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_rag_context') != false),
-        include_cag_context: cag_enabled != false && (@bots.dig(bot_name, 'rag_cag_config', 'include_cag_context') != false),
-        custom_collection: @bots.dig(bot_name, 'rag_cag_config', 'collection_name')
+        max_results: @bots.dig(bot_name, 'rag_config', 'max_results') || 5,
+        custom_collection: @bots.dig(bot_name, 'rag_config', 'collection_name')
       }
       Print.info "Using bot-specific config, custom_collection: #{context_options[:custom_collection].inspect}"
     else
       # Use global settings if no bot-specific config
       context_options = {
-        max_rag_results: 5,
-        max_cag_depth: 2,
-        max_cag_nodes: 10,
-        include_rag_context: rag_enabled != false,
-        include_cag_context: cag_enabled != false,
-        custom_collection: @rag_cag_config[:knowledge_base_name] || 'cybersecurity'
+        max_results: 5,
+        custom_collection: @rag_config[:knowledge_base_name] || 'cybersecurity'
       }
       Print.info "Using global config fallback, custom_collection: #{context_options[:custom_collection].inspect}"
-      Print.info "@rag_cag_config[:knowledge_base_name]: #{@rag_cag_config[:knowledge_base_name].inspect}"
+      Print.info "@rag_config[:knowledge_base_name]: #{@rag_config[:knowledge_base_name].inspect}"
     end
 
-    # Get enhanced context from RAG + CAG manager
-    enhanced_context = @rag_cag_manager.get_enhanced_context(user_message, context_options)
+    # Get enhanced context from RAG manager
+    enhanced_context = @rag_manager.get_enhanced_context(user_message, context_options)
     Print.debug "Enhanced context length: #{enhanced_context&.length || 0} characters"
     enhanced_context
   end
@@ -343,7 +287,7 @@ class BotManager
         ollama_host_config = hackerbot.at_xpath('ollama_host')&.text || @ollama_host
         ollama_port_config = (hackerbot.at_xpath('ollama_port')&.text || @ollama_port.to_s).to_i
         openai_api_key_config = hackerbot.at_xpath('openai_api_key')&.text || @openai_api_key
-        openai_base_url_config = hackerbot.at_xpath('openai_base_url')&.text || @openai_base_url
+        openai__base_url_config = hackerbot.at_xpath('openai_base_url')&.text || @openai_base_url
         vllm_host_config = hackerbot.at_xpath('vllm_host')&.text || @vllm_host
         vllm_port_config = (hackerbot.at_xpath('vllm_port')&.text || @vllm_port.to_s).to_i
         sglang_host_config = hackerbot.at_xpath('sglang_host')&.text || @sglang_host
@@ -380,7 +324,7 @@ class BotManager
           @bots[bot_name]['chat_ai'] = LLMClientFactory.create_client(
             'openai',
             api_key: openai_api_key_config,
-            base_url: openai_base_url_config,
+            base_url: openai__base_url_config,
             model: model_name,
             system_prompt: system_prompt,
             max_tokens: max_tokens,
@@ -439,13 +383,13 @@ class BotManager
           @bots[bot_name]['rag_enabled'] = if rag_enabled_node
             rag_enabled_node.downcase == 'true'
           else
-            @rag_cag_config[:enable_rag]  # Use global setting
+            @rag_config[:enable_rag]  # Use global setting
           end
 
           @bots[bot_name]['cag_enabled'] = if cag_enabled_node
             cag_enabled_node.downcase == 'true'
           else
-            @rag_cag_config[:enable_cag]  # Use global setting
+            @rag_config[:enable_cag]  # Use global setting
           end
 
           # Parse RAG configuration
@@ -482,7 +426,7 @@ class BotManager
           if knowledge_sources_node
             @bots[bot_name]['knowledge_sources'] = parse_knowledge_sources(knowledge_sources_node)
             # Update global RAG/CAG config with bot-specific knowledge sources
-            @rag_cag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
+            @rag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
           end
         end
 
@@ -595,7 +539,7 @@ class BotManager
       if dir_path
         dir_config = {
           path: dir_path,
-          collection_name: dir_collection || "markdown_#{File.basename(dir_path).gsub(/[^\w\-]/, '_')}",
+          collection_name: dir_collection || "markdown_#{File.basename(dir_path).gsub(/[^W-]/, '_')}",
           pattern: dir_pattern || '*.md',
           is_directory: true
         }
@@ -607,16 +551,16 @@ class BotManager
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
-    if enhanced_context && !enhanced_context.strip.empty?
+    if enhanced_context && enhanced_context[:combined_context] && !enhanced_context[:combined_context].strip.empty?
       # Include RAG + CAG enhanced context
       if context.empty? && chat_context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nUser: #{user_message}\nAssistant:"
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nUser: #{user_message}\nAssistant:"
       elsif context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
       elsif chat_context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
       else
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
       end
     else
       # Original prompt assembly without enhanced context
@@ -1120,7 +1064,9 @@ class BotManager
               end
               Print.debug post_lines
 
+              if post_lines && !post_lines.empty?
               current = check_output_conditions(bot_name, bots_ref, current, post_lines, m)
+            end
             else
               Print.debug("Shell failed...")
               # shell fail message will use the default message, unless specified for the attack
@@ -1168,10 +1114,8 @@ class BotManager
     end
     ThreadsWait.all_waits(threads)
   end
-end
-
 # Helper functions that need to be accessible to the bot instances
-def update_bot_state(bot_name, bots, current_attack)
+  def update_bot_state(bot_name, bots, current_attack)
   bots[bot_name]['current_attack'] = current_attack
   bots[bot_name]['current_quiz'] = nil
   bots[bot_name]['attacks'][current_attack]['post_command_outputs'] ||= []
@@ -1228,4 +1172,5 @@ def check_output_conditions(bot_name, bots, current, lines, m)
     end
   end
   current
+end
 end

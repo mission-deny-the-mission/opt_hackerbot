@@ -128,7 +128,10 @@ class RAGManager
       end
 
       # Format context
-      context = format_results_as_context(filtered_results)
+      # context = format_results_as_context(filtered_results)
+
+      # Return a hash with the documents
+      context = { documents: filtered_results }
 
       # Cache results if enabled
       if @rag_config[:enable_caching]
