@@ -1,17 +1,19 @@
 require './rag/rag_manager.rb'
+require './cag_manager.rb'
 require './knowledge_bases/mitre_attack_knowledge.rb'
 require './knowledge_bases/knowledge_source_manager.rb'
 require './print.rb'
 
-# RAG Manager for knowledge retrieval and augmented generation
-class RAGOnlyManager
+# Combined RAG + CAG Manager for knowledge retrieval and augmented generation
+class RAGCAGManager
   # Public accessors
-  attr_reader :initialized, :rag_manager, :knowledge_source_manager
+  attr_reader :initialized, :rag_manager, :cag_manager, :knowledge_source_manager
 
   def initialize(rag_config, config = {})
     @rag_config = rag_config
     @config = {
       enable_rag: config.key?(:enable_rag) ? config[:enable_rag] : true,
+      enable_cag: config.key?(:enable_cag) ? config[:enable_cag] : false,
       max_context_length: config[:max_context_length] || 4000,
       knowledge_base_name: config[:knowledge_base_name] || 'cybersecurity',
       enable_caching: config[:enable_caching] || false,
@@ -27,19 +29,21 @@ class RAGOnlyManager
     @cache_timestamps = {}
     @initialized = false
     @rag_manager = nil
+    @cag_manager = nil
     @knowledge_source_manager = nil
 
     # Debug logging for config
-    Print.info "RAGOnlyManager initialized with config:"
+    Print.info "RAGCAGManager initialized with config:"
     Print.info "  knowledge_base_name: #{@config[:knowledge_base_name].inspect}"
     Print.info "  enable_rag: #{@config[:enable_rag].inspect}"
+    Print.info "  enable_cag: #{@config[:enable_cag].inspect}"
     Print.info "  enable_knowledge_sources: #{@config[:enable_knowledge_sources].inspect}"
   end
 
   def setup
     return if @initialized
 
-    Print.info "Initializing RAG Manager..."
+    Print.info "Initializing RAG+CAG Manager..."
 
     success = true
 
@@ -58,6 +62,20 @@ class RAGOnlyManager
       end
     end
 
+    # Initialize CAG if enabled
+    if @config[:enable_cag]
+      Print.info "Initializing CAG component..."
+      @cag_manager = CAGManager.new(
+        @rag_config, # Use same config structure
+        @config
+      )
+
+      unless @cag_manager.setup
+        Print.err "Failed to initialize CAG Manager"
+        success = false
+      end
+    end
+
     # Initialize knowledge source manager if enabled
     if @config[:enable_knowledge_sources]
       Print.info "Initializing Knowledge Source Manager..."
@@ -72,14 +90,14 @@ class RAGOnlyManager
 
     if success
       @initialized = true
-      Print.info "RAG Manager initialized successfully"
+      Print.info "RAG+CAG Manager initialized successfully"
 
       # Auto-initialize knowledge base if configured
       if @config[:auto_initialization]
         initialize_knowledge_base
       end
     else
-      Print.err "RAG Manager initialization failed"
+      Print.err "RAG+CAG Manager initialization failed"
     end
 
     success
@@ -162,10 +180,13 @@ class RAGOnlyManager
     enhanced_context = {
       original_query: query,
       rag_context: nil,
+      cag_context: nil,
       combined_context: query,
       sources: [],
       timestamp: Time.now
     }
+
+    context_parts = []
 
     # Get RAG context if enabled and available
     if @config[:enable_rag] && @rag_manager
@@ -181,14 +202,39 @@ class RAGOnlyManager
         enhanced_context[:rag_context] = rag_context
         enhanced_context[:sources] += rag_context[:documents].map { |doc| doc[:metadata]&.dig(:source) }.compact
 
-        # Combine with original query
+        # Format RAG context
         rag_text = rag_context[:documents].map { |doc| doc[:content] || doc['content'] }.join("\n\n")
-        enhanced_context[:combined_context] = "#{query}\n\nRelevant Knowledge:\n#{rag_text}"
+        context_parts << "Relevant Knowledge (RAG):\n#{rag_text}"
 
-        Print.debug "Retrieved #{rag_context[:documents].length} relevant documents"
+        Print.debug "Retrieved #{rag_context[:documents].length} relevant documents from RAG"
       else
-        Print.debug "No relevant documents found for query"
+        Print.debug "No relevant documents found for query in RAG"
       end
+    end
+
+    # Get CAG context if enabled and available
+    if @config[:enable_cag] && @cag_manager
+      Print.debug "Getting CAG context for query: #{query[0..50]}..."
+
+      cag_context = @cag_manager.get_cached_context(query, context_options)
+
+      if cag_context && cag_context[:cag_context]
+        enhanced_context[:cag_context] = cag_context[:cag_context]
+        enhanced_context[:sources] += cag_context[:sources] || []
+
+        # Format CAG context
+        if cag_context[:cag_context][:context_text]
+          context_parts << "Preloaded Knowledge (CAG):\n#{cag_context[:cag_context][:context_text]}"
+          Print.debug "Retrieved preloaded context with #{cag_context[:cag_context][:document_count]} documents from CAG"
+        end
+      else
+        Print.debug "No preloaded context available from CAG"
+      end
+    end
+
+    # Combine contexts
+    if context_parts.any?
+      enhanced_context[:combined_context] = "#{query}\n\n#{context_parts.join("\n\n")}"
     end
 
     # Cache result if enabled

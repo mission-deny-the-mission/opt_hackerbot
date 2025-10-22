@@ -23,20 +23,20 @@ class BotManager
     @max_history_length = 10
     @enable_rag = enable_rag
     @rag_config = rag_config
-    @rag_manager = nil
+    @rag_cag_manager = nil
 
     # Set default offline mode
     @rag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
     @rag_config[:enable_rag] = rag_config.fetch(:enable_rag, true)  # Default to enabled
 
-    # Initialize RAG manager if enabled
+    # Initialize RAG+CAG manager if enabled
     if @enable_rag
-      initialize_rag_manager
+      initialize_rag_cag_manager
     end
   end
 
-  def initialize_rag_manager
-    Print.info "Initializing RAG Manager..."
+  def initialize_rag_cag_manager
+    Print.info "Initializing RAG+CAG Manager..."
 
     # Determine if we should use offline mode
     use_offline = case @rag_config[:offline_mode]
@@ -109,6 +109,7 @@ class BotManager
 
     config = {
       enable_rag: @rag_config[:enable_rag],
+      enable_cag: @rag_config.fetch(:enable_cag, false),
       max_context_length: @rag_config.fetch(:max_context_length, 4000),
       knowledge_base_name: @rag_config.fetch(:knowledge_base_name, 'cybersecurity'),
       enable_caching: @rag_config.fetch(:enable_caching, true),
@@ -119,15 +120,15 @@ class BotManager
       similarity_threshold: @rag_config.fetch(:similarity_threshold, 0.7)
     }
 
-    Print.info "Creating RAGOnlyManager with config knowledge_base_name: #{config[:knowledge_base_name].inspect}"
-    @rag_manager = RAGOnlyManager.new(rag_settings, config)
+    Print.info "Creating RAGCAGManager with config knowledge_base_name: #{config[:knowledge_base_name].inspect}"
+    @rag_cag_manager = RAGCAGManager.new(rag_settings, config)
 
-    Print.info "Setting up RAGOnlyManager..."
-    unless @rag_manager.setup
-      Print.err "Failed to initialize RAG Manager"
-      @rag_manager = nil
+    Print.info "Setting up RAGCAGManager..."
+    unless @rag_cag_manager.setup
+      Print.err "Failed to initialize RAG+CAG Manager"
+      @rag_cag_manager = nil
     else
-      Print.info "✓ RAGOnlyManager setup successful"
+      Print.info "✓ RAGCAGManager setup successful"
     end
   end
 
@@ -153,7 +154,7 @@ class BotManager
   end
 
   def get_enhanced_context(bot_name, user_message)
-    return nil unless @enable_rag && @rag_manager
+    return nil unless @enable_rag && @rag_cag_manager
 
     # Check if bot has specific RAG configuration
     rag_enabled = @bots.dig(bot_name, 'rag_enabled')
@@ -181,8 +182,8 @@ class BotManager
       Print.info "@rag_config[:knowledge_base_name]: #{@rag_config[:knowledge_base_name].inspect}"
     end
 
-    # Get enhanced context from RAG manager
-    enhanced_context = @rag_manager.get_enhanced_context(user_message, context_options)
+    # Get enhanced context from RAG+CAG manager
+    enhanced_context = @rag_cag_manager.get_enhanced_context(user_message, context_options)
     Print.debug "Enhanced context length: #{enhanced_context&.dig(:combined_context)&.length || 0} characters"
     enhanced_context
   end

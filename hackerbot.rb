@@ -48,6 +48,7 @@ $vllm_port = 8000
 $sglang_host = 'localhost'
 $sglang_port = 30000
 $enable_rag = true
+$enable_cag = false
 $rag_only = false
 $offline_mode = 'auto'  # 'auto', 'offline', 'online'
 
@@ -113,9 +114,11 @@ begin
         exit
       end
     when '--enable-rag-cag'
-      $enable_rag_cag = true
+      $enable_rag = true
+      $enable_cag = true
     when '--rag-only'
-      $enable_rag_cag = true
+      $enable_rag = true
+      $enable_cag = false
       $rag_only = true
 
 
@@ -138,7 +141,8 @@ end
 if __FILE__ == $0
   # Prepare RAG + CAG configuration with comprehensive knowledge sources
   rag_config = {
-    enable_rag: true,  # Always enable RAG
+    enable_rag: $enable_rag,
+    enable_cag: $enable_cag,
     offline_mode: $offline_mode,
     knowledge_base_name: 'cybersecurity',
     rag: {
