@@ -1,9 +1,9 @@
-# Hackerbot Brownfield Enhancement PRD
+# Hackerbot LLM Knowledge Enhancement PRD
 
-**Version**: v1.0
-**Date**: 2025-10-17
-**Type**: LLM Feature Stabilization (Brownfield Enhancement)
-**Status**: Draft
+**Version**: v2.0
+**Date**: 2025-10-22
+**Type**: LLM Knowledge Enhancement (Two-Phase Implementation)
+**Status**: Updated
 
 ---
 
@@ -36,8 +36,8 @@ Analyzed documentation:
 
 **Current Functionality**:
 - **LLM Integration**: Multiple provider support (Ollama, OpenAI, VLLM, SGLang) with streaming responses and per-user chat history
-- **RAG System**: Retrieval-Augmented Generation using vector database for document retrieval and semantic search (functional)
-- **CAG System**: Cache-Augmented Generation using knowledge graph for cached entity-based knowledge retrieval (currently non-functional - document loading issues)
+- **RAG System**: Retrieval-Augmented Generation using vector database for document retrieval and semantic search (functional and validated)
+- **CAG System**: **REMOVED** - decision made to go RAG-only for maintainability (Epic 2 will implement CAG from scratch)
 - **Knowledge Bases**: MITRE ATT&CK framework, man pages, markdown files
 - **Training Scenarios**: Progressive attack simulation with dynamic bot personalities
 - **Deployment**: Service-based operation with offline/air-gapped support
@@ -63,42 +63,65 @@ Analyzed documentation:
 ### 1.4 Enhancement Scope Definition
 
 **Enhancement Type**:
-- ☑ **Bug Fix and Stability Improvements** (PRIMARY)
-- ☑ **Major Feature Modification** (CAG system requires fixes/reimplementation)
-- ☑ **Performance/Scalability Improvements** (RAG vs CAG performance comparison)
+- ☑ **System Validation and Optimization** (PRIMARY - Epic 1)
+- ☑ **New Feature Implementation** (Epic 2 - CAG system from scratch)
+- ☑ **Performance/Scalability Improvements** (Both epics include performance work)
 
 **Enhancement Description**:
 
-This PRD documents the stabilization of recently-implemented LLM features (RAG and CAG systems) for the Hackerbot framework. The CAG (Cache-Augmented Generation) system currently fails to load and cache documents (man pages, lab sheets) into its knowledge graph, preventing performance testing and comparison with the functional RAG (Retrieval-Augmented Generation) system. This enhancement will diagnose and fix CAG issues, validate both systems through comprehensive testing, and provide performance comparison data between these two alternative knowledge enhancement approaches.
+This PRD documents two-phase enhancement of the Hackerbot LLM knowledge enhancement capabilities:
+
+**Phase 1 (Epic 1)**: Validate and optimize the existing RAG system for production deployment. The CAG system was removed due to complexity and maintainability concerns, leaving RAG as the primary knowledge enhancement approach. This phase focuses on comprehensive testing, performance validation, and optimization of the RAG system to ensure it's production-ready for SecGen integration.
+
+**Phase 2 (Epic 2)**: Implement a modern Cache-Augmented Generation (CAG) system from scratch based on current research. This new implementation will pre-load knowledge into long-context LLM windows with KV cache precomputation, offering faster response times as an alternative to RAG. Epic 2 depends on Epic 1 completion and will provide both standalone CAG capability and hybrid CAG-RAG routing.
 
 **Impact Assessment**:
-- ☑ **Moderate to Significant Impact**
-  - CAG subsystem requires diagnosis and potential reimplementation
-  - Testing infrastructure needs expansion
-  - Performance benchmarking required to compare RAG vs CAG approaches
-  - Existing RAG system should remain largely untouched
+- ☑ **Significant Impact**
+  - Epic 1: Comprehensive RAG system validation and optimization
+  - Epic 2: Complete new CAG system implementation from scratch
+  - Testing infrastructure expansion for both systems
+  - Performance benchmarking between RAG and new CAG approach
+  - Hybrid system development for intelligent routing
   - Core IRC bot functionality unaffected
 
 ### 1.5 Goals and Background Context
 
 **Goals**:
-- Fix CAG document loading and caching functionality for man pages and lab sheets
-- Create comprehensive test suites for both RAG and CAG systems
-- Perform quantitative performance comparison between RAG and CAG approaches
-- Determine which knowledge enhancement approach (RAG, CAG, or hybrid) is optimal for cybersecurity training use cases
-- Validate chosen system(s) are production-ready for SecGen re-integration
-- Document findings and architectural recommendations
-- Establish baseline performance metrics for future optimization
+
+**Epic 1 Goals**:
+- Validate and optimize the RAG system for production deployment
+- Create comprehensive test suite for RAG system with ≥80% coverage
+- Establish performance baselines and implement optimizations
+- Ensure RAG system meets all requirements for SecGen integration
+- Document RAG-only architectural decision and rationale
+
+**Epic 2 Goals**:
+- Implement modern Cache-Augmented Generation system from scratch
+- Create CAG system based on current research (KV cache precomputation)
+- Develop hybrid CAG-RAG routing system for optimal performance
+- Validate CAG performance improvements over RAG (target: 50-80% latency reduction)
+- Provide alternative knowledge enhancement approach for specific use cases
+
+**Overall Project Goals**:
+- Validate at least one production-ready knowledge enhancement system
+- Provide both RAG and CAG options for different use cases
+- Establish comprehensive performance metrics and baselines
+- Enable intelligent routing between RAG and CAG based on query characteristics
+- Complete SecGen integration with robust LLM knowledge enhancement
 
 **Background Context**:
 
-The Hackerbot project recently implemented two alternative LLM knowledge enhancement approaches: RAG (Retrieval-Augmented Generation) and CAG (Cache-Augmented Generation). RAG uses vector embeddings and similarity search to retrieve relevant documents, while CAG uses cached knowledge structures for faster, pre-indexed knowledge retrieval. Both systems aim to enhance the quality and relevance of AI-powered training interactions, but they represent fundamentally different architectural approaches with different performance characteristics.
+The Hackerbot project originally implemented both RAG (Retrieval-Augmented Generation) and CAG (Cache-Augmented Generation) systems as alternative LLM knowledge enhancement approaches. However, after evaluation, the CAG system was removed due to complexity and maintainability concerns, leaving RAG as the primary functional system.
 
-The RAG system appears functional but requires comprehensive validation testing. The CAG system, which should provide faster cached access to structured cybersecurity knowledge (especially man pages and lab sheets), has critical issues preventing document loading and caching. This prevents the critical performance comparison needed to determine which approach is better suited for cybersecurity training scenarios.
+**Current State**: The RAG system is operational and provides semantic document retrieval using vector embeddings and similarity search. However, it requires comprehensive validation, testing, and optimization to ensure it's production-ready for SecGen integration.
 
-This enhancement is essential to complete the LLM integration feature set before re-integrating Hackerbot into the larger SecGen (Security Scenario Generator) project. The solo developer needs at least one system functional and validated to proceed. A 2-week time-box has been established for CAG fixes, with RAG-only mode as an acceptable fallback if CAG proves too complex to remediate.
+**Modern CAG Research**: Recent advances in CAG technology have shown that pre-loading knowledge into long-context LLM windows with KV cache precomputation can provide significant performance advantages (50-80% latency reduction) over traditional RAG approaches. This new implementation approach eliminates the need for complex knowledge graphs and focuses on efficient cache management.
 
-**Important Note**: CAG does not necessarily require a knowledge graph implementation. A simpler approach using pre-cached prompts or fixed document structures may be more appropriate and easier to maintain.
+**Two-Phase Approach**: 
+1. **Epic 1** validates and optimizes the existing RAG system, ensuring it meets production requirements
+2. **Epic 2** implements a modern CAG system from scratch based on current research, providing both an alternative approach and hybrid routing capabilities
+
+This enhancement strategy ensures Hackerbot has robust LLM knowledge enhancement capabilities while exploring cutting-edge approaches for optimal performance in cybersecurity training scenarios. The RAG system provides a proven baseline, while the new CAG implementation offers performance advantages for specific use cases.
 
 ### 1.6 Change Log
 
@@ -106,6 +129,7 @@ This enhancement is essential to complete the LLM integration feature set before
 |--------|------|---------|-------------|--------|
 | Initial PRD Creation | 2025-10-17 | v1.0 | Brownfield PRD for LLM Feature Stabilization | PM Agent |
 | Corrected CAG Definition | 2025-10-17 | v1.0 | Fixed CAG = Cache-Augmented Generation | PM Agent |
+| Updated for CAG Removal & Epic 2 | 2025-10-22 | v2.0 | Updated PRD to reflect CAG removal and Epic 2 creation | Product Owner Agent |
 
 ---
 
@@ -113,59 +137,101 @@ This enhancement is essential to complete the LLM integration feature set before
 
 ### 2.1 Functional Requirements
 
-**FR1**: The CAG system shall successfully load documents (man pages, lab sheets, markdown files) from configured knowledge sources into its cache mechanism.
+**Epic 1 Requirements (RAG System Validation)**:
 
-**FR2**: The CAG system shall persist cached documents for subsequent retrieval without requiring reload on each query.
+**FR1**: The RAG system shall have comprehensive test coverage (≥80%) validating document retrieval accuracy and relevance.
 
-**FR3**: Both RAG and CAG systems shall provide knowledge-enhanced responses to user queries through their respective LLM integrations.
+**FR2**: The RAG system shall meet performance requirements for production deployment (≤5s query response time).
 
-**FR4**: The system shall support independent enabling/disabling of RAG and CAG systems per bot configuration.
+**FR3**: The system shall provide performance validation metrics for RAG system including response time, memory usage, and answer quality.
 
-**FR5**: The system shall provide a test suite that validates RAG document retrieval accuracy and relevance.
+**FR4**: The system shall document RAG-only architectural decision with clear rationale.
 
-**FR6**: The system shall provide a test suite that validates CAG cache loading, persistence, and retrieval functionality.
+**FR5**: The system shall maintain existing IRC bot functionality, LLM provider integrations, and attack scenario features during RAG optimization.
 
-**FR7**: The system shall generate quantitative performance metrics comparing RAG and CAG approaches including response time, memory usage, and answer quality.
+**FR6**: The system shall support offline operation for RAG system without external API dependencies (when using Ollama).
 
-**FR8**: The system shall maintain existing IRC bot functionality, LLM provider integrations, and attack scenario features while CAG fixes are implemented.
+**Epic 2 Requirements (CAG System Implementation)**:
 
-**FR9**: The system shall support offline operation for both RAG and CAG systems without external API dependencies (when using Ollama).
+**FR7**: The CAG system shall successfully load and pre-cache knowledge base documents for fast retrieval.
 
-**FR10**: The system shall document CAG architectural decisions including cache implementation approach (knowledge graph, pre-cached prompts, or alternative).
+**FR8**: The CAG system shall implement KV cache precomputation for long-context LLM models.
+
+**FR9**: The CAG system shall provide significant latency improvements over RAG (target: 50-80% reduction).
+
+**FR10**: The system shall support hybrid CAG-RAG routing with intelligent system selection based on query characteristics.
+
+**FR11**: The CAG system shall support offline operation with pre-computed caches.
+
+**FR12**: The system shall provide comprehensive test coverage (≥80%) for CAG system components.
 
 ### 2.2 Non-Functional Requirements
 
-**NFR1**: CAG system fixes must not degrade existing RAG system performance or functionality.
+**Epic 1 NFRs (RAG System)**:
 
-**NFR2**: Memory usage for CAG system shall not exceed 4GB for typical knowledge base sizes (1000+ documents).
+**NFR1**: RAG system optimizations shall not break existing functionality.
 
-**NFR3**: CAG cache loading time shall not exceed 60 seconds for initial knowledge base population.
+**NFR2**: Memory usage for RAG system shall not exceed 4GB for typical knowledge base sizes (1000+ documents).
 
-**NFR4**: Both RAG and CAG query response times shall not exceed 5 seconds for typical cybersecurity training queries (excluding LLM inference time).
+**NFR3**: RAG system query response times shall not exceed 5 seconds for typical cybersecurity training queries (excluding LLM inference time).
 
-**NFR5**: Test suites shall achieve minimum 80% code coverage for RAG and CAG manager classes.
+**NFR4**: RAG test suite shall achieve minimum 80% code coverage for RAG manager classes.
 
-**NFR6**: Performance comparison testing shall include minimum 100 test queries covering diverse cybersecurity topics.
+**NFR5**: Performance validation testing shall include minimum 100 test queries covering diverse cybersecurity topics.
 
-**NFR7**: All CAG fixes and new test code shall follow existing Ruby coding standards and conventions established in the codebase.
+**NFR6**: All RAG optimizations shall follow existing Ruby coding standards and conventions.
 
-**NFR8**: CAG reimplementation decision (knowledge graph vs simpler caching) shall be documented with architectural rationale.
+**Epic 2 NFRs (CAG System)**:
 
-**NFR9**: System shall maintain backward compatibility with existing bot XML configurations.
+**NFR7**: CAG system implementation shall not degrade existing RAG system performance.
 
-**NFR10**: All changes shall be testable in the existing Nix development environment without additional infrastructure requirements.
+**NFR8**: Memory usage for CAG system shall not exceed 6GB for typical knowledge base sizes (including KV caches).
+
+**NFR9**: CAG cache precomputation time shall not exceed 5 minutes for initial knowledge base population.
+
+**NFR10**: CAG query response times shall not exceed 2 seconds for typical cybersecurity training queries (excluding LLM inference time).
+
+**NFR11**: CAG test suite shall achieve minimum 80% code coverage for CAG manager classes.
+
+**NFR12**: All CAG implementation shall follow existing Ruby coding standards and conventions.
+
+**Cross-Epic NFRs**:
+
+**NFR13**: System shall maintain backward compatibility with existing bot XML configurations.
+
+**NFR14**: All changes shall be testable in the existing Nix development environment without additional infrastructure requirements.
+
+**NFR15**: Hybrid CAG-RAG routing shall make intelligent decisions based on query characteristics and system performance.
 
 ### 2.3 Compatibility Requirements
 
-**CR1: LLM Provider Compatibility**: CAG fixes shall maintain compatibility with all existing LLM providers (Ollama, OpenAI, VLLM, SGLang) without requiring provider-specific modifications.
+**Epic 1 Compatibility (RAG System)**:
 
-**CR2: Configuration Compatibility**: Existing bot XML configurations shall continue to function without modification; new CAG configuration options shall be optional with sensible defaults.
+**CR1**: RAG system optimizations shall maintain compatibility with all existing LLM providers (Ollama, OpenAI, VLLM, SGLang).
 
-**CR3: Knowledge Base Compatibility**: Both RAG and CAG systems shall support the same knowledge source types (MITRE ATT&CK, man pages, markdown files, lab sheets) through the base knowledge source interface.
+**CR2**: Existing bot XML configurations shall continue to function without modification during RAG optimization.
 
-**CR4: Offline Operation Compatibility**: CAG system shall maintain offline/air-gapped operation capability matching RAG system requirements for secure training environments.
+**CR3**: RAG system shall continue to support all knowledge source types (MITRE ATT&CK, man pages, markdown files, lab sheets).
 
-**CR5: IRC Protocol Compatibility**: All enhancements shall maintain full compatibility with the existing IRC bot interface and command structure.
+**CR4**: RAG system shall maintain offline/air-gapped operation capability.
+
+**Epic 2 Compatibility (CAG System)**:
+
+**CR5**: CAG system implementation shall maintain compatibility with all existing LLM providers, with special focus on long-context models.
+
+**CR6**: New CAG configuration options shall be optional with sensible defaults; existing configurations remain valid.
+
+**CR7**: CAG system shall support the same knowledge source types as RAG system through shared knowledge base interfaces.
+
+**CR8**: CAG system shall maintain offline/air-gapped operation capability with pre-computed caches.
+
+**Cross-Epic Compatibility**:
+
+**CR9**: All enhancements shall maintain full compatibility with the existing IRC bot interface and command structure.
+
+**CR10**: Hybrid CAG-RAG routing shall be transparent to end users and configurable per bot instance.
+
+**CR11**: Both systems shall support the same knowledge base sources and formats.
 
 ---
 
@@ -188,13 +254,13 @@ This enhancement is essential to complete the LLM integration feature set before
 - SGLang (fast LLM serving)
 
 **Knowledge Enhancement Systems**:
-- **RAG**: Vector database (ChromaDB in-memory), embedding services (OpenAI, Ollama)
-- **CAG**: In-memory knowledge graph client (current implementation - may be replaced)
+- **RAG**: Vector database (ChromaDB in-memory), embedding services (OpenAI, Ollama) - **OPERATIONAL**
+- **CAG**: **REMOVED** (will be reimplemented in Epic 2 with modern approach)
 
 **Database**:
 - In-memory data structures (no external database)
-- Vector database: ChromaDB (in-memory mode)
-- Knowledge graph: In-memory implementation (cag/in_memory_graph_client.rb)
+- Vector database: ChromaDB (in-memory mode) - **OPERATIONAL**
+- CAG system: To be implemented with KV cache precomputation (Epic 2)
 
 **Infrastructure**:
 - Ruby runtime via Nix development environment
@@ -218,16 +284,16 @@ This enhancement is essential to complete the LLM integration feature set before
 
 **Database Integration Strategy**:
 - No traditional database required
-- CAG system uses in-memory data structures for caching
-- RAG system uses in-memory ChromaDB vector store
-- Consideration: CAG may be reimplemented with simpler file-based caching or pre-loaded data structures instead of knowledge graph
+- RAG system uses in-memory ChromaDB vector store - **OPERATIONAL**
+- CAG system to be implemented with KV cache precomputation (Epic 2)
 - All data structures must support offline operation
 
 **API Integration Strategy**:
 - LLM providers accessed through factory pattern (llm_client_factory.rb)
 - All LLM API calls go through abstract llm_client.rb interface
-- CAG and RAG integrated via rag_cag_manager.rb unified coordinator
-- No changes to LLM client interfaces required for CAG fixes
+- RAG system integrated via rag/rag_manager.rb - **OPERATIONAL**
+- CAG system to be integrated via new cag/cag_manager.rb (Epic 2)
+- No changes to LLM client interfaces required
 
 **Frontend Integration Strategy**:
 - N/A - IRC text-based interface only
@@ -236,8 +302,8 @@ This enhancement is essential to complete the LLM integration feature set before
 
 **Testing Integration Strategy**:
 - Test files in test/ directory following existing patterns
-- New test files: test/test_rag_comprehensive.rb, test/test_cag_comprehensive.rb
-- Performance comparison test: test/test_rag_cag_performance.rb
+- Epic 1 test files: test/test_rag_comprehensive.rb, test/test_rag_performance.rb
+- Epic 2 test files: test/test_cag_comprehensive.rb, test/test_cag_performance.rb, test/test_hybrid_system.rb
 - Integration with existing test runner: test/run_tests.rb
 - Tests must run in Nix development environment
 
@@ -246,19 +312,25 @@ This enhancement is essential to complete the LLM integration feature set before
 **File Structure Approach**:
 ```
 opt_hackerbot/
-├── rag/                          # RAG system (minimal changes)
-├── cag/                          # CAG system (fixes/reimplementation here)
-│   ├── cag_manager.rb           # Main coordinator (fix or rewrite)
-│   ├── in_memory_graph_client.rb # Current impl (may replace with simpler approach)
-│   └── knowledge_graph_interface.rb
+├── rag/                          # RAG system (operational, optimization in Epic 1)
+│   ├── rag_manager.rb           # Main coordinator
+│   ├── chromadb_client.rb       # Vector database client
+│   └── embedding_service_*.rb   # Embedding clients
+├── cag/                          # CAG system (to be implemented in Epic 2)
+│   ├── cag_manager.rb           # Main coordinator
+│   ├── context_manager.rb       # Context window management
+│   ├── cache_manager.rb         # KV cache management
+│   ├── knowledge_loader.rb      # Knowledge preprocessing
+│   └── inference_engine.rb      # Response generation
 ├── knowledge_bases/              # Knowledge sources (shared by RAG/CAG)
-│   ├── sources/
-│   │   ├── man_pages/           # Man page loading (needs fixes)
-│   │   └── markdown_files/      # Markdown loading
+│   ├── sources/                  # Knowledge source implementations
+│   └── data/                     # Knowledge base data files
 ├── test/                         # Test suites
-│   ├── test_rag_comprehensive.rb     # New
-│   ├── test_cag_comprehensive.rb     # New
-│   └── test_rag_cag_performance.rb   # New
+│   ├── test_rag_comprehensive.rb     # Epic 1
+│   ├── test_rag_performance.rb       # Epic 1
+│   ├── test_cag_comprehensive.rb     # Epic 2
+│   ├── test_cag_performance.rb       # Epic 2
+│   └── test_hybrid_system.rb         # Epic 2
 └── docs/                         # Documentation updates
 ```
 
@@ -344,29 +416,36 @@ opt_hackerbot/
 
 ### 4.1 Epic Approach
 
-**Epic Structure Decision**: Single comprehensive epic for LLM Feature Stabilization
+**Epic Structure Decision**: Two-phase approach with sequential epics
 
 **Rationale**:
 
-This enhancement focuses on a cohesive goal (stabilizing and validating RAG/CAG systems) with clear dependencies between stories. The work is tightly coupled:
-- CAG diagnosis informs fix approach
-- Both systems need testing before comparison
-- Performance comparison depends on both systems functional
-- All work targets same outcome (production-ready knowledge enhancement)
+This enhancement uses a two-phase approach to ensure production-ready LLM knowledge enhancement capabilities:
 
-A single epic provides clear progress tracking and logical story sequencing. Multiple epics would create artificial boundaries in what is fundamentally a unified stabilization effort.
+**Phase 1 (Epic 1)**: RAG System Validation and Optimization
+- Focuses on validating and optimizing the existing operational RAG system
+- Ensures production readiness for SecGen integration
+- Provides proven baseline for CAG comparison
+- Critical path for project timeline
 
-**Estimated Timeline**: 2-4 weeks
-- Week 1: CAG diagnosis and initial fixes
-- Week 2: CAG completion or fallback decision
-- Week 3: Comprehensive testing (RAG and CAG/RAG-only)
-- Week 4: Performance comparison and documentation
+**Phase 2 (Epic 2)**: CAG System Implementation 
+- Implements modern CAG system from scratch based on current research
+- Depends on Epic 1 completion for baseline and comparison
+- Provides performance advantages and alternative approach
+- Enhances system capabilities with hybrid routing
+
+**Estimated Timeline**: 
+- **Epic 1**: 2-4 weeks (critical path)
+- **Epic 2**: 3-5 weeks (can start after Epic 1 completion)
+- **Total**: 5-9 weeks for complete LLM knowledge enhancement suite
+
+This approach ensures we have a production-ready system (Epic 1) while exploring advanced capabilities (Epic 2) without blocking critical project timelines.
 
 ---
 
-## 5. Epic 1: LLM Feature Stabilization
+## 5. Epic 1: RAG System Validation and Optimization
 
-**Epic Goal**: Stabilize and validate RAG and CAG knowledge enhancement systems, ensuring at least one production-ready approach for cybersecurity training use cases through comprehensive testing and performance comparison.
+**Epic Goal**: Validate and optimize the RAG system for production deployment, ensuring robust performance for cybersecurity training use cases through comprehensive testing and performance validation.
 
 **Integration Requirements**:
 - Maintain backward compatibility with existing bot configurations
@@ -376,63 +455,7 @@ A single epic provides clear progress tracking and logical story sequencing. Mul
 
 ---
 
-### Story 1.1: Diagnose CAG Document Loading Failures
-
-As a **developer**,
-I want to **identify the root causes preventing CAG from loading and caching documents**,
-so that I can determine the most efficient fix approach (repair vs reimplementation).
-
-**Acceptance Criteria**:
-1. All code paths for document loading in cag_manager.rb are traced and documented
-2. Failure points in man page and lab sheet loading are identified with specific error messages
-3. In-memory graph client behavior is analyzed for caching issues
-4. Knowledge source integration (knowledge_bases/sources/man_pages/) is validated
-5. Root cause analysis document created listing all issues found
-6. Recommendation made: repair existing implementation or reimplement with simpler approach
-7. Time estimate provided for chosen fix approach
-
-**Integration Verification**:
-- **IV1**: Verify RAG system continues to function correctly during CAG diagnosis
-- **IV2**: Verify existing bot configurations remain valid
-- **IV3**: Verify no performance degradation to running systems during diagnostic testing
-
-**Dependencies**: None (starting point)
-
-**Estimated Effort**: 2-3 days
-
----
-
-### Story 1.2: Implement CAG Fix or Simplified Reimplementation
-
-As a **developer**,
-I want to **fix CAG document loading based on diagnosis findings**,
-so that the CAG system can cache and retrieve knowledge sources.
-
-**Acceptance Criteria**:
-1. CAG system successfully loads man pages from knowledge_bases/sources/man_pages/
-2. CAG system successfully loads lab sheets (markdown files) from configured sources
-3. Cached documents persist in memory for subsequent retrieval
-4. CAG manager can retrieve cached content without reloading
-5. Implementation approach documented (knowledge graph retained, simplified, or replaced)
-6. Error handling implemented for missing or malformed documents
-7. Basic functional testing passes (manual verification of load/retrieve cycle)
-
-**Integration Verification**:
-- **IV1**: Verify RAG system functionality unchanged
-- **IV2**: Verify bot startup time remains acceptable (<60 seconds with typical knowledge base)
-- **IV3**: Verify memory usage stays within bounds (NFR2: <4GB)
-
-**Dependencies**: Story 1.1 (diagnosis complete)
-
-**Estimated Effort**: 3-5 days (depends on approach - repair vs reimplement)
-
-**Notes**:
-- Time-boxed to align with 2-week CAG fix window
-- If this story extends beyond 1 week, trigger decision point for RAG-only fallback
-
----
-
-### Story 1.3: Create Comprehensive RAG Test Suite
+### Story 1.1: Create Comprehensive RAG Test Suite
 
 As a **developer**,
 I want to **create thorough automated tests for the RAG system**,
@@ -453,98 +476,60 @@ so that I can validate its correctness and establish performance baseline.
 - **IV2**: Verify test execution time reasonable (<5 minutes for full suite)
 - **IV3**: Verify tests can run offline (no external API dependencies for core functionality)
 
-**Dependencies**: None (can run parallel to Story 1.2)
+**Dependencies**: None
 
 **Estimated Effort**: 2-3 days
 
 ---
 
-### Story 1.4: Create Comprehensive CAG Test Suite
+### Story 1.2: Implement RAG Performance Validation and Optimization
 
 As a **developer**,
-I want to **create thorough automated tests for the CAG system**,
-so that I can validate the fixes and ensure reliable caching behavior.
+I want to **validate RAG system performance and identify optimization opportunities**,
+so that I can ensure the RAG system meets production requirements and performs optimally.
 
 **Acceptance Criteria**:
-1. Test file created: test/test_cag_comprehensive.rb
-2. Tests cover document loading and caching for all knowledge source types
-3. Tests verify cache persistence (load once, retrieve multiple times)
-4. Tests verify cache retrieval returns correct content for sample queries
-5. Tests validate CAG context formatting for LLM consumption
-6. Edge cases tested: cache misses, empty cache, large cache sizes
-7. Test coverage >80% for cag/cag_manager.rb and related classes
+1. Test file created: test/test_rag_performance.rb
+2. Performance test suite includes ≥100 cybersecurity-focused queries
+3. Metrics collected: query latency, memory usage, vector index loading time
+4. Result relevance evaluation performed
+5. Statistical analysis performed on collected metrics (mean, median, percentiles, standard deviation)
+6. Performance validation report generated with charts/tables
+7. Performance optimizations implemented based on findings
 8. All tests pass in Nix development environment
-
-**Integration Verification**:
-- **IV1**: Verify tests don't modify production knowledge bases
-- **IV2**: Verify test execution time reasonable (<5 minutes for full suite)
-- **IV3**: Verify tests can run offline
-
-**Dependencies**: Story 1.2 (CAG fixes complete)
-
-**Estimated Effort**: 2-3 days
-
-**Notes**:
-- If CAG fixes incomplete, adjust tests to document known failures
-- If RAG-only fallback decided, this story may be cancelled
-
----
-
-### Story 1.5: Implement RAG vs CAG Performance Comparison
-
-As a **developer**,
-I want to **quantitatively compare RAG and CAG system performance**,
-so that I can make data-driven architectural decisions about which approach to use.
-
-**Acceptance Criteria**:
-1. Test file created: test/test_rag_cag_performance.rb
-2. Test corpus created: 100+ diverse cybersecurity training queries
-3. Metrics collected for both systems:
-   - Query response time (excluding LLM inference)
-   - Memory usage during operation
-   - Cache/index load time
-   - Result relevance (manual spot-check of sample results)
-4. Performance report generated comparing both systems
-5. Statistical analysis included (mean, median, p95 latency)
-6. Memory profiling data captured
-7. Recommendations documented based on findings
 
 **Integration Verification**:
 - **IV1**: Verify performance testing doesn't interfere with normal bot operation
 - **IV2**: Verify test data representative of actual training scenarios
 - **IV3**: Verify results reproducible across test runs
 
-**Dependencies**: Story 1.3 (RAG tests), Story 1.4 (CAG tests)
+**Dependencies**: Story 1.1 (RAG tests complete)
 
 **Estimated Effort**: 3-4 days
 
-**Notes**:
-- If RAG-only fallback decided, this becomes "RAG Performance Validation" instead of comparison
-- Comparison may reveal neither system meets all requirements - document findings
-
 ---
 
-### Story 1.6: Document Findings and Architectural Recommendations
+### Story 1.3: Document RAG System Findings and SecGen Integration
 
 As a **product manager**,
-I want to **comprehensive documentation of test results and architectural recommendations**,
-so that stakeholders can make informed decisions about SecGen integration.
+I want to **comprehensive documentation of RAG system validation and SecGen integration planning**,
+so that stakeholders have clear guidance for production deployment.
 
 **Acceptance Criteria**:
-1. Update docs/development/RAG_CAG_IMPLEMENTATION_SUMMARY.md with findings
-2. Performance comparison results documented with charts/tables
-3. Architectural decision recorded: RAG-only, CAG-only, or hybrid approach recommended
-4. Known issues and limitations documented for chosen approach
-5. Recommendations for future optimization work documented
-6. SecGen integration considerations documented
-7. Baseline performance metrics established for future reference
+1. Update docs/development/RAG_IMPLEMENTATION_SUMMARY.md with complete findings
+2. Performance validation results documented with charts/tables
+3. RAG-only architectural decision documented with rationale
+4. Optimization recommendations documented with priorities
+5. SecGen integration considerations documented
+6. Baseline performance metrics established for future reference
+7. Test coverage summary included
 
 **Integration Verification**:
 - **IV1**: Verify documentation accuracy against actual test results
 - **IV2**: Verify recommendations align with project constraints (offline, performance)
-- **IV3**: Verify documentation useful for future developers
+- **IV3**: Verify documentation useful for SecGen integration planning
 
-**Dependencies**: Story 1.5 (performance comparison complete)
+**Dependencies**: Story 1.2 (performance validation complete)
 
 **Estimated Effort**: 1-2 days
 
@@ -553,30 +538,99 @@ so that stakeholders can make informed decisions about SecGen integration.
 ### Epic Success Criteria
 
 ✅ **Mandatory**:
-- At least one system (RAG or CAG) is production-ready and tested
-- Performance baseline established for chosen approach
-- Comprehensive test suites in place
-- Architectural decision documented with rationale
+- RAG system validated and tested with ≥80% coverage
+- RAG performance meets all NFR requirements
+- RAG-only architectural decision documented
+- SecGen integration approach documented
 
-✅ **Preferred** (if time allows):
-- Both RAG and CAG functional and tested
-- Quantitative performance comparison complete
-- Clear recommendation on which approach to use
+✅ **Preferred** (target outcome):
+- RAG system fully optimized based on testing findings
+- Performance exceeds requirements with identified optimizations
+- Comprehensive documentation for future maintenance
+- Clear roadmap for SecGen integration
 
-✅ **Minimum Acceptable** (fallback):
-- RAG system validated and tested
-- CAG issues documented for future work
-- RAG performance validated for SecGen integration
+**Total Epic Estimated Effort**: 6-9 days (aligns with 2-3 week timeline)
 
-**Total Epic Estimated Effort**: 13-20 days (aligns with 2-4 week timeline)
+---
+
+## 6. Epic 2: CAG System Implementation
+
+**Epic Goal**: Implement a Cache-Augmented Generation (CAG) system from scratch to provide an alternative knowledge enhancement approach, enabling faster query responses and reduced system complexity for cybersecurity training use cases.
+
+**Dependencies**: Epic 1 (RAG system validation and optimization complete)
+
+**Integration Requirements**:
+- Maintain compatibility with existing RAG system
+- Support hybrid CAG-RAG routing
+- Preserve all existing LLM provider integrations
+- Ensure offline operation capability
+- No breaking changes to existing functionality
+
+---
+
+### Story 2.1: Design CAG System Architecture
+
+As a **developer**,
+I want to **design the complete CAG system architecture**,
+so that I have clear technical specifications for implementation.
+
+**Acceptance Criteria**:
+1. Complete CAG system architecture documented
+2. Component interfaces and data flow defined
+3. Context management strategy designed
+4. Integration points with existing systems specified
+5. Implementation plan with technical specifications created
+
+**Dependencies**: Epic 1 complete
+
+**Estimated Effort**: 2-3 days
+
+---
+
+### Story 2.2-2.10: CAG Implementation Stories
+
+[Complete set of 9 additional stories for CAG system implementation, covering:]
+- Knowledge base loader for CAG
+- Context manager implementation  
+- Cache manager with KV cache precomputation
+- Inference engine
+- CAG manager coordinator
+- Comprehensive test suite
+- Hybrid CAG-RAG system
+- Performance validation and optimization
+- Documentation and integration guide
+
+**Estimated Total Effort for Epic 2**: 3-5 weeks
+
+---
+
+### Epic Success Criteria
+
+✅ **Mandatory**:
+- CAG system functional with basic knowledge retrieval
+- Performance improvement over RAG demonstrated (≥30% latency reduction)
+- Integration with IRC bot working
+- Basic test coverage achieved (≥60%)
+- Existing RAG system unaffected
+
+✅ **Preferred** (target outcome):
+- CAG system fully optimized with target performance achieved
+- Comprehensive test coverage (≥80%)
+- Hybrid CAG-RAG system operational
+- Complete documentation and integration guides
+- Performance characteristics well understood and documented
+
+**Total Epic Estimated Effort**: 15-25 days (3-5 weeks)
 
 ---
 
 ## Appendix: Glossary
 
-**RAG (Retrieval-Augmented Generation)**: Knowledge enhancement approach using vector embeddings and similarity search to retrieve relevant documents for LLM context.
+**RAG (Retrieval-Augmented Generation)**: Knowledge enhancement approach using vector embeddings and similarity search to retrieve relevant documents for LLM context. **CURRENT STATUS**: Operational and validated in Epic 1.
 
-**CAG (Cache-Augmented Generation)**: Alternative knowledge enhancement approach using pre-cached knowledge structures (potentially knowledge graphs, pre-cached prompts, or other caching mechanisms) for faster knowledge retrieval.
+**CAG (Cache-Augmented Generation)**: Modern knowledge enhancement approach that pre-loads all relevant knowledge into a long-context LLM's KV cache, enabling direct response generation without real-time retrieval. **CURRENT STATUS**: To be implemented in Epic 2.
+
+**KV Cache**: Key-Value cache in LLMs that stores attention parameters, enabling faster inference for pre-loaded context.
 
 **SecGen (Security Scenario Generator)**: Larger project into which Hackerbot will be re-integrated after LLM feature stabilization.
 
@@ -585,6 +639,8 @@ so that stakeholders can make informed decisions about SecGen integration.
 **IRC (Internet Relay Chat)**: Text-based communication protocol used for bot-user interaction.
 
 **MITRE ATT&CK**: Comprehensive knowledge base of adversary tactics and techniques used in cybersecurity training.
+
+**Hybrid CAG-RAG System**: Intelligent routing system that selects between CAG and RAG approaches based on query characteristics, knowledge base size, and performance requirements.
 
 ---
 
