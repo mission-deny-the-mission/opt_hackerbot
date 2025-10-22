@@ -211,15 +211,134 @@ hackerbot.rb -> BotManager.new -> start_bots
 **Design Pattern**: Factory Pattern with Strategy Pattern implementation
 **Benefits**: Easy addition of new providers, runtime provider switching
 
-#### 4. RAG + CAG Manager (rag_cag_manager.rb)
-**Purpose**: Unified knowledge enhancement coordinator
+#### 3.1. CAG System Architecture
+
+Cache-Augmented Generation (CAG) preloads specific documents into the LLM's context window based on bot configuration, eliminating the need for real-time retrieval. Unlike RAG which searches dynamically, CAG caches predetermined knowledge for immediate access.
+
+**High-Level CAG Architecture**:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        CAG System                               │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │                     Preloading Phase                       │ │
+│ │                                                             │ │
+│ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐ │ │
+│ │ │ Knowledge    │ │ Context      │ │ Cache                 │ │ │
+│ │ │ Loader       │ │ Manager      │ │ Manager               │ │ │
+│ │ │              │ │              │ │                       │ │ │
+│ │ │• Source Load │ │• Doc Assembly│ │• KV Cache Precompute  │ │ │
+│ │ │• Processing  │ │• Chunking    │ │• Storage & Retrieval  │ │ │
+│ │ │• Filtering   │ │• Optimization│ │• Invalidation         │ │ │
+│ │ │• Formatting  │ │• Compression │ │• Memory Management    │ │ │
+│ │ └──────────────┘ └──────────────┘ └──────────────────────┘ │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                │                                │
+│                                ▼                                │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │                     Inference Phase                        │ │
+│ │                                                             │ │
+│ │ ┌──────────────┐ ┌──────────────┐ ┌──────────────────────┐ │ │
+│ │ │ Inference    │ │ CAG          │ │ Response              │ │ │
+│ │ │ Engine       │ │ Manager      │ │ Streaming             │ │ │
+│ │ │              │ │              │ │                       │ │ │
+│ │ │• Cache Load  │ │• Coordination│ │• Token Generation     │ │ │
+│ │ │• Query Proc  │ │• Integration │ │• Context Tracking     │ │ │
+│ │ │• Generation  │ │• Fallback    │ │• Memory Efficiency    │ │ │
+│ │ │• Streaming   │ │• Monitoring  │ │• Quality Control      │ │ │
+│ │ └──────────────┘ └──────────────┘ └──────────────────────┘ │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**CAG Core Components**:
+
+**1. Knowledge Loader** (`cag/knowledge_loader.rb`)
+- Loads and preprocesses knowledge base documents for CAG context
+- Applies document filtering, relevance ranking, and format standardization  
+- Interfaces with existing knowledge sources (MITRE ATT&CK, man pages, markdown)
+- Handles batch processing and incremental updates
+
+**2. Context Manager** (`cag/context_manager.rb`)
+- Manages document assembly and context window optimization
+- Implements intelligent chunking strategies for long documents
+- Applies context compression techniques to maximize knowledge density
+- Handles multi-turn conversation context integration
+
+**3. Cache Manager** (`cag/cache_manager.rb`)
+- Manages KV cache precomputation and storage for different configurations
+- Implements cache persistence using binary formats for efficiency
+- Handles cache invalidation on knowledge base updates
+- Optimizes memory usage through cache compression and eviction
+
+**4. Inference Engine** (`cag/inference_engine.rb`)
+- Generates responses using precomputed cached context
+- Handles query processing and context injection for optimal performance
+- Implements streaming response generation with context awareness
+- Monitors cache hit rates and context utilization
+
+**5. CAG Manager** (`cag/cag_manager.rb`)
+- Main coordinator integrating all CAG components
+- Provides unified interface for bot manager integration
+- Handles configuration management and system initialization
+- Implements fallback mechanisms to RAG when needed
+
+**CAG Data Flow**:
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Bot             │    │ Document        │    │ Context         │
+│ Configuration   │    │ Loading         │    │ Preloading      │
+│                 │───▶│                 │───▶│                 │
+│ • XML Parsing   │    │ • File Read     │    │ • LLM Context   │
+│ • Doc Specs     │    │ • Format        │    │ • KV Cache      │
+│ • Cache Config  │    │ • Validate      │    │ • Ready State   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                        │
+                                                        ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ User Query      │    │ Context         │    │ LLM Response    │
+│ Processing      │    │ Integration     │    │ Generation      │
+│                 │───▶│                 │───▶│                 │
+│ • IRC Message   │    │ • Cached Docs   │    │ • Direct Gen    │
+│ • User Context  │    │ • User Message  │    │ • No Retrieval  │
+│ • Bot Identity  │    │ • Prompt Build  │    │ • Fast Response │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+**CAG vs RAG Comparison**:
+
+| Aspect | CAG (Cache-Augmented) | RAG (Retrieval-Augmented) |
+|--------|-----------------------|----------------------------|
+| **Purpose** | Preload specific docs per bot | Dynamic document retrieval |
+| **Configuration** | Bot XML specifies documents | Knowledge base driven |
+| **Latency** | Instant (preloaded) | Higher (search + retrieve) |
+| **Memory** | High (context window) | Lower (on-demand loading) |
+| **Scope** | Fixed document set | Full knowledge base access |
+| **Updates** | Requires bot restart | Real-time knowledge updates |
+| **Use Case** | Specific bot expertise | General knowledge queries |
+
+**CAG Performance Characteristics**:
+- **Query Latency**: Target 50-80% improvement over RAG
+- **Memory Usage**: ≤6GB for typical knowledge bases 
+- **Cache Precomputation**: ≤5 minutes for typical knowledge base
+- **Context Window**: 32k-128k tokens (model dependent)
+- **Cache Storage**: Binary KV format with optional compression
+
+#### 4. Knowledge Enhancement Manager
+**Purpose**: Coordinate knowledge enhancement systems (RAG and/or CAG)
 **Responsibilities**:
-- Coordinate RAG (Retrieval-Augmented Generation) system
-- Manage CAG (Context-Aware Generation) system
-- Integrate multiple knowledge sources
+- Coordinate RAG (Retrieval-Augmented Generation) for on-demand document retrieval
+- Manage CAG (Cache-Augmented Generation) for preloaded context from bot configuration
+- Operate systems independently based on bot configuration
 - Provide enhanced context for AI responses
 
-**Architecture**: Unified manager coordinating separate RAG and CAG subsystems
+**Architecture**: Independent operation of RAG and CAG systems
+- **RAG**: Real-time vector similarity search and document retrieval
+- **CAG**: Pre-configured document caching in LLM context window
+- **Configuration-driven**: Each bot specifies which system(s) to use
 
 #### 5. Knowledge Management System
 **Components**:
