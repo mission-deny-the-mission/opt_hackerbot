@@ -183,7 +183,7 @@ class BotManager
 
     # Get enhanced context from RAG manager
     enhanced_context = @rag_manager.get_enhanced_context(user_message, context_options)
-    Print.debug "Enhanced context length: #{enhanced_context&.length || 0} characters"
+    Print.debug "Enhanced context length: #{enhanced_context&.dig(:combined_context)&.length || 0} characters"
     enhanced_context
   end
 
