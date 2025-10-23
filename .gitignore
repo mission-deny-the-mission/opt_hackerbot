@@ -64,6 +64,7 @@ docs/.bundle/
 /coverage/
 /spec/examples.txt
 /test/reports/
+/test/*.json
 
 # Environment variables
 .env
