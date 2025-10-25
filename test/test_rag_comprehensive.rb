@@ -1,5 +1,5 @@
 require_relative 'test_helper'
-require_relative '../rag/rag_manager'
+require_relative '../rag_manager'
 require_relative '../rag/chromadb_client'
 require_relative '../rag/ollama_embedding_client'
 require_relative '../rag/openai_embedding_client'
@@ -44,9 +44,8 @@ class TestRAGComprehensive < Minitest::Test
       collection_name: 'test_rag_comprehensive'  # Separate from production
     }
 
+    # Initialize RAG Manager
     @rag_manager = RAGManager.new(@vector_db_config, @embedding_config, @rag_config)
-
-    # Initialize for testing
     @rag_manager.setup
 
     # Test data
@@ -949,7 +948,7 @@ class TestRAGComprehensive < Minitest::Test
     20.times do |i|
       large_documents << {
         id: "large_doc_#{i}",
-        content: "Large document #{i} with extensive content that would exceed typical context length limits when combined with other documents in the search results",
+        content: "Large document #{i} with extensive content that would exceed typical context length limits when combined with other documents in search results",
         metadata: { source: 'test', type: 'large_content', index: i }
       }
     end
