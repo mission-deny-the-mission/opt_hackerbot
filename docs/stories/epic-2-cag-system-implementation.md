@@ -1,7 +1,7 @@
 # Epic 2: CAG System Implementation
 
 **Epic ID**: EPIC-2
-**Status**: Not Started
+**Status**: Shelved
 **Priority**: Medium
 **Created**: 2025-10-22
 **Target Completion**: 3-5 weeks
