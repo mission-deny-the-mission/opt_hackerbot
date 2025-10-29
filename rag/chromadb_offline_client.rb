@@ -703,7 +703,7 @@ class ChromaDBOfflineClient < VectorDBInterface
 
   def generate_test_embedding(document)
     # Generate deterministic test embedding based on document content
-    content = document[:content] || document[:content'] || ""
+    content = document[:content] || document['content'] || ""
 
     # Simple hash-based embedding generation for testing
     hash = content.hash.to_s
