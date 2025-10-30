@@ -20,10 +20,18 @@ class BotManager
     @sglang_port = sglang_port
     @bots = {}
     @user_chat_histories = Hash.new { |h, k| h[k] = {} } # {bot_name => {user_id => [history]}}
-    @max_history_length = 10
+    # Enhanced IRC message history for full context capture
+    # Structure: {bot_name => {channel => [messages]}} or {bot_name => {user_id => [messages]}}
+    # Each message: {user: string, content: string, timestamp: Time, type: symbol, channel: string}
+    @irc_message_history = Hash.new { |h, k| h[k] = Hash.new { |h2, k2| h2[k2] = [] } }
+    # Default history lengths (can be overridden per-bot via XML config)
+    @max_history_length = 10  # For traditional chat history (user/assistant pairs)
+    @max_irc_message_history = 20  # For enhanced IRC message history (configurable window)
     @enable_rag = enable_rag
     @rag_config = rag_config
     @rag_manager = nil
+    # Configuration for message storage (per_channel or per_user)
+    @message_storage_mode = :per_user # or :per_channel
 
     # Set default offline mode
     @rag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
@@ -134,22 +142,263 @@ class BotManager
   def add_to_history(bot_name, user_id, user_message, assistant_response)
     @user_chat_histories[bot_name][user_id] ||= []
     @user_chat_histories[bot_name][user_id] << { user: user_message, assistant: assistant_response }
-    if @user_chat_histories[bot_name][user_id].length > @max_history_length
-      @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(@max_history_length)
+    # Get bot-specific max history length if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_history_length') || @max_history_length
+    if @user_chat_histories[bot_name][user_id].length > max_length
+      @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(max_length)
     end
   end
 
-  def get_chat_context(bot_name, user_id)
-    history = @user_chat_histories[bot_name][user_id] || []
-    return '' if history.empty?
-    context_parts = history.map do |exchange|
-      "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+  # Get chat context for LLM prompts
+  #
+  # Returns complete conversation thread from IRC message history, formatted for LLM consumption.
+  # Supports configurable message filtering and context length management.
+  #
+  # Message type filtering uses bot-specific configuration from XML (message_type_filter element),
+  # with a default of including user messages, bot LLM responses, and bot command responses
+  # (excluding system messages).
+  #
+  # @param bot_name [String] The bot name
+  # @param user_id [String] The user ID to get context for
+  # @param options [Hash] Configuration options
+  # @option options [Array<Symbol>] :include_types Message types to include (overrides bot-specific configuration if provided)
+  # @option options [Integer] :max_context_length Maximum context length in characters (nil = no limit)
+  # @option options [Boolean] :include_timestamps Include timestamps in formatted messages (default: false)
+  # @option options [String] :exclude_message Content of message to exclude (typically the current message being processed)
+  # @return [String] Formatted conversation context
+  def get_chat_context(bot_name, user_id, options = {})
+    # Default options: use bot-specific configuration if available, otherwise use default
+    default_include_types = @bots.dig(bot_name, 'message_type_filter') || [:user_message, :bot_llm_response, :bot_command_response]
+    include_types = options.fetch(:include_types, default_include_types)
+    max_context_length = options.fetch(:max_context_length, nil)
+    include_timestamps = options.fetch(:include_timestamps, false)
+    exclude_message = options[:exclude_message]
+    
+    # Get IRC message history
+    # In per_user mode: merge messages from both user and bot (bot messages stored under bot_name)
+    # In per_channel mode: get messages from channel
+    irc_history = []
+    if @message_storage_mode == :per_channel
+      channel_key = "##{bot_name}"
+      irc_history = get_irc_message_history(bot_name, channel_key)
+    else
+      # per_user mode: merge user messages and bot messages
+      user_history = get_irc_message_history(bot_name, user_id)
+      bot_history = get_irc_message_history(bot_name, bot_name)
+      # Merge and sort by timestamp to maintain chronological order
+      irc_history = (user_history + bot_history).sort_by { |msg| msg[:timestamp] }
     end
-    context_parts.join("\n\n")
+    
+    # Filter by message type if specified
+    filtered_history = irc_history.select { |msg| include_types.include?(msg[:type]) }
+    
+    # Exclude the current message if specified (to avoid duplication in prompt)
+    if exclude_message
+      filtered_history = filtered_history.reject { |msg| msg[:content] == exclude_message }
+    end
+    
+    # If no IRC history, fall back to traditional chat history for backward compatibility
+    if filtered_history.empty?
+      history = @user_chat_histories[bot_name][user_id] || []
+      return '' if history.empty?
+      context_parts = history.map do |exchange|
+        "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+      end
+      context = context_parts.join("\n\n")
+      
+      # Apply length management if specified
+      if max_context_length && context.length > max_context_length
+        # Truncate from the beginning (oldest messages)
+        context = context[-max_context_length..-1]
+      end
+      
+      return context
+    end
+    
+    # Format messages with clear speaker identification
+    formatted_messages = filtered_history.map do |msg|
+      speaker = case msg[:type]
+                when :user_message
+                  "User #{msg[:user]}:"
+                when :bot_llm_response, :bot_command_response
+                  "Bot:"
+                when :system_message
+                  "System:"
+                else
+                  "#{msg[:user]}:"
+                end
+      
+      timestamp_str = include_timestamps ? " [#{msg[:timestamp].strftime('%H:%M:%S')}]" : ""
+      "#{speaker}#{timestamp_str} #{msg[:content]}"
+    end
+    
+    context = formatted_messages.join("\n")
+    
+    # Apply context length management if specified
+    if max_context_length && context.length > max_context_length
+      # Truncate from the beginning (oldest messages)
+      # Try to truncate at message boundaries if possible
+      truncated = context[-max_context_length..-1]
+      # Find first newline to avoid cutting in the middle of a message
+      first_newline = truncated.index("\n")
+      if first_newline
+        truncated = truncated[first_newline + 1..-1]
+      end
+      context = "... (earlier messages truncated) ...\n" + truncated
+    end
+    
+    context
   end
 
   def clear_user_history(bot_name, user_id)
     @user_chat_histories[bot_name].delete(user_id)
+  end
+
+  # Classify message type based on message content and context
+  #
+  # @param message_text [String] The message content
+  # @param is_from_bot [Boolean] Whether the message is from the bot itself
+  # @param bot_responses [Array] Recent bot responses (for identifying LLM responses)
+  # @return [Symbol] One of :user_message, :bot_llm_response, :bot_command_response, :system_message
+  def classify_message_type(message_text, is_from_bot = false, bot_responses = [])
+    if is_from_bot
+      # Check if this is a bot command response (simple responses like "next", "ready", etc.)
+      command_responses = /^(next|ready|hello|help|list|previous|clear_history|show_history|personalities|personality)$/i
+      bot_command_patterns = /^(Moving to|Going to|Gaining shell|Shell access|Ready when|Try again|Correct!|Incorrect!|No quiz|Invalid)/
+      
+      if message_text.strip.match?(command_responses) || message_text.match?(bot_command_patterns) || 
+         message_text.start_with?("**") || message_text.start_with?("Available personalities:") ||
+         message_text.start_with?("Current personality:") || message_text.start_with?("Switched to") ||
+         message_text.start_with?("Chat history") || message_text.start_with?("No chat history")
+        return :bot_command_response
+      end
+      
+      # Check if this matches recent LLM responses
+      if bot_responses.any? { |resp| resp && message_text.include?(resp[0..50]) }
+        return :bot_llm_response
+      end
+      
+      # Default to LLM response if it's from bot and not a command
+      return :bot_llm_response
+    else
+      # User messages
+      system_patterns = /^(JOIN|PART|QUIT|NICK|MODE|TOPIC)/
+      if message_text.match?(system_patterns)
+        return :system_message
+      end
+      return :user_message
+    end
+  end
+
+  # Capture all IRC channel messages with metadata
+  #
+  # @param bot_name [String] The bot name
+  # @param user_nick [String] The user's nickname
+  # @param message_content [String] The message content
+  # @param channel [String] The channel name (e.g., "#bot_name")
+  # @param message_type [Symbol, nil] Optional message type. If nil, will be auto-classified
+  # @param is_from_bot [Boolean] Whether this message is from the bot
+  def capture_irc_message(bot_name, user_nick, message_content, channel = nil, message_type = nil, is_from_bot = false)
+    return if message_content.nil? || message_content.strip.empty?
+    
+    # Get channel if not provided
+    channel ||= "##{bot_name}"
+    
+    # Classify message type if not provided
+    if message_type.nil?
+      # Get recent bot responses for classification
+      recent_bot_responses = []
+      if @irc_message_history[bot_name].key?(channel)
+        recent_bot_responses = @irc_message_history[bot_name][channel]
+          .select { |msg| msg[:type] == :bot_llm_response }
+          .last(5)
+          .map { |msg| msg[:content] }
+      end
+      
+      message_type = classify_message_type(message_content, is_from_bot, recent_bot_responses)
+    end
+    
+    # Create message entry
+    message_entry = {
+      user: user_nick,
+      content: message_content,
+      timestamp: Time.now,
+      type: message_type,
+      channel: channel
+    }
+    
+    # Store based on configured mode
+    storage_key = (@message_storage_mode == :per_channel) ? channel : user_nick
+    
+    # Add to history
+    @irc_message_history[bot_name][storage_key] ||= []
+    @irc_message_history[bot_name][storage_key] << message_entry
+    
+    # Enforce max history length (keep last N messages per storage key)
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_irc_message_history') || @max_irc_message_history
+    if @irc_message_history[bot_name][storage_key].length > max_length
+      @irc_message_history[bot_name][storage_key] = @irc_message_history[bot_name][storage_key].last(max_length)
+    end
+  end
+
+  # Get all captured IRC messages for a bot/user/channel
+  #
+  # @param bot_name [String] The bot name
+  # @param key [String] User ID or channel name depending on storage mode
+  # @return [Array] Array of message hashes with metadata
+  def get_irc_message_history(bot_name, key)
+    @irc_message_history[bot_name][key] || []
+  end
+
+  # Clear IRC message history for a specific key
+  #
+  # @param bot_name [String] The bot name
+  # @param key [String] User ID or channel name to clear
+  def clear_irc_message_history(bot_name, key)
+    @irc_message_history[bot_name].delete(key)
+  end
+
+  # Prune IRC message history for a bot to enforce max length limits
+  #
+  # @param bot_name [String] The bot name
+  # @param force [Boolean] If true, prune all keys; if false, only prune keys that exceed limit
+  def prune_irc_message_history(bot_name, force = false)
+    return unless @irc_message_history[bot_name]
+    
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_irc_message_history') || @max_irc_message_history
+    
+    @irc_message_history[bot_name].each do |key, messages|
+      if force || messages.length > max_length
+        @irc_message_history[bot_name][key] = messages.last(max_length)
+      end
+    end
+  end
+
+  # Prune traditional chat history for a bot to enforce max length limits
+  #
+  # @param bot_name [String] The bot name
+  # @param user_id [String, nil] If provided, prune only this user's history; if nil, prune all users
+  def prune_chat_history(bot_name, user_id = nil)
+    return unless @user_chat_histories[bot_name]
+    
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_history_length') || @max_history_length
+    
+    if user_id
+      # Prune specific user's history
+      if @user_chat_histories[bot_name][user_id] && @user_chat_histories[bot_name][user_id].length > max_length
+        @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(max_length)
+      end
+    else
+      # Prune all users' history for this bot
+      @user_chat_histories[bot_name].each do |uid, history|
+        if history.length > max_length
+          @user_chat_histories[bot_name][uid] = history.last(max_length)
+        end
+      end
+    end
   end
 
   def get_enhanced_context(bot_name, user_message)
@@ -430,6 +679,48 @@ class BotManager
           end
         end
 
+        # Parse history window size configuration
+        max_history_length_node = hackerbot.at_xpath('max_history_length')
+        if max_history_length_node
+          @bots[bot_name]['max_history_length'] = max_history_length_node.text.to_i
+        else
+          @bots[bot_name]['max_history_length'] = @max_history_length
+        end
+
+        # Parse IRC message history window size configuration
+        max_irc_message_history_node = hackerbot.at_xpath('max_irc_message_history')
+        if max_irc_message_history_node
+          @bots[bot_name]['max_irc_message_history'] = max_irc_message_history_node.text.to_i
+        else
+          @bots[bot_name]['max_irc_message_history'] = @max_irc_message_history
+        end
+
+        # Parse message type filtering configuration
+        # Default: include all message types except system messages
+        default_message_types = [:user_message, :bot_llm_response, :bot_command_response]
+        message_types_node = hackerbot.at_xpath('message_type_filter')
+        if message_types_node
+          # Parse <type> elements
+          type_nodes = message_types_node.xpath('type')
+          if type_nodes.any?
+            parsed_types = type_nodes.map { |node| node.text.strip.to_sym }
+            # Validate that all types are valid message types
+            valid_types = [:user_message, :bot_llm_response, :bot_command_response, :system_message]
+            invalid_types = parsed_types.reject { |t| valid_types.include?(t) }
+            if invalid_types.any?
+              Print.err "Warning: Invalid message types for bot #{bot_name}: #{invalid_types.join(', ')}. Ignoring invalid types."
+              parsed_types = parsed_types.select { |t| valid_types.include?(t) }
+            end
+            @bots[bot_name]['message_type_filter'] = parsed_types.empty? ? default_message_types : parsed_types
+          else
+            # No types specified, use default
+            @bots[bot_name]['message_type_filter'] = default_message_types
+          end
+        else
+          # No configuration, use default
+          @bots[bot_name]['message_type_filter'] = default_message_types
+        end
+
         # Test connection to LLM provider
         unless @bots[bot_name]['chat_ai'].test_connection
           Print.err "Warning: Cannot connect to #{provider} for bot #{bot_name}. Chat responses may not work."
@@ -670,6 +961,7 @@ class BotManager
     set_current_personality = method(:set_current_personality)
     list_personalities = method(:list_personalities)
     get_personality_config = method(:get_personality_config)
+    capture_irc_message = method(:capture_irc_message)
 
     @bots[bot_name]['bot'] = Cinch::Bot.new do
       configure do |c|
@@ -677,6 +969,19 @@ class BotManager
         c.server = irc_server_ip_address
         # joins a channel named after the bot, and #bots
         c.channels = ["##{bot_name}", '#bots']
+      end
+
+      # Global message handler to capture all IRC channel messages
+      # This runs for all messages to capture them with metadata
+      on :message do |m|
+        # Skip capturing if message is from the bot itself (to avoid duplicates)
+        next if m.user.nick.downcase == bot_name.downcase
+        
+        # Determine channel
+        channel = m.channel ? m.channel.name : "##{bot_name}"
+        
+        # Capture user message
+        capture_irc_message.call(bot_name, m.user.nick, m.message, channel, nil, false)
       end
 
       on :message, /hello/i do |m|
@@ -898,7 +1203,7 @@ class BotManager
               # Update the OllamaClient's system prompt
               bots_ref[bot_name]['chat_ai'].update_system_prompt(current_system_prompt)
             end
-            chat_context = get_chat_context.call(bot_name, user_id)
+            chat_context = get_chat_context.call(bot_name, user_id, exclude_message: m.message)
 
             # Get RAG + CAG enhanced context if enabled
             enhanced_context = nil
@@ -927,16 +1232,30 @@ class BotManager
               end
               if reaction && !reaction.empty?
                 add_to_history.call(bot_name, user_id, m.message, reaction)
+                # Capture bot LLM response
+                channel = m.channel ? m.channel.name : "##{bot_name}"
+                capture_irc_message.call(bot_name, bot_name, reaction, channel, :bot_llm_response, true)
               elsif m.message.include?('?')
-                m.reply bots_ref[bot_name]['messages']['non_answer']
+                non_answer_msg = bots_ref[bot_name]['messages']['non_answer']
+                m.reply non_answer_msg
+                # Capture bot command response
+                channel = m.channel ? m.channel.name : "##{bot_name}"
+                capture_irc_message.call(bot_name, bot_name, non_answer_msg, channel, :bot_command_response, true)
               end
             else
               reaction = bots_ref[bot_name]['chat_ai'].generate_response(prompt)
               if reaction && !reaction.empty?
                 m.reply reaction
                 add_to_history.call(bot_name, user_id, m.message, reaction)
+                # Capture bot LLM response
+                channel = m.channel ? m.channel.name : "##{bot_name}"
+                capture_irc_message.call(bot_name, bot_name, reaction, channel, :bot_llm_response, true)
               elsif m.message.include?('?')
-                m.reply get_personality_messages.call(bot_name, user_id, 'non_answer')
+                non_answer_msg = get_personality_messages.call(bot_name, user_id, 'non_answer')
+                m.reply non_answer_msg
+                # Capture bot command response
+                channel = m.channel ? m.channel.name : "##{bot_name}"
+                capture_irc_message.call(bot_name, bot_name, non_answer_msg, channel, :bot_command_response, true)
               end
             end
           rescue Exception => e
