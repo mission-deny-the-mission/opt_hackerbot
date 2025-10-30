@@ -1,7 +1,7 @@
 # Epic 2I: Full IRC Channel Context Integration
 
 **Epic ID**: EPIC-2I
-**Status**: Not Started
+**Status**: In Progress
 **Priority**: High
 **Created**: 2025-01-XX
 **Target Completion**: 1-2 weeks
@@ -114,13 +114,85 @@ Modify chat history management to capture all IRC channel messages and include t
 **Brief Description**: Modify IRC message handlers to capture all channel messages, not just those that trigger LLM responses. Store messages with metadata (user, timestamp, type) in an enhanced chat history structure.
 
 **Acceptance Criteria**:
-- [ ] Global message handler captures all IRC channel messages
-- [ ] Messages stored with metadata: user, timestamp, message type, content
-- [ ] Message types classified: user_message, bot_llm_response, bot_command_response, system_message
-- [ ] Messages stored per channel or per user (configurable)
-- [ ] Chronological ordering maintained
-- [ ] Unit tests verify message capture for all message types
-- [ ] Integration tests verify message storage across multiple users and messages
+- [x] Global message handler captures all IRC channel messages
+- [x] Messages stored with metadata: user, timestamp, message type, content
+- [x] Message types classified: user_message, bot_llm_response, bot_command_response, system_message
+- [x] Messages stored per channel or per user (configurable)
+- [x] Chronological ordering maintained
+- [x] Unit tests verify message capture for all message types
+- [x] Integration tests verify message storage across multiple users and messages
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Full Stack Developer (James) - Story 2I.1 Implementation
+
+### Completion Notes
+
+**Story 2I.1: Capture All IRC Channel Messages - COMPLETED**
+
+All acceptance criteria have been implemented and verified through comprehensive testing.
+
+**Implementation Summary:**
+
+1. **Enhanced Chat History Structure** - Added `@irc_message_history` data structure to store messages with complete metadata:
+   - User nickname
+   - Message content
+   - Timestamp
+   - Message type classification
+   - Channel information
+
+2. **Message Type Classification** - Implemented `classify_message_type` method that automatically classifies messages as:
+   - `:user_message` - Messages from users
+   - `:bot_llm_response` - LLM-generated bot responses
+   - `:bot_command_response` - Bot responses to commands (e.g., "next", "ready")
+   - `:system_message` - System-level IRC messages
+
+3. **Global Message Capture** - Added global message handler in bot creation that captures all IRC channel messages before they are processed by other handlers. This ensures all user messages are captured with metadata.
+
+4. **Bot Response Capture** - Integrated message capture for bot responses, particularly:
+   - LLM-generated responses (captured after generation)
+   - Command responses (captured when bot replies to commands)
+
+5. **Storage Configuration** - Messages are stored per user (configurable mode: `:per_user` or `:per_channel`) to maintain conversation history per user while supporting multi-user conversations.
+
+6. **Chronological Ordering** - Messages are stored in chronological order using Ruby arrays, with timestamps for verification.
+
+7. **Message History Management** - Added methods for:
+   - `capture_irc_message` - Capture messages with metadata
+   - `get_irc_message_history` - Retrieve message history
+   - `clear_irc_message_history` - Clear history for cleanup
+   - Automatic pruning when history exceeds max length
+
+**Testing:**
+
+- **Unit Tests** (19 tests, all passing): Verified message capture, type classification, chronological ordering, max length enforcement, multi-user support, and metadata completeness
+- **Integration Tests** (7 tests, all passing): Verified multi-user conversations, mixed message types, chronological ordering across users, message isolation per bot, and conversation flow with commands and LLM responses
+
+**Test Results:**
+- Unit tests: 19 runs, 45 assertions, 0 failures
+- Integration tests: 7 runs, 63 assertions, 0 failures
+- Total: 26 tests, 108 assertions, all passing
+
+### File List
+
+**Modified Files:**
+- `bot_manager.rb` - Added message capture infrastructure:
+  - New `@irc_message_history` data structure for enhanced message storage
+  - `@message_storage_mode` configuration for per-user or per-channel storage
+  - `classify_message_type` method for automatic message type classification
+  - `capture_irc_message` method for capturing messages with full metadata
+  - `get_irc_message_history` method for retrieving message history
+  - `clear_irc_message_history` method for cleanup
+  - Global message handler in `create_bot` to capture all IRC messages
+  - Bot response capture in LLM response handlers
+
+**New Files Created:**
+- `test/test_irc_message_capture.rb` - Unit tests for message capture functionality (19 tests)
+- `test/test_irc_message_capture_integration.rb` - Integration tests for multi-user message storage (7 tests)
 
 ---
 
