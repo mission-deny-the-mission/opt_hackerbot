@@ -507,6 +507,49 @@ class TestExplicitKnowledgeRetrieval < BotManagerTest
     end
   end
 
+  # Test that explicit context can work without RAG enabled
+  def test_explicit_context_without_rag
+    # Create bot manager with RAG disabled but explicit context enabled
+    rag_config = {
+      enable_rag: false,
+      enable_explicit_context: true,
+      knowledge_sources_config: [
+        {
+          type: 'mitre_attack',
+          name: 'mitre_attack',
+          enabled: true
+        }
+      ]
+    }
+    
+    bot_manager = BotManager.new(
+      @irc_server,
+      @llm_provider,
+      @ollama_host,
+      @ollama_port,
+      @ollama_model,
+      @openai_api_key,
+      nil,
+      @vllm_host,
+      @vllm_port,
+      @sglang_host,
+      @sglang_port,
+      false,  # enable_rag
+      rag_config
+    )
+    
+    # Verify explicit context is enabled
+    assert bot_manager.send(:explicit_context_enabled?), "Explicit context should be enabled"
+    
+    # Verify RAG is disabled
+    refute bot_manager.instance_variable_get(:@enable_rag), "RAG should be disabled"
+    assert_nil bot_manager.instance_variable_get(:@rag_manager), "RAG manager should be nil"
+    
+    # Verify knowledge source manager is initialized
+    ksm = bot_manager.instance_variable_get(:@knowledge_source_manager)
+    assert ksm, "Knowledge source manager should be initialized for explicit context"
+  end
+
   private
 
   def assert_kind_of(expected_classes, actual)
