@@ -1,4 +1,5 @@
-
+require_relative '../print'
+require_relative 'utils/content_truncator'
 
 # MITRE ATT&CK Framework Knowledge Base for CAG System
 # This file contains structured knowledge about cybersecurity attack patterns
@@ -409,36 +410,8 @@ module MITREAttackKnowledge
 
     # Add attack pattern documents
     ATTACK_PATTERNS.each do |pattern|
-      doc_content = "MITRE ATT&CK Attack Pattern: #{pattern[:name]}\n\n"
-      doc_content += "ID: #{pattern[:id]}\n"
-      doc_content += "Tactic: #{pattern[:tactic]}\n\n"
-      doc_content += "Description:\n#{pattern[:description]}\n\n"
-
-      doc_content += "Techniques:\n"
-      pattern[:techniques].each do |technique|
-        doc_content += "- #{technique[:name]} (#{technique[:technique_id]}): #{technique[:description]}\n"
-      end
-
-      doc_content += "\nRelated Tools:\n"
-      pattern[:related_tools].each do |tool|
-        doc_content += "- #{tool}\n"
-      end
-
-      doc_content += "\nMitigation:\n#{pattern[:mitigation]}"
-
-      # Limit document length to avoid text too long errors
-      max_length = 7000
-      if doc_content.length > max_length
-        # Truncate to a reasonable length
-        truncated_content = doc_content[0...max_length]
-        # Try to end at a good breaking point
-        last_section_end = truncated_content.rindex(/\n\n/)
-        if last_section_end && last_section_end > max_length - 500
-          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
-        else
-          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
-        end
-      end
+      doc_content = format_pattern_content(pattern)
+      doc_content = truncate_content(doc_content)
 
       documents << {
         id: "mitre_attack_#{pattern[:id]}",
@@ -469,19 +442,7 @@ module MITREAttackKnowledge
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
       end
 
-      # Limit document length to avoid text too long errors
-      max_length = 7000
-      if doc_content.length > max_length
-        # Truncate to a reasonable length
-        truncated_content = doc_content[0...max_length]
-        # Try to end at a good breaking point
-        last_section_end = truncated_content.rindex(/\n\n/)
-        if last_section_end && last_section_end > max_length - 500
-          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
-        else
-          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
-        end
-      end
+      doc_content = truncate_content(doc_content)
 
       documents << {
         id: "malware_#{malware[:name].downcase.gsub(/\s+/, '_')}",
@@ -508,19 +469,7 @@ module MITREAttackKnowledge
 
       doc_content += "\nDetection Methods:\n#{tool[:detection]}"
 
-      # Limit document length to avoid text too long errors
-      max_length = 7000
-      if doc_content.length > max_length
-        # Truncate to a reasonable length
-        truncated_content = doc_content[0...max_length]
-        # Try to end at a good breaking point
-        last_section_end = truncated_content.rindex(/\n\n/)
-        if last_section_end && last_section_end > max_length - 500
-          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
-        else
-          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
-        end
-      end
+      doc_content = truncate_content(doc_content)
 
       documents << {
         id: "tool_#{tool[:name].downcase.gsub(/\s+/, '_')}",
@@ -552,19 +501,7 @@ module MITREAttackKnowledge
         doc_content += "- #{pattern_name} (#{pattern_id})\n" if pattern_name
       end
 
-      # Limit document length to avoid text too long errors
-      max_length = 7000
-      if doc_content.length > max_length
-        # Truncate to a reasonable length
-        truncated_content = doc_content[0...max_length]
-        # Try to end at a good breaking point
-        last_section_end = truncated_content.rindex(/\n\n/)
-        if last_section_end && last_section_end > max_length - 500
-          doc_content = truncated_content[0...last_section_end] + "\n\n[Note: Document truncated for length]"
-        else
-          doc_content = truncated_content + "\n\n[Note: Document truncated for length]"
-        end
-      end
+      doc_content = truncate_content(doc_content)
 
       documents << {
         id: "defense_#{defense[:name].downcase.gsub(/\s+/, '_')}",
@@ -580,5 +517,139 @@ module MITREAttackKnowledge
     end
 
     documents
+  end
+
+  # Retrieve a specific MITRE ATT&CK technique by ID
+  #
+  # @param technique_id [String] The technique ID (e.g., "T1003", "T1059.001")
+  # @return [Hash, nil] Returns hash with { rag_document: {...}, found: true } or nil if not found
+  #
+  # @example
+  #   result = MITREAttackKnowledge.get_technique_by_id("T1003")
+  #   result[:rag_document] # => { id: "...", content: "...", metadata: {...} }
+  #
+  def self.get_technique_by_id(technique_id)
+    return nil unless technique_id.is_a?(String) && !technique_id.empty?
+
+    begin
+      # Normalize technique ID format
+      technique_id = technique_id.upcase.strip
+
+      # Find base technique or sub-technique
+      pattern = nil
+      sub_technique = nil
+
+      if technique_id.include?('.')
+        # Sub-technique ID (e.g., T1003.001)
+        base_id = technique_id.split('.').first
+        pattern = ATTACK_PATTERNS.find { |p| p[:id] == base_id }
+        
+        if pattern
+          sub_technique = pattern[:techniques]&.find { |t| t[:technique_id] == technique_id }
+        end
+      else
+        # Base technique ID (e.g., T1003)
+        pattern = ATTACK_PATTERNS.find { |p| p[:id] == technique_id }
+      end
+
+      unless pattern
+        Print.warn "MITRE ATT&CK technique '#{technique_id}' not found"
+        return nil
+      end
+
+      # Build document content
+      if sub_technique
+        # Return sub-technique specific document
+        doc_content = format_sub_technique_content(pattern, sub_technique)
+      else
+        # Return full technique document (reuse existing format_pattern_content)
+        doc_content = format_pattern_content(pattern)
+      end
+
+      doc_content = truncate_content(doc_content)
+
+      rag_document = {
+        id: "mitre_attack_#{technique_id}",
+        content: doc_content,
+        metadata: {
+          source: "MITRE ATT&CK #{technique_id}",
+          source_type: 'mitre_attack',
+          technique_id: technique_id,
+          type: sub_technique ? 'sub_technique' : 'attack_pattern',
+          tactic: pattern[:tactic]
+        }
+      }
+
+      # Add technique name to metadata
+      if sub_technique
+        rag_document[:metadata][:technique_name] = sub_technique[:name]
+        rag_document[:metadata][:parent_technique_id] = pattern[:id]
+        rag_document[:metadata][:parent_technique_name] = pattern[:name]
+      else
+        rag_document[:metadata][:technique_name] = pattern[:name]
+      end
+
+      {
+        rag_document: rag_document,
+        found: true
+      }
+    rescue => e
+      Print.err "Error retrieving MITRE ATT&CK technique '#{technique_id}': #{e.message}"
+      nil
+    end
+  end
+
+  # Private helper methods for building MITRE ATT&CK documents
+
+  # Format attack pattern content for RAG document
+  #
+  # @param pattern [Hash] Attack pattern hash from ATTACK_PATTERNS
+  # @return [String] Formatted document content
+  private_class_method def self.format_pattern_content(pattern)
+    doc_content = "MITRE ATT&CK Attack Pattern: #{pattern[:name]}\n\n"
+    doc_content += "ID: #{pattern[:id]}\n"
+    doc_content += "Tactic: #{pattern[:tactic]}\n\n"
+    doc_content += "Description:\n#{pattern[:description]}\n\n"
+
+    doc_content += "Techniques:\n"
+    pattern[:techniques].each do |technique|
+      doc_content += "- #{technique[:name]} (#{technique[:technique_id]}): #{technique[:description]}\n"
+    end
+
+    doc_content += "\nRelated Tools:\n"
+    pattern[:related_tools].each do |tool|
+      doc_content += "- #{tool}\n"
+    end
+
+    doc_content += "\nMitigation:\n#{pattern[:mitigation]}" if pattern[:mitigation]
+
+    doc_content
+  end
+
+  # Format sub-technique content for RAG document
+  #
+  # @param pattern [Hash] Parent attack pattern hash
+  # @param sub_technique [Hash] Sub-technique hash
+  # @return [String] Formatted document content
+  private_class_method def self.format_sub_technique_content(pattern, sub_technique)
+    doc_content = "MITRE ATT&CK Sub-Technique: #{sub_technique[:name]}\n\n"
+    doc_content += "ID: #{sub_technique[:technique_id]}\n"
+    doc_content += "Parent Technique: #{pattern[:name]} (#{pattern[:id]})\n"
+    doc_content += "Tactic: #{pattern[:tactic]}\n\n"
+    doc_content += "Description:\n#{sub_technique[:description]}\n\n"
+    doc_content += "Parent Technique Description:\n#{pattern[:description]}\n\n"
+    doc_content += "Mitigation:\n#{pattern[:mitigation]}" if pattern[:mitigation]
+
+    doc_content
+  end
+
+  # Truncate content intelligently to avoid exceeding maximum length
+  # Delegates to ContentTruncator module for DRY principles
+  #
+  # @param content [String] Document content to truncate
+  # @param max_length [Integer] Maximum content length (default: 7000)
+  # @return [String] Truncated content with note if truncated
+  private_class_method def self.truncate_content(content, max_length = 7000)
+    ContentTruncator.truncate(content, max_length: max_length, strategy: :section_break)
   end
 end

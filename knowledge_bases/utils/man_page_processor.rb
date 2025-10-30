@@ -281,25 +281,16 @@ class ManPageProcessor
 
     # Add content with chunking to prevent text being too long
     max_content_length = 3000  # Very conservative to avoid any text length issues
+    truncation_note = "\n\n[Note: Full man page truncated for length. Use 'man #{metadata['name']}' for complete documentation.]"
 
-    if content.length > max_content_length
-      # Truncate content and add indicator
-      truncated_content = content[0...max_content_length]
-      # Try to end at a sentence boundary, but be more aggressive
-      last_sentence_end = truncated_content.rindex(/[.!?]\s*\n/)
-      if last_sentence_end && last_sentence_end > max_content_length - 200
-        truncated_content = truncated_content[0...last_sentence_end + 1]
-      end
-      # If still too long, truncate at word boundary
-      if truncated_content.length > max_content_length - 100
-        last_space = truncated_content.rindex(/\s/)
-        truncated_content = truncated_content[0...last_space] if last_space
-      end
-      truncated_content += "\n\n[Note: Full man page truncated for length. Use 'man #{metadata['name']}' for complete documentation.]"
-      formatted += truncated_content
-    else
-      formatted += content
-    end
+    require_relative 'content_truncator'
+    truncated_content = ContentTruncator.truncate_with_fallback(
+      content,
+      max_length: max_content_length,
+      truncation_note: truncation_note
+    )
+
+    formatted += truncated_content
 
     formatted
   end

@@ -277,6 +277,48 @@ class MarkdownKnowledgeSource < BaseKnowledgeSource
     []
   end
 
+  # Retrieve a specific markdown document by file path
+  #
+  # @param file_path [String] The file path (e.g., "attack-guide.md", "docs/pentest-primer.md")
+  # @return [Hash, nil] Returns hash with { rag_document: {...}, found: true } or nil if not found
+  #
+  # @example
+  #   result = get_document_by_path("docs/attack-guide.md")
+  #   result[:rag_document] # => { id: "...", content: "...", metadata: {...} }
+  #
+  def get_document_by_path(file_path)
+    return nil unless file_path.is_a?(String) && !file_path.empty?
+
+    begin
+      # Normalize file path for consistent lookup
+      normalized_path = File.expand_path(file_path)
+
+      # Check if file exists
+      unless markdown_file_exists?(normalized_path)
+        Print.warn "Markdown document '#{file_path}' not found"
+        return nil
+      end
+
+      # Use processor to get RAG document
+      rag_document = @processor.to_rag_document(normalized_path)
+      return nil unless rag_document
+
+      # Enhance metadata with lookup-specific fields
+      rag_document[:metadata] ||= {}
+      rag_document[:metadata][:source_type] = 'markdown'
+      rag_document[:metadata][:file_path] = normalized_path
+      rag_document[:metadata][:source] ||= "document '#{File.basename(normalized_path)}'"
+
+      {
+        rag_document: rag_document,
+        found: true
+      }
+    rescue => e
+      Print.err "Error retrieving markdown document '#{file_path}': #{e.message}"
+      nil
+    end
+  end
+
   private
 
   def load_markdown_file(file_config)

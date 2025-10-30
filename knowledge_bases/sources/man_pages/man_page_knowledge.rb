@@ -160,6 +160,48 @@ class ManPageKnowledgeSource < BaseKnowledgeSource
     }
   end
 
+  # Retrieve a specific man page by command name
+  #
+  # @param command_name [String] The name of the command (e.g., "nmap", "netcat")
+  # @param section [Integer, nil] Optional man page section (1-8)
+  # @return [Hash, nil] Returns hash with { rag_document: {...}, found: true } or nil if not found
+  #
+  # @example
+  #   result = get_man_page_by_name("nmap")
+  #   result[:rag_document] # => { id: "...", content: "...", metadata: {...} }
+  #
+  def get_man_page_by_name(command_name, section: nil)
+    return nil unless command_name.is_a?(String) && !command_name.empty?
+
+    begin
+      # Check if man page exists
+      unless man_page_exists?(command_name, section)
+        Print.warn "Man page '#{command_name}'#{section ? " (section #{section})" : ''} not found"
+        return nil
+      end
+
+      # Use processor to get RAG document
+      rag_document = @processor.to_rag_document(command_name, section)
+      return nil unless rag_document
+
+      # Enhance metadata with lookup-specific fields
+      rag_document[:metadata] ||= {}
+      rag_document[:metadata][:source_type] = 'man_page'
+      rag_document[:metadata][:command_name] = command_name
+      rag_document[:metadata][:section] = section if section
+      # Override source with more descriptive lookup-specific format
+      rag_document[:metadata][:source] = "man page '#{command_name}'#{section ? " (#{section})" : ''}"
+
+      {
+        rag_document: rag_document,
+        found: true
+      }
+    rescue => e
+      Print.err "Error retrieving man page '#{command_name}': #{e.message}"
+      nil
+    end
+  end
+
   def get_statistics
     load_knowledge unless @loaded
 
