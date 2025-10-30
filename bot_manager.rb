@@ -401,12 +401,22 @@ class BotManager
     end
   end
 
-  def get_enhanced_context(bot_name, user_message)
+  def get_enhanced_context(bot_name, user_message, attack_index: nil)
     return nil unless @enable_rag && @rag_manager
 
     # Check if bot has specific RAG configuration
     rag_enabled = @bots.dig(bot_name, 'rag_enabled')
     return nil if rag_enabled == false
+
+    # Check for explicit knowledge retrieval if attack_index provided
+    if attack_index
+      explicit_context = retrieve_explicit_knowledge(bot_name, attack_index)
+      if explicit_context && explicit_context[:has_explicit]
+        Print.info "Using explicit knowledge retrieval for attack #{attack_index}"
+        # Combine with similarity search if both available
+        return combine_explicit_and_rag_context(bot_name, user_message, explicit_context)
+      end
+    end
 
     # Get bot-specific context preferences
     context_options = {}
@@ -454,6 +464,273 @@ class BotManager
     entities = @rag_cag_manager.extract_entities(user_message, entity_types)
     Print.debug "Extracted #{entities&.length || 0} entities from message"
     entities
+  end
+
+  # Retrieve explicit knowledge items from context_config for a specific attack
+  #
+  # @param bot_name [String] The bot name
+  # @param attack_index [Integer] The attack index
+  # @return [Hash, nil] Returns hash with explicit_context, explicit_sources, has_explicit, or nil if no context_config
+  def retrieve_explicit_knowledge(bot_name, attack_index)
+    # Validate attack_index
+    attacks = @bots.dig(bot_name, 'attacks')
+    return nil unless attacks && attack_index >= 0 && attack_index < attacks.length
+
+    attack = attacks[attack_index]
+    context_config = attack['context_config'] || attack[:context_config]
+    
+    # Return nil if no context_config or empty
+    return nil unless context_config
+    return nil if context_config.empty?
+    
+    # Handle both string and symbol keys
+    man_pages = context_config[:man_pages] || context_config['man_pages']
+    documents = context_config[:documents] || context_config['documents']
+    mitre_techniques = context_config[:mitre_techniques] || context_config['mitre_techniques']
+    
+    # Check if context_config has any non-empty arrays
+    has_man_pages = man_pages && !man_pages.empty?
+    has_documents = documents && !documents.empty?
+    has_mitre_techniques = mitre_techniques && !mitre_techniques.empty?
+    
+    return nil unless has_man_pages || has_documents || has_mitre_techniques
+
+    explicit_items = []
+    explicit_sources = []
+    not_found_items = []
+
+    # Retrieve man pages
+    if has_man_pages
+      man_page_results = retrieve_man_pages(man_pages)
+      man_page_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(man_page_results[:not_found])
+    end
+
+    # Retrieve documents
+    if has_documents
+      document_results = retrieve_documents(documents)
+      document_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(document_results[:not_found])
+    end
+
+    # Retrieve MITRE techniques
+    if has_mitre_techniques
+      mitre_results = retrieve_mitre_techniques(mitre_techniques)
+      mitre_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(mitre_results[:not_found])
+    end
+
+    # Log warnings for items not found
+    not_found_items.each do |item|
+      Print.warn "Explicit knowledge item not found: #{item}"
+    end
+
+    # Log summary
+    Print.info "Retrieved #{explicit_items.length}/#{explicit_items.length + not_found_items.length} explicit knowledge items"
+
+    {
+      explicit_context: explicit_items,
+      explicit_sources: explicit_sources,
+      has_explicit: !explicit_items.empty?
+    }
+  end
+
+  # Retrieve man pages via knowledge source
+  #
+  # @param man_page_names [Array<String>] Array of man page names
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of names)
+  def retrieve_man_pages(man_page_names)
+    return { found: [], not_found: [] } unless @rag_manager && @rag_manager.knowledge_source_manager
+
+    found_items = []
+    not_found_items = []
+
+    # Get man page knowledge source from knowledge source manager
+    ksm = @rag_manager.knowledge_source_manager
+    man_page_source = find_knowledge_source(ksm, 'man_pages')
+
+    if man_page_source.nil?
+      # Fallback: create instance on-demand if not found in manager
+      require_relative './knowledge_bases/sources/man_pages/man_page_knowledge.rb'
+      man_page_source = ManPageKnowledgeSource.new({})
+    end
+
+    man_page_names.each do |command_name|
+      result = man_page_source.get_man_page_by_name(command_name)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "man page '#{command_name}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Retrieve documents via knowledge source
+  #
+  # @param document_paths [Array<String>] Array of document paths
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of paths)
+  def retrieve_documents(document_paths)
+    return { found: [], not_found: [] } unless @rag_manager && @rag_manager.knowledge_source_manager
+
+    found_items = []
+    not_found_items = []
+
+    # Get markdown knowledge source from knowledge source manager
+    ksm = @rag_manager.knowledge_source_manager
+    markdown_source = find_knowledge_source(ksm, 'markdown_files')
+
+    if markdown_source.nil?
+      # Fallback: create instance on-demand if not found in manager
+      require_relative './knowledge_bases/sources/markdown_files/markdown_knowledge.rb'
+      markdown_source = MarkdownKnowledgeSource.new({})
+    end
+
+    document_paths.each do |file_path|
+      result = markdown_source.get_document_by_path(file_path)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "document '#{file_path}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Retrieve MITRE techniques via knowledge source
+  #
+  # @param technique_ids [Array<String>] Array of MITRE technique IDs
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of IDs)
+  def retrieve_mitre_techniques(technique_ids)
+    found_items = []
+    not_found_items = []
+
+    require_relative './knowledge_bases/mitre_attack_knowledge.rb'
+
+    technique_ids.each do |technique_id|
+      result = MITREAttackKnowledge.get_technique_by_id(technique_id)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "MITRE technique '#{technique_id}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Find a knowledge source by type from knowledge source manager
+  #
+  # @param ksm [KnowledgeSourceManager] The knowledge source manager
+  # @param source_type [String] The source type ('man_pages', 'markdown_files', etc.)
+  # @return [Object, nil] The knowledge source instance or nil if not found
+  def find_knowledge_source(ksm, source_type)
+    return nil unless ksm
+
+    # Ensure knowledge source classes are loaded
+    require_relative './knowledge_bases/sources/man_pages/man_page_knowledge.rb'
+    require_relative './knowledge_bases/sources/markdown_files/markdown_knowledge.rb'
+
+    # Access sources via instance variable or public method if available
+    sources = ksm.instance_variable_get(:@sources) if ksm.instance_variable_defined?(:@sources)
+    return nil unless sources
+
+    # Look for source by type (case-insensitive)
+    sources.values.find do |source|
+      source_type_matches = case source_type.downcase
+                           when 'man_pages', 'manpage', 'man'
+                             source.is_a?(ManPageKnowledgeSource)
+                           when 'markdown_files', 'markdown', 'md'
+                             source.is_a?(MarkdownKnowledgeSource)
+                           else
+                             false
+                           end
+      source_type_matches
+    end
+  end
+
+  # Combine explicit knowledge with RAG similarity search results
+  #
+  # @param bot_name [String] The bot name
+  # @param user_message [String] The user message
+  # @param explicit_context [Hash] The explicit context hash
+  # @return [Hash] Enhanced context with both explicit and similarity search results
+  def combine_explicit_and_rag_context(bot_name, user_message, explicit_context)
+    # Format explicit knowledge items
+    formatted_explicit = format_explicit_knowledge(explicit_context[:explicit_context])
+
+    # Get bot-specific context preferences for similarity search
+    context_options = {}
+    if @bots.dig(bot_name, 'rag_config')
+      context_options = {
+        max_results: @bots.dig(bot_name, 'rag_config', 'max_results') || 5,
+        custom_collection: @bots.dig(bot_name, 'rag_config', 'collection_name')
+      }
+    else
+      context_options = {
+        max_results: 5,
+        custom_collection: @rag_config[:knowledge_base_name] || 'cybersecurity'
+      }
+    end
+
+    # Get RAG similarity search results
+    rag_context = @rag_manager.get_enhanced_context(user_message, context_options)
+    
+    enhanced_context = {
+      original_query: user_message,
+      rag_context: rag_context&.dig(:rag_context),
+      explicit_context: explicit_context[:explicit_context],
+      explicit_sources: explicit_context[:explicit_sources],
+      has_explicit: true,
+      combined_context: '',
+      sources: explicit_context[:explicit_sources] + (rag_context&.dig(:sources) || []),
+      timestamp: Time.now
+    }
+
+    # Combine formatted explicit context with similarity search results
+    if rag_context && rag_context[:combined_context] && !rag_context[:combined_context].strip.empty?
+      enhanced_context[:combined_context] = "Explicit Knowledge Sources:\n#{formatted_explicit}\n\n---\n\nSimilarity Search Results:\n#{rag_context[:combined_context]}"
+    else
+      enhanced_context[:combined_context] = "Explicit Knowledge Sources:\n#{formatted_explicit}"
+    end
+
+    enhanced_context
+  end
+
+  # Format explicit knowledge items with source attribution
+  #
+  # @param explicit_items [Array<Hash>] Array of RAG documents
+  # @return [String] Formatted context string
+  def format_explicit_knowledge(explicit_items)
+    return '' if explicit_items.empty?
+
+    formatted_parts = []
+
+    explicit_items.each do |item|
+      metadata = item[:metadata] || {}
+      source_type = metadata[:source_type]
+      content = item[:content] || ''
+
+      case source_type
+      when 'man_page'
+        source = metadata[:source] || "man page '#{metadata[:command_name]}'"
+        formatted_parts << "Source: #{source}\n#{content}"
+      when 'markdown'
+        source = metadata[:source] || "document '#{metadata[:file_path]}'"
+        formatted_parts << "Source: #{source}\n#{content}"
+      when 'mitre_attack'
+        technique_id = metadata[:technique_id] || metadata[:id]
+        source = "MITRE ATT&CK #{technique_id}"
+        formatted_parts << "Source: #{source}\n#{content}"
+      else
+        source = metadata[:source] || 'unknown'
+        formatted_parts << "Source: #{source}\n#{content}"
+      end
+    end
+
+    formatted_parts.join("\n\n")
   end
 
   def read_bots
@@ -1332,7 +1609,7 @@ class BotManager
             # Get RAG + CAG enhanced context if enabled
             enhanced_context = nil
             if bots_ref[bot_name]['rag_cag_enabled'] != false
-              enhanced_context = get_enhanced_context.call(bot_name, m.message)
+              enhanced_context = get_enhanced_context.call(bot_name, m.message, attack_index: current_attack)
             end
 
             prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
