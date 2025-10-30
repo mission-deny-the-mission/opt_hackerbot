@@ -154,17 +154,22 @@ class BotManager
   # Returns complete conversation thread from IRC message history, formatted for LLM consumption.
   # Supports configurable message filtering and context length management.
   #
+  # Message type filtering uses bot-specific configuration from XML (message_type_filter element),
+  # with a default of including user messages, bot LLM responses, and bot command responses
+  # (excluding system messages).
+  #
   # @param bot_name [String] The bot name
   # @param user_id [String] The user ID to get context for
   # @param options [Hash] Configuration options
-  # @option options [Array<Symbol>] :include_types Message types to include (default: [:user_message, :bot_llm_response, :bot_command_response])
+  # @option options [Array<Symbol>] :include_types Message types to include (overrides bot-specific configuration if provided)
   # @option options [Integer] :max_context_length Maximum context length in characters (nil = no limit)
   # @option options [Boolean] :include_timestamps Include timestamps in formatted messages (default: false)
   # @option options [String] :exclude_message Content of message to exclude (typically the current message being processed)
   # @return [String] Formatted conversation context
   def get_chat_context(bot_name, user_id, options = {})
-    # Default options
-    include_types = options.fetch(:include_types, [:user_message, :bot_llm_response, :bot_command_response])
+    # Default options: use bot-specific configuration if available, otherwise use default
+    default_include_types = @bots.dig(bot_name, 'message_type_filter') || [:user_message, :bot_llm_response, :bot_command_response]
+    include_types = options.fetch(:include_types, default_include_types)
     max_context_length = options.fetch(:max_context_length, nil)
     include_timestamps = options.fetch(:include_timestamps, false)
     exclude_message = options[:exclude_message]
@@ -688,6 +693,32 @@ class BotManager
           @bots[bot_name]['max_irc_message_history'] = max_irc_message_history_node.text.to_i
         else
           @bots[bot_name]['max_irc_message_history'] = @max_irc_message_history
+        end
+
+        # Parse message type filtering configuration
+        # Default: include all message types except system messages
+        default_message_types = [:user_message, :bot_llm_response, :bot_command_response]
+        message_types_node = hackerbot.at_xpath('message_type_filter')
+        if message_types_node
+          # Parse <type> elements
+          type_nodes = message_types_node.xpath('type')
+          if type_nodes.any?
+            parsed_types = type_nodes.map { |node| node.text.strip.to_sym }
+            # Validate that all types are valid message types
+            valid_types = [:user_message, :bot_llm_response, :bot_command_response, :system_message]
+            invalid_types = parsed_types.reject { |t| valid_types.include?(t) }
+            if invalid_types.any?
+              Print.err "Warning: Invalid message types for bot #{bot_name}: #{invalid_types.join(', ')}. Ignoring invalid types."
+              parsed_types = parsed_types.select { |t| valid_types.include?(t) }
+            end
+            @bots[bot_name]['message_type_filter'] = parsed_types.empty? ? default_message_types : parsed_types
+          else
+            # No types specified, use default
+            @bots[bot_name]['message_type_filter'] = default_message_types
+          end
+        else
+          # No configuration, use default
+          @bots[bot_name]['message_type_filter'] = default_message_types
         end
 
         # Test connection to LLM provider
