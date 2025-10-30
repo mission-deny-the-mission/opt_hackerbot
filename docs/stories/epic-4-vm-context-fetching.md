@@ -50,7 +50,7 @@ Enable fetching of contextual information from student VMs (bash history, comman
    - Configuration to specify which history file to read (e.g., `.bash_history`, `.zsh_history`)
    - Support for user-specific history files
    - Optional filtering/limiting of history entries (e.g., last N commands, recent commands)
-   - Privacy/security considerations (sanitization of sensitive commands if needed)
+   - Privacy/security considerations (Note: Student VMs are disposable lab environments)
 
 2. **Command Output Fetching (XML-Configurable)**
    - XML configuration for defining commands to execute on student VMs
@@ -64,7 +64,7 @@ Enable fetching of contextual information from student VMs (bash history, comman
    - Ability to read specific files from student VMs via SSH
    - XML configuration for specifying file paths to read per attack
    - Support for both absolute and relative paths
-   - File content retrieval and sanitization (e.g., removing sensitive data, truncating large files)
+   - File content retrieval (Note: Student VMs are disposable lab environments, sanitization not needed for local LLM usage)
    - Support for reading multiple files per attack stage
 
 4. **VM Context Integration**
@@ -180,24 +180,6 @@ Enable fetching of contextual information from student VMs (bash history, comman
 
 ---
 
-### Story 4.5: VM Context Sanitization and Security
-**Priority**: High
-**Estimated Effort**: 2-3 days
-**Dependencies**: Story 4.3
-
-**Brief Description**: Implement sanitization and security measures for VM context. Add options to filter sensitive information from bash history, mask passwords in command outputs, and truncate or exclude large files to protect privacy and manage context size.
-
-**Acceptance Criteria**:
-- [ ] Optional sanitization of bash history (filter commands with passwords, API keys, etc.)
-- [ ] Optional masking of sensitive patterns in command outputs (passwords, tokens, etc.)
-- [ ] File size limits with truncation for large files
-- [ ] Configurable patterns for sensitive data detection and masking
-- [ ] Logging of sanitization actions (what was filtered/masked)
-- [ ] Tests verify sanitization rules work correctly
-- [ ] Documentation on security considerations and recommended sanitization settings
-
----
-
 ## Compatibility Requirements
 
 - [x] Existing APIs remain unchanged (optional parameters added)
@@ -212,7 +194,7 @@ Enable fetching of contextual information from student VMs (bash history, comman
 - **Primary Risk**: SSH connection failures breaking bot functionality
   - **Mitigation**: Graceful error handling; VM context fetching failures don't break bot responses; fallback to operation without VM context
 - **Primary Risk**: Security vulnerabilities from reading sensitive files/commands
-  - **Mitigation**: Sanitization features; configurable file/command allowlists; clear documentation on security practices; optional masking of sensitive patterns
+  - **Mitigation**: Configurable file/command allowlists; clear documentation on security practices (Note: Student VMs are disposable lab environments, so sanitization is not necessary for local LLM usage)
 - **Primary Risk**: Performance degradation from SSH operations
   - **Mitigation**: Efficient SSH command execution; optional async/background fetching; context size limits; timeouts on SSH operations
 - **Primary Risk**: Student VM connectivity issues affecting bot responses
@@ -226,7 +208,7 @@ Enable fetching of contextual information from student VMs (bash history, comman
 - [ ] VM context fetching works reliably across different SSH configurations
 - [ ] VM context appears correctly in LLM prompts and improves response quality
 - [ ] XML configuration documented with examples
-- [ ] Security considerations documented (sanitization, sensitive data handling)
+- [ ] Security considerations documented (student VMs are disposable lab environments)
 - [ ] No regression in existing features or performance
 - [ ] Code coverage maintained for new functionality
 - [ ] Documentation updated (configuration guide, architecture docs)
