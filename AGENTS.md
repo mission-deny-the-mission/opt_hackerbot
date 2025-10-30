@@ -13,14 +13,16 @@ Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises
 - `bot_manager.rb` - Central bot instance controller with comprehensive IRC message capture and context management
 - `llm_client.rb` - Base LLM interface with provider-specific implementations
 - `rag/rag_manager.rb` - RAG (Retrieval-Augmented Generation) coordinator with identifier-based lookups
+- `vm_context_manager.rb` - SSH-based VM context fetching from student machines (Epic 4)
 
 ### Key Subsystems
 1. **LLM Integration**: Multiple provider support with streaming and chat history
 2. **RAG System**: Document retrieval and semantic search capabilities with identifier-based lookups
 3. **Full IRC Context Integration** (Epic 2I): Comprehensive message capture and full conversation history
 4. **Stage-Aware Context Injection** (Epic 3): Per-attack explicit knowledge selection by identifier
-5. **Knowledge Bases**: MITRE ATT&CK, man pages, markdown files (with identifier-based lookups)
-6. **Offline Support**: Persistent storage and air-gapped operation
+5. **VM Context Fetching** (Epic 4): SSH-based runtime state retrieval from student machines (bash history, command outputs, files)
+6. **Knowledge Bases**: MITRE ATT&CK, man pages, markdown files (with identifier-based lookups)
+7. **Offline Support**: Persistent storage and air-gapped operation
 
 ## Development Guidelines
 
@@ -50,6 +52,8 @@ Bots are configured through XML files in `config/` with these key elements:
 - `<rag_enabled>` - Enable/disable RAG knowledge retrieval
 - `<attacks>` - Progressive training scenarios
 - `<context_config>` (Epic 3) - Per-attack explicit knowledge selection (man pages, documents, MITRE techniques)
+- `<vm_context>` (Epic 4) - Per-attack VM context fetching (bash history, commands, files)
+- `<vm_context_enabled>` (Epic 4) - Enable/disable VM context at bot-level or attack-level
 - `<message_type_filter>` (Epic 2I) - Control which message types appear in LLM context
 - `<max_history_length>` (Epic 2I) - Configure chat history window size
 - `<knowledge_sources>` - Custom knowledge base configuration
@@ -76,8 +80,10 @@ Bots are configured through XML files in `config/` with these key elements:
 - **RAG-only system** (CAG system removed in Epic 1 for maintainability)
 - **Full IRC Context** (Epic 2I): All channel messages are captured and included in LLM context
 - **Stage-Aware Context** (Epic 3): Attacks can specify explicit knowledge items (man pages by name, documents by path, MITRE techniques by ID)
+- **VM Context Fetching** (Epic 4): SSH-based runtime state retrieval from student machines - bash history, command outputs, and file contents included in LLM context
 - MITRE ATT&CK framework is included by default in all knowledge bases
 - Support for identifier-based lookups: man pages by command name, documents by file path, MITRE techniques by ID
+- VM context operations reuse existing SSH infrastructure from `get_shell` configuration
 
 This framework provides flexible, offline-capable cybersecurity training with AI-powered conversations and comprehensive knowledge retrieval.
 

@@ -123,6 +123,7 @@ end
 - Coordinate LLM client creation
 - Handle chat history management
 - Assemble prompts for LLM processing
+- Fetch VM context from student machines (Epic 4)
 
 **Key Design Patterns**:
 - **Manager Pattern**: Centralized control over bot lifecycle
@@ -148,7 +149,11 @@ class BotManager
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context)
-    # Combine all context elements into final prompt
+    # Combine all context elements into final prompt (includes VM context)
+  end
+  
+  def fetch_vm_context(bot_name, attack_index, variables = {})
+    # Fetch VM context from student machines via SSH (Epic 4)
   end
 end
 ```
@@ -210,34 +215,77 @@ class LLMClientFactory
 end
 ```
 
-### 4. Knowledge Enhancement System
+### 4. VM Context Manager (vm_context_manager.rb)
 
-#### RAG/CAG Manager (rag_cag_manager.rb)
+**Purpose**: SSH-based runtime state retrieval from student VMs (Epic 4)
 
-**Purpose**: Unified coordinator for RAG and CAG operations
+**Design Principles**:
+- **Service Class Pattern**: Stateless service providing SSH operations
+- **Graceful Degradation**: Continues operation if VM context fetching fails
+- **Security First**: Only executes trusted commands from XML configuration
+
+**Key Methods**:
+```ruby
+class VMContextManager
+  def initialize(options = {})
+    @default_timeout = options.fetch(:default_timeout, 30)
+    @command_timeout = options.fetch(:command_timeout, 15)
+  end
+  
+  # Execute command on remote VM via SSH
+  def execute_command(ssh_config, command, variables = {})
+    # Uses Open3.popen2e for SSH command execution
+    # Applies variable substitution (e.g., {{chat_ip_address}})
+    # Handles timeouts and connection errors gracefully
+  end
+  
+  # Read file from remote VM via SSH
+  def read_file(ssh_config, file_path, variables = {})
+    # Uses execute_command with 'cat' to read file contents
+    # Supports both absolute and relative paths
+  end
+  
+  # Retrieve bash history from remote VM
+  def read_bash_history(ssh_config, user = nil, limit = nil, variables = {})
+    # Reads .bash_history or .zsh_history
+    # Supports user-specific paths and line limits
+    # Returns empty string on error (graceful degradation)
+  end
+end
+```
+
+**Integration with BotManager**:
+- BotManager calls `fetch_vm_context()` when attack has `<vm_context>` config
+- VM context assembled into structured format and included in LLM prompt
+- Reuses existing SSH infrastructure from `get_shell` configuration
+
+### 5. Knowledge Enhancement System
+
+#### RAG Manager (rag/rag_manager.rb)
+
+**Purpose**: Knowledge enhancement coordinator (RAG-only system)
 
 **Design Principles**:
 - **Facade Pattern**: Simplifies complex subsystem interactions
-- **Strategy Pattern**: Configurable RAG/CAG weighting and combination
+- **Strategy Pattern**: Configurable RAG weighting and combination
 - **Observer Pattern**: Cache invalidation and knowledge base updates
 
 ```ruby
-class RAGCAGManager
-  def initialize(rag_config, cag_config, unified_config)
-    @rag_manager = RAGManager.new(rag_config)
-    @cag_manager = CAGManager.new(cag_config)
-    @config = unified_config
+class RAGManager
+  def initialize(rag_config)
+    @rag_config = rag_config
+    # Initialize vector DB, embedding service, etc.
   end
 
   def get_enhanced_context(query, options = {})
-    # 1. Get RAG context
-    rag_context = @rag_manager.get_relevant_documents(query) if @config[:enable_rag]
-
-    # 2. Get CAG context
-    cag_context = @cag_manager.get_contextual_entities(query) if @config[:enable_cag]
-
+    # 1. Get RAG context via similarity search
+    rag_context = get_relevant_documents(query) if @config[:enable_rag]
+    
+    # 2. Get explicit context via identifier-based lookups (Epic 3)
+    explicit_context = get_explicit_context(options[:explicit_items]) if options[:explicit_items]
+    
     # 3. Combine contexts with configured weights
-    merge_contexts(rag_context, cag_context)
+    merge_contexts(rag_context, explicit_context)
   end
 end
 ```
@@ -345,6 +393,18 @@ end
         <output_matches>success_pattern</output_matches>
         <message>Completion message</message>
       </condition>
+      
+      <!-- VM Context Configuration (Epic 4) -->
+      <vm_context>
+        <bash_history path="~/.bash_history" limit="50" user="student"/>
+        <commands>
+          <command>ps aux</command>
+          <command>netstat -tuln</command>
+        </commands>
+        <files>
+          <file path="/etc/passwd"/>
+        </files>
+      </vm_context>
     </attack>
   </attacks>
 </hackerbot>
@@ -390,7 +450,7 @@ User Input → Validation → Context Assembly → LLM Processing → Response D
 ```
 Query → Entity Extraction → Parallel Processing → Context Merging → Final Context
    ↓         ↓               ↓               ↓              ↓
-Input → Find Entities → RAG + CAG → Weighted Combine → Enhanced Output
+Input → Find Entities → RAG + Explicit → Weighted Combine → Enhanced Output
 ```
 
 #### RAG Processing:
@@ -399,11 +459,25 @@ Input → Find Entities → RAG + CAG → Weighted Combine → Enhanced Output
 - Document retrieval and ranking
 - Context formatting
 
-#### CAG Processing:
-- Entity recognition and extraction
-- Knowledge graph traversal
-- Relationship analysis
-- Context expansion
+#### Explicit Context Processing (Epic 3):
+- Identifier-based lookups (man pages by name, docs by path, MITRE by ID)
+- Direct knowledge source queries
+- No similarity calculation needed
+
+### 3. VM Context Fetching Flow (Epic 4)
+
+```
+Attack Stage → Check VM Config → SSH Operations → Assemble Context → LLM Prompt
+    ↓              ↓                ↓                  ↓              ↓
+Current Attack → vm_context? → Bash/Commands/Files → Structured → Enhanced
+```
+
+#### VM Context Processing:
+- Check if attack has `<vm_context>` configuration
+- Execute SSH commands via VMContextManager
+- Fetch bash history, command outputs, and file contents
+- Assemble structured VM state string
+- Include in enhanced context for LLM prompt
 
 ### 3. Configuration Loading Flow
 
