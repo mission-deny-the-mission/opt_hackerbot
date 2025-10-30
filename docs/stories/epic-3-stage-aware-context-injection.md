@@ -6,7 +6,7 @@
 **Created**: 2025-01-XX
 **Target Completion**: 2-3 weeks
 **Related PRD**: [docs/prd.md](../prd.md)
-**Depends on**: Epic 1 (RAG system validation and optimization complete)
+**Depends on**: Epic 1 (RAG system validation and optimization complete), Epic 2I (Full IRC Channel Context Integration)
 
 ---
 
@@ -203,5 +203,5 @@ Enable per-attack explicit knowledge source selection through XML configuration,
 
 This epic focuses on providing precise control over knowledge injection at each attack stage, allowing trainers to explicitly select which knowledge sources students have access to. This enables curriculum-driven learning where specific tools, documents, and attack techniques are introduced at appropriate stages. The implementation is designed to be opt-in and backward compatible, allowing gradual adoption across bot configurations.
 
-Epic 2 (CAG System Implementation) has been shelved to prioritize this feature, which provides immediate value in curriculum control and precise knowledge delivery during training exercises.
+Epic 2 (CAG System Implementation) has been shelved to prioritize this feature, which provides immediate value in curriculum control and precise knowledge delivery during training exercises. Note: Epic 2I (Full IRC Channel Context Integration) must be completed before this epic.
 
