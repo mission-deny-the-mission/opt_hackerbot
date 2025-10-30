@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through multiple LLM providers (Ollama, OpenAI, VLLM, SGLang) and advanced knowledge retrieval systems (RAG + CAG).
+Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises. It combines traditional attack simulation with modern AI capabilities through multiple LLM providers (Ollama, OpenAI, VLLM, SGLang) and advanced knowledge retrieval systems (RAG with stage-aware context injection).
 
 **Development Environment**: This project uses a comprehensive Nix development environment that provides reproducible builds, automatic dependency management, and integrated IRC server functionality.
 
@@ -10,24 +10,24 @@ Hackerbot is a Ruby-based IRC bot framework for cybersecurity training exercises
 
 ### Main Components
 - `hackerbot.rb` - Entry point and CLI handler
-- `bot_manager.rb` - Central bot instance controller
+- `bot_manager.rb` - Central bot instance controller with comprehensive IRC message capture and context management
 - `llm_client.rb` - Base LLM interface with provider-specific implementations
-- `rag_cag_manager.rb` - Unified RAG (Retrieval-Augmented Generation) and CAG (Context-Aware Generation) coordinator
+- `rag/rag_manager.rb` - RAG (Retrieval-Augmented Generation) coordinator with identifier-based lookups
 
 ### Key Subsystems
 1. **LLM Integration**: Multiple provider support with streaming and chat history
-2. **RAG System**: Document retrieval and semantic search capabilities
-3. **CAG System**: Entity extraction and knowledge graph analysis
-4. **Knowledge Bases**: MITRE ATT&CK, man pages, markdown files
-5. **Offline Support**: Persistent storage and air-gapped operation
+2. **RAG System**: Document retrieval and semantic search capabilities with identifier-based lookups
+3. **Full IRC Context Integration** (Epic 2I): Comprehensive message capture and full conversation history
+4. **Stage-Aware Context Injection** (Epic 3): Per-attack explicit knowledge selection by identifier
+5. **Knowledge Bases**: MITRE ATT&CK, man pages, markdown files (with identifier-based lookups)
+6. **Offline Support**: Persistent storage and air-gapped operation
 
 ## Development Guidelines
 
 ### Project Structure
 ```
 opt_hackerbot/
-├── rag/                # Retrieval-Augmented Generation
-├── cag/                # Context-Aware Generation
+├── rag/                # Retrieval-Augmented Generation (RAG-only system)
 ├── knowledge_bases/    # Knowledge sources and processing
 ├── config/             # XML configuration files
 ├── docs/               # Documentation
@@ -47,8 +47,11 @@ opt_hackerbot/
 ### Configuration System
 Bots are configured through XML files in `config/` with these key elements:
 - `<llm_provider>` - Ollama, OpenAI, VLLM, or SGLang
-- `<rag_cag_enabled>` - Enable/disable knowledge retrieval
+- `<rag_enabled>` - Enable/disable RAG knowledge retrieval
 - `<attacks>` - Progressive training scenarios
+- `<context_config>` (Epic 3) - Per-attack explicit knowledge selection (man pages, documents, MITRE techniques)
+- `<message_type_filter>` (Epic 2I) - Control which message types appear in LLM context
+- `<max_history_length>` (Epic 2I) - Configure chat history window size
 - `<knowledge_sources>` - Custom knowledge base configuration
 
 ### Development Tips
@@ -70,9 +73,11 @@ Bots are configured through XML files in `config/` with these key elements:
 
 ### Important Notes
 - System defaults to offline operation for security and reliability
-- RAG and CAG can be controlled independently per bot
+- **RAG-only system** (CAG system removed in Epic 1 for maintainability)
+- **Full IRC Context** (Epic 2I): All channel messages are captured and included in LLM context
+- **Stage-Aware Context** (Epic 3): Attacks can specify explicit knowledge items (man pages by name, documents by path, MITRE techniques by ID)
 - MITRE ATT&CK framework is included by default in all knowledge bases
-- Support for man pages and markdown files as additional knowledge sources
+- Support for identifier-based lookups: man pages by command name, documents by file path, MITRE techniques by ID
 
 This framework provides flexible, offline-capable cybersecurity training with AI-powered conversations and comprehensive knowledge retrieval.
 

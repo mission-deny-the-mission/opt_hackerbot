@@ -28,11 +28,13 @@
 
 ## Executive Summary
 
-Hackerbot is a sophisticated Ruby-based IRC bot framework for cybersecurity training that combines traditional attack simulation with modern AI capabilities. The system employs a modular, plugin-based architecture supporting multiple LLM providers (Ollama, OpenAI, VLLM, SGLang), advanced knowledge retrieval systems (RAG + CAG), and comprehensive MITRE ATT&CK framework integration.
+Hackerbot is a sophisticated Ruby-based IRC bot framework for cybersecurity training that combines traditional attack simulation with modern AI capabilities. The system employs a modular, plugin-based architecture supporting multiple LLM providers (Ollama, OpenAI, VLLM, SGLang), advanced knowledge retrieval systems (RAG with stage-aware context injection), and comprehensive MITRE ATT&CK framework integration.
 
 **Key Architectural Achievements:**
 - **Multi-Provider AI Integration**: Seamless switching between LLM providers with unified interface
-- **Dual Knowledge Systems**: RAG (vector-based retrieval) + CAG (graph-based context) for comprehensive knowledge enhancement
+- **RAG Knowledge System** (Epic 1): Validated and optimized vector-based retrieval system (CAG system removed for maintainability)
+- **Full IRC Context Integration** (Epic 2I): Comprehensive message capture and full conversation history in LLM context
+- **Stage-Aware Context Injection** (Epic 3): Per-attack explicit knowledge selection with identifier-based lookups
 - **Offline-First Design**: Complete operation in air-gapped environments for secure training scenarios
 - **Modular Plugin Architecture**: Extensible system for LLM providers, knowledge sources, and bot personalities
 - **Nix Development Environment**: Reproducible builds and consistent development across platforms
@@ -101,7 +103,7 @@ graph TB
     
     subgraph "AI Orchestration Layer"
         LLM_FACTORY[LLM Client Factory]
-        RAGCAG_MANAGER[RAG + CAG Manager]
+        RAG_MANAGER[RAG Manager]
         CHAT_HISTORY[Chat History Management]
         CONTEXT_ENHANCEMENT[Context Enhancement]
     end
@@ -135,7 +137,7 @@ graph TB
     
     BOT_MANAGER --> PERSONALITY
     BOT_MANAGER --> LLM_FACTORY
-    BOT_MANAGER --> RAGCAG_MANAGER
+    BOT_MANAGER --> RAG_MANAGER
     BOT_MANAGER --> CHAT_HISTORY
     BOT_MANAGER --> CONTEXT_ENHANCEMENT
     
@@ -144,12 +146,10 @@ graph TB
     LLM_FACTORY --> VLLM
     LLM_FACTORY --> SGLANG
     
-    RAGCAG_MANAGER --> VECTOR_DB
-    RAGCAG_MANAGER --> KNOWLEDGE_GRAPH
+    RAG_MANAGER --> VECTOR_DB
     VECTOR_DB --> MITRE_FRAMEWORK
     VECTOR_DB --> DOCUMENTATION
     VECTOR_DB --> MAN_PAGES
-    KNOWLEDGE_GRAPH --> MITRE_FRAMEWORK
     
     BOT_MANAGER --> XML_CONFIG
     HACKERBOT --> ENV_VARS
@@ -161,7 +161,7 @@ graph TB
 1. **IRC-Based Interface**: Chosen for simplicity, universal compatibility, and real-time nature
 2. **Ruby Implementation**: Selected for excellent IRC libraries and rapid development capabilities
 3. **Plugin Architecture**: Enables flexibility in LLM provider selection and knowledge source integration
-4. **Dual Knowledge Systems**: RAG for factual retrieval, CAG for contextual understanding
+4. **RAG Knowledge System**: Validated vector-based retrieval system with identifier-based lookups for precise context control
 5. **Offline-First Design**: Essential for security training environments with network restrictions
 6. **XML Configuration**: Provides structured validation and complex scenario definitions
 7. **Nix Development**: Ensures reproducible environments and dependency management
@@ -177,7 +177,7 @@ graph TB
 **Responsibilities**:
 - Parse command-line arguments and configuration
 - Initialize LLM provider settings
-- Configure RAG + CAG systems
+- Configure RAG system
 - Launch bot instances
 
 **Key Interfaces**:
@@ -193,13 +193,18 @@ hackerbot.rb -> BotManager.new -> start_bots
 - Manage multiple bot personalities
 - Coordinate LLM client creation
 - Handle IRC event routing
-- Maintain chat history and context
+- Maintain comprehensive chat history and context
 
 **Key Features**:
 - Multi-bot support with different personalities
-- Per-user chat history management
+- Comprehensive IRC message capture (Epic 2I): All channel messages stored with metadata
+- Full conversation context assembly: Complete IRC conversation history included in LLM prompts
+- Per-user and per-channel message history tracking
+- Message type classification (user messages, bot responses, system messages)
+- Configurable message type filtering for context inclusion
 - Dynamic LLM provider switching
-- RAG + CAG integration coordination
+- RAG integration with stage-aware context injection
+- Identifier-based knowledge lookups for explicit context selection
 
 #### 3. LLM Provider System
 **Purpose**: Abstract interface for multiple AI providers
@@ -211,27 +216,34 @@ hackerbot.rb -> BotManager.new -> start_bots
 **Design Pattern**: Factory Pattern with Strategy Pattern implementation
 **Benefits**: Easy addition of new providers, runtime provider switching
 
-#### 4. RAG + CAG Manager (rag_cag_manager.rb)
-**Purpose**: Unified knowledge enhancement coordinator
+#### 4. RAG Manager (rag/rag_manager.rb)
+**Purpose**: Knowledge enhancement coordinator (RAG-only system)
 **Responsibilities**:
 - Coordinate RAG (Retrieval-Augmented Generation) system
-- Manage CAG (Context-Aware Generation) system
 - Integrate multiple knowledge sources
 - Provide enhanced context for AI responses
+- Support explicit knowledge retrieval by identifier
 
-**Architecture**: Unified manager coordinating separate RAG and CAG subsystems
+**Architecture**: RAG-only approach for maintainability, with identifier-based lookups for stage-aware context injection
+**Note**: CAG system was removed in Epic 1 - decision made to focus on RAG-only approach for better maintainability
 
 #### 5. Knowledge Management System
 **Components**:
 - **RAG System** (`rag/`): Vector-based document retrieval using ChromaDB
-- **CAG System** (`cag/`): In-memory knowledge graph for entity relationships
 - **Knowledge Sources** (`knowledge_bases/`): MITRE ATT&CK, documentation, man pages
+- **Identifier-Based Lookups**: Direct retrieval by ID/name/path for stage-aware context
 
 **Knowledge Sources**:
-- MITRE ATT&CK framework integration
-- Project documentation and guides
-- Unix/Linux manual pages
-- Custom markdown documents
+- MITRE ATT&CK framework integration (lookup by technique ID)
+- Project documentation and guides (lookup by file path)
+- Unix/Linux manual pages (lookup by command name)
+- Custom markdown documents (lookup by file path)
+
+**Features (Epic 3 - Stage-Aware Context Injection)**:
+- Per-attack explicit knowledge selection via XML configuration
+- Identifier-based lookups for precise knowledge retrieval
+- Hybrid mode: explicit items + similarity-based search
+- Configurable context formatting with source attribution
 
 #### 6. Configuration System
 **Purpose**: XML-based bot and scenario configuration
@@ -239,8 +251,17 @@ hackerbot.rb -> BotManager.new -> start_bots
 - Bot personality definitions
 - Attack scenario configurations
 - LLM provider settings
-- RAG + CAG system parameters
+- RAG system parameters (RAG-only approach)
 - Knowledge source specifications
+
+**Enhanced Configuration (Epic 2I, Epic 3)**:
+- **Message History**: Configurable history window sizes (`max_history_length`, `max_irc_message_history`)
+- **Message Type Filtering**: Control which message types appear in context (`message_type_filter`)
+- **Stage-Aware Context** (`context_config`): Per-attack explicit knowledge selection:
+  - `<man_pages>`: Specify man pages by command name
+  - `<documents>`: Specify documents by file path
+  - `<mitre_techniques>`: Specify MITRE techniques by ID
+  - Combination modes: explicit-only, similarity-only, hybrid
 
 ### Component Interactions
 
@@ -250,21 +271,23 @@ sequenceDiagram
     participant IRC
     participant BotManager
     participant LLMFactory
-    participant RAGCAGManager
+    participant RAGManager
     participant LLMProvider
     participant KnowledgeBase
     
     User->>IRC: Message
-    IRC->>BotManager: Route event
-    BotManager->>RAGCAGManager: Get enhanced context
-    RAGCAGManager->>KnowledgeBase: Retrieve knowledge
-    KnowledgeBase-->>RAGCAGManager: Return context
-    RAGCAGManager-->>BotManager: Enhanced context
+    IRC->>BotManager: Route event (capture message)
+    BotManager->>BotManager: Get full chat context
+    BotManager->>RAGManager: Get enhanced context
+    RAGManager->>KnowledgeBase: Retrieve knowledge (explicit + similarity)
+    KnowledgeBase-->>RAGManager: Return context
+    RAGManager-->>BotManager: Enhanced context
     BotManager->>LLMFactory: Create/get LLM client
     LLMFactory-->>BotManager: LLM client instance
     BotManager->>LLMProvider: Generate response
     LLMProvider-->>BotManager: AI response
     BotManager->>IRC: Send response
+    BotManager->>BotManager: Store in message history
     IRC->>User: Display response
 ```
 
@@ -276,31 +299,39 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
-    START([User Input]) --> PARSE[Parse IRC Message]
+    START([User Input]) --> CAPTURE[Capture IRC Message<br/>Epic 2I]
+    CAPTURE --> PARSE[Parse IRC Message]
     PARSE --> ROUTE{Route to Bot}
     
-    ROUTE --> CONTEXT[Get Chat Context]
-    CONTEXT --> ENHANCE[Get Enhanced Context<br/>RAG + CAG]
+    ROUTE --> CHAT_CONTEXT[Get Full Chat Context<br/>Epic 2I: All Messages]
+    CHAT_CONTEXT --> ATTACK_STAGE[Get Current Attack Stage]
     
-    ENHANCE --> KNOWLEDGE[Knowledge Retrieval]
-    subgraph "Knowledge Enhancement"
-        KNOWLEDGE --> RAG[RAG System<br/>Vector Search]
-        KNOWLEDGE --> CAG[CAG System<br/>Graph Context]
-        RAG --> COMBINE[Combine Contexts]
-        CAG --> COMBINE
-    end
+    ATTACK_STAGE --> CHECK_CONFIG{Attack has<br/>context_config?}
+    CHECK_CONFIG -->|Yes| EXPLICIT[Explicit Knowledge Retrieval<br/>Epic 3: Identifier-Based]
+    CHECK_CONFIG -->|No| RAG_ONLY[RAG Similarity Search]
     
-    COMBINE --> PROMPT[Assemble Prompt]
+    EXPLICIT --> MAN_PAGES[Man Pages by Name]
+    EXPLICIT --> DOCS[Documents by Path]
+    EXPLICIT --> MITRE[MITRE Techniques by ID]
+    
+    MAN_PAGES --> COMBINE[Combine Knowledge Context]
+    DOCS --> COMBINE
+    MITRE --> COMBINE
+    RAG_ONLY --> COMBINE
+    
+    COMBINE --> ENHANCE[Format Enhanced Context<br/>with Source Attribution]
+    ENHANCE --> PROMPT[Assemble Prompt<br/>Chat + Knowledge]
     PROMPT --> LLM[LLM Provider]
     LLM --> RESPONSE[Generate Response]
-    RESPONSE --> HISTORY[Update Chat History]
-    HISTORY --> REPLY[Send IRC Reply]
+    RESPONSE --> STORE[Store in Message History<br/>Epic 2I: Comprehensive]
+    STORE --> REPLY[Send IRC Reply]
     REPLY --> END([Complete])
     
     subgraph "Configuration"
         CONFIG[XML Config]
         ENV[Environment]
         CONFIG --> ROUTE
+        CONFIG --> EXPLICIT
         ENV --> LLM
     end
 ```
@@ -335,17 +366,46 @@ flowchart TD
 
 #### Knowledge Enhancement Model
 ```ruby
-# Enhanced context structure
+# Enhanced context structure (RAG-only, Epic 3: Stage-aware)
 {
   query: "user question",
   rag_context: "retrieved documents",
-  cag_context: "knowledge graph relationships",
-  combined_context: "merged enhanced context",
+  explicit_context: {
+    man_pages: [{"nmap" => "content..."}],
+    documents: [{"attack-guide.md" => "content..."}],
+    mitre_techniques: [{"T1003" => "content..."}]
+  },
+  combined_context: "merged enhanced context with source attribution",
   metadata: {
-    sources: ["mitre_attack", "documentation"],
-    confidence_score: 0.85,
-    retrieval_method: "hybrid"
+    sources: ["mitre_attack", "documentation", "man_pages"],
+    retrieval_method: "explicit_hybrid", # or "explicit_only", "similarity_only"
+    chat_context: "full conversation history" # Epic 2I: complete IRC messages
   }
+}
+```
+
+#### Chat History Model (Epic 2I: Full IRC Context)
+```ruby
+# Comprehensive message history structure
+{
+  messages: [
+    {
+      user: "alice",
+      content: "How do I use nmap?",
+      timestamp: "2025-01-18T10:00:00Z",
+      type: :user_message,
+      channel: "#hackerbot"
+    },
+    {
+      user: "bot",
+      content: "Here's how to use nmap...",
+      timestamp: "2025-01-18T10:00:02Z",
+      type: :bot_llm_response,
+      channel: "#hackerbot"
+    }
+  ],
+  storage_mode: :per_user, # or :per_channel
+  max_length: 20
 }
 ```
 
@@ -466,10 +526,8 @@ OPENAI_API_KEY="your-key"
 VLLM_HOST="localhost"
 VLLM_PORT="8000"
 
-# RAG + CAG Configuration
-ENABLE_RAG_CAG="true"
-RAG_ONLY="false"
-CAG_ONLY="false"
+# RAG Configuration
+ENABLE_RAG="true"
 OFFLINE_MODE="auto"
 ```
 
@@ -480,9 +538,16 @@ OFFLINE_MODE="auto"
   <name>training_bot</name>
   <llm_provider>ollama</llm_provider>
   <ollama_model>llama2:7b</ollama_model>
-  <rag_cag_enabled>true</rag_cag_enabled>
   <rag_enabled>true</rag_enabled>
-  <cag_enabled>true</cag_enabled>
+  
+  <!-- Message History Configuration (Epic 2I) -->
+  <max_history_length>10</max_history_length>
+  <max_irc_message_history>20</max_irc_message_history>
+  <message_type_filter>
+    <type>user_message</type>
+    <type>bot_llm_response</type>
+    <type>bot_command_response</type>
+  </message_type_filter>
   
   <!-- Knowledge Sources -->
   <knowledge_sources>
@@ -500,6 +565,14 @@ OFFLINE_MODE="auto"
       <name>reconnaissance</name>
       <prompt>Perform reconnaissance on target system</prompt>
       <get_shell>nmap -sV {{chat_ip_address}}</get_shell>
+      
+      <!-- Stage-Aware Context Configuration (Epic 3) -->
+      <context_config>
+        <man_pages>nmap,netcat</man_pages>
+        <documents>attack-guide.md</documents>
+        <mitre_techniques>T1595.001,T1046</mitre_techniques>
+        <combination_mode>explicit_hybrid</combination_mode>
+      </context_config>
     </attack>
   </attacks>
 </hackerbot>
@@ -587,7 +660,7 @@ graph TB
 |--------|--------|---------|-------|
 | **Response Time** | <5 seconds | 2-3 seconds | AI generation time |
 | **IRC Latency** | <100ms | <50ms | Local IRC server |
-| **Knowledge Retrieval** | <2 seconds | 0.5-1 second | RAG + CAG processing |
+| **Knowledge Retrieval** | <2 seconds | 0.5-1 second | RAG processing |
 | **Memory Usage** | <4GB | 1-2GB | Typical knowledge base |
 | **Concurrent Users** | 50+ | 20+ tested | Per bot instance |
 
@@ -597,11 +670,11 @@ graph TB
 - **Streaming Responses**: Real-time response streaming for better UX
 - **Context Caching**: Cached enhanced contexts for common queries
 - **Model Selection**: Optimal model sizing for performance vs quality
-- **Parallel Processing**: Concurrent RAG and CAG processing
+- **Parallel Processing**: Efficient knowledge retrieval and context assembly
 
 ##### 2. Knowledge System Optimization
 - **Vector Index Optimization**: Efficient ChromaDB indexing strategies
-- **Graph Caching**: In-memory caching of frequently accessed knowledge graph nodes
+- **Identifier-Based Lookup Caching**: Cache frequently accessed knowledge items by identifier
 - **Lazy Loading**: On-demand knowledge source loading
 - **Compression**: Knowledge base compression for memory efficiency
 
@@ -717,16 +790,13 @@ graph TB
     end
     
     subgraph "Knowledge Processing"
-        RAG[RAG System<br/>Vector Database]
-        CAG[CAG System<br/>Knowledge Graph]
+        RAG[RAG System<br/>Vector Database<br/>+ Identifier Lookups]
     end
     
     MITRE --> RAG
-    MITRE --> CAG
     DOCS --> RAG
     MAN_PAGES --> RAG
     CUSTOM --> RAG
-    CUSTOM --> CAG
 ```
 
 #### 3. Development Environment Integrations
@@ -747,10 +817,11 @@ class LLMClient
 end
 
 # Knowledge Enhancement Interface
-class RAGCAGManager
+class RAGManager
   def get_enhanced_context(query, options = {})
+  def get_explicit_context(explicit_items, options = {})
   def add_custom_knowledge(collection, documents)
-  def extract_entities(query, entity_types)
+  def similarity_search(query, limit = 5)
 end
 
 # Bot Management Interface
@@ -820,13 +891,18 @@ end
 
 ### Short-term Roadmap (0-6 months)
 
-#### Core Enhancements
-- **CAG System Stabilization**: Fix document loading and caching issues
-- **Performance Optimization**: Improve response times and resource usage
-- **Testing Infrastructure**: Comprehensive automated test suite
+#### Completed Enhancements ✅
+- **Epic 1 - RAG System Validation**: Comprehensive RAG test suite with ≥80% coverage, performance validation, RAG-only architectural decision
+- **Epic 2I - Full IRC Context Integration**: Complete message capture, enhanced chat history structure, full conversation context in LLM prompts
+- **Epic 3 - Stage-Aware Context Injection**: Per-attack explicit knowledge selection, identifier-based lookups, configurable context formatting
+
+#### Current Enhancements
+- **Performance Optimization**: Ongoing response time improvements
+- **Testing Infrastructure**: Expansion of automated test suite coverage
 - **Documentation Enhancement**: Complete API documentation and guides
 
-#### Feature Additions
+#### Planned Feature Additions
+- **VM Context Fetching** (Epic 4): SSH-based context from student machines (bash history, command outputs, files)
 - **Enhanced Personality System**: More sophisticated bot personalities
 - **Advanced Scenarios**: Complex multi-step attack scenarios
 - **Progress Tracking**: Detailed learning progress analytics
@@ -888,10 +964,12 @@ The Hackerbot system architecture represents a sophisticated approach to AI-powe
 
 1. **Modular Design**: Clear separation of concerns enabling independent development and testing
 2. **Multi-Provider AI Support**: Flexibility in LLM provider selection and configuration
-3. **Dual Knowledge Systems**: Comprehensive knowledge enhancement through RAG and CAG
-4. **Offline-First Operation**: Complete functionality in secure, isolated environments
-5. **Extensible Plugin Architecture**: Easy addition of new providers, knowledge sources, and features
-6. **Security-Focused Design**: Built for the unique requirements of cybersecurity training
+3. **RAG Knowledge System**: Validated and optimized vector-based knowledge retrieval system
+4. **Full Conversation Context**: Comprehensive IRC message capture providing complete conversation history to LLM
+5. **Stage-Aware Context Injection**: Precise control over knowledge sources per attack stage
+6. **Offline-First Operation**: Complete functionality in secure, isolated environments
+7. **Extensible Plugin Architecture**: Easy addition of new providers, knowledge sources, and features
+8. **Security-Focused Design**: Built for the unique requirements of cybersecurity training
 
 ### Strategic Position
 
