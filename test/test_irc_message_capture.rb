@@ -110,15 +110,15 @@ class TestIRCMessageCapture < BotManagerTest
 
   def test_capture_irc_message_max_length_enforcement
     channel = '#TestBot'
-    max_messages = @bot_manager.instance_variable_get(:@max_history_length) * 2
+    max_messages = @bot_manager.instance_variable_get(:@max_irc_message_history)
     
-    # Add more messages than max_history_length * 2
+    # Add more messages than max_irc_message_history
     (max_messages + 5).times do |i|
       @bot_manager.capture_irc_message(@bot_name, @user_id, "Message #{i}", channel)
     end
     
     history = @bot_manager.get_irc_message_history(@bot_name, @user_id)
-    # Should be limited to max_history_length * 2
+    # Should be limited to max_irc_message_history
     assert_equal max_messages, history.length
     
     # Should keep the most recent messages

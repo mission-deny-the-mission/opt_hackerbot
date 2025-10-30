@@ -154,7 +154,7 @@ class TestIRCMessageCaptureIntegration < BotManagerTest
 
   def test_history_pruning_maintains_order
     user = 'test_user'
-    max_length = @bot_manager.instance_variable_get(:@max_history_length) * 2
+    max_length = @bot_manager.instance_variable_get(:@max_irc_message_history)
     
     # Add messages up to limit + some
     (max_length + 5).times do |i|

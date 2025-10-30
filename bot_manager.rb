@@ -24,7 +24,9 @@ class BotManager
     # Structure: {bot_name => {channel => [messages]}} or {bot_name => {user_id => [messages]}}
     # Each message: {user: string, content: string, timestamp: Time, type: symbol, channel: string}
     @irc_message_history = Hash.new { |h, k| h[k] = Hash.new { |h2, k2| h2[k2] = [] } }
-    @max_history_length = 10
+    # Default history lengths (can be overridden per-bot via XML config)
+    @max_history_length = 10  # For traditional chat history (user/assistant pairs)
+    @max_irc_message_history = 20  # For enhanced IRC message history (configurable window)
     @enable_rag = enable_rag
     @rag_config = rag_config
     @rag_manager = nil
@@ -140,8 +142,10 @@ class BotManager
   def add_to_history(bot_name, user_id, user_message, assistant_response)
     @user_chat_histories[bot_name][user_id] ||= []
     @user_chat_histories[bot_name][user_id] << { user: user_message, assistant: assistant_response }
-    if @user_chat_histories[bot_name][user_id].length > @max_history_length
-      @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(@max_history_length)
+    # Get bot-specific max history length if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_history_length') || @max_history_length
+    if @user_chat_histories[bot_name][user_id].length > max_length
+      @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(max_length)
     end
   end
 
@@ -239,8 +243,10 @@ class BotManager
     @irc_message_history[bot_name][storage_key] << message_entry
     
     # Enforce max history length (keep last N messages per storage key)
-    if @irc_message_history[bot_name][storage_key].length > @max_history_length * 2
-      @irc_message_history[bot_name][storage_key] = @irc_message_history[bot_name][storage_key].last(@max_history_length * 2)
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_irc_message_history') || @max_irc_message_history
+    if @irc_message_history[bot_name][storage_key].length > max_length
+      @irc_message_history[bot_name][storage_key] = @irc_message_history[bot_name][storage_key].last(max_length)
     end
   end
 
@@ -259,6 +265,48 @@ class BotManager
   # @param key [String] User ID or channel name to clear
   def clear_irc_message_history(bot_name, key)
     @irc_message_history[bot_name].delete(key)
+  end
+
+  # Prune IRC message history for a bot to enforce max length limits
+  #
+  # @param bot_name [String] The bot name
+  # @param force [Boolean] If true, prune all keys; if false, only prune keys that exceed limit
+  def prune_irc_message_history(bot_name, force = false)
+    return unless @irc_message_history[bot_name]
+    
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_irc_message_history') || @max_irc_message_history
+    
+    @irc_message_history[bot_name].each do |key, messages|
+      if force || messages.length > max_length
+        @irc_message_history[bot_name][key] = messages.last(max_length)
+      end
+    end
+  end
+
+  # Prune traditional chat history for a bot to enforce max length limits
+  #
+  # @param bot_name [String] The bot name
+  # @param user_id [String, nil] If provided, prune only this user's history; if nil, prune all users
+  def prune_chat_history(bot_name, user_id = nil)
+    return unless @user_chat_histories[bot_name]
+    
+    # Get bot-specific max history if configured, otherwise use default
+    max_length = @bots.dig(bot_name, 'max_history_length') || @max_history_length
+    
+    if user_id
+      # Prune specific user's history
+      if @user_chat_histories[bot_name][user_id] && @user_chat_histories[bot_name][user_id].length > max_length
+        @user_chat_histories[bot_name][user_id] = @user_chat_histories[bot_name][user_id].last(max_length)
+      end
+    else
+      # Prune all users' history for this bot
+      @user_chat_histories[bot_name].each do |uid, history|
+        if history.length > max_length
+          @user_chat_histories[bot_name][uid] = history.last(max_length)
+        end
+      end
+    end
   end
 
   def get_enhanced_context(bot_name, user_message)
@@ -537,6 +585,22 @@ class BotManager
             # Update global RAG/CAG config with bot-specific knowledge sources
             @rag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
           end
+        end
+
+        # Parse history window size configuration
+        max_history_length_node = hackerbot.at_xpath('max_history_length')
+        if max_history_length_node
+          @bots[bot_name]['max_history_length'] = max_history_length_node.text.to_i
+        else
+          @bots[bot_name]['max_history_length'] = @max_history_length
+        end
+
+        # Parse IRC message history window size configuration
+        max_irc_message_history_node = hackerbot.at_xpath('max_irc_message_history')
+        if max_irc_message_history_node
+          @bots[bot_name]['max_irc_message_history'] = max_irc_message_history_node.text.to_i
+        else
+          @bots[bot_name]['max_irc_message_history'] = @max_irc_message_history
         end
 
         # Test connection to LLM provider

@@ -204,13 +204,98 @@ All acceptance criteria have been implemented and verified through comprehensive
 **Brief Description**: Redesign chat history storage to accommodate full conversation context. Update data structures to store all messages with metadata, supporting multi-user conversations and message type classification.
 
 **Acceptance Criteria**:
-- [ ] Chat history structure enhanced to store message metadata
-- [ ] Support for multi-user conversation history
-- [ ] Chronological ordering of messages maintained
-- [ ] Message history window size configurable (default: last N messages)
-- [ ] Backward compatibility: existing history format still supported
-- [ ] History cleanup/pruning when exceeding max size
-- [ ] Unit tests verify history structure and operations
+- [x] Chat history structure enhanced to store message metadata
+- [x] Support for multi-user conversation history
+- [x] Chronological ordering of messages maintained
+- [x] Message history window size configurable (default: last N messages)
+- [x] Backward compatibility: existing history format still supported
+- [x] History cleanup/pruning when exceeding max size
+- [x] Unit tests verify history structure and operations
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Full Stack Developer (James) - Story 2I.2 Implementation
+
+### Completion Notes
+
+**Story 2I.2: Enhance Chat History Structure and Storage - COMPLETED**
+
+All acceptance criteria have been implemented and verified through comprehensive testing.
+
+**Implementation Summary:**
+
+1. **Configurable History Window Sizes** - Enhanced chat history system with separate configurable limits:
+   - `@max_history_length` (default: 10) - For traditional chat history (user/assistant pairs)
+   - `@max_irc_message_history` (default: 20) - For enhanced IRC message history
+   - Both can be configured per-bot via XML configuration (`max_history_length` and `max_irc_message_history` elements)
+
+2. **XML Configuration Support** - Added parsing for history window size configuration in `read_bots`:
+   - `<max_history_length>` - Sets traditional chat history limit per bot
+   - `<max_irc_message_history>` - Sets IRC message history limit per bot
+   - Defaults are used if not specified in XML
+
+3. **Enhanced History Pruning** - Added dedicated pruning methods:
+   - `prune_irc_message_history(bot_name, force)` - Prune IRC message history to max length
+   - `prune_chat_history(bot_name, user_id)` - Prune traditional chat history (can target specific user or all users)
+   - Both methods respect bot-specific configuration or fall back to defaults
+
+4. **Backward Compatibility Maintained** - Existing chat history functionality continues to work:
+   - `add_to_history` method updated to respect bot-specific `max_history_length`
+   - `get_chat_context` continues to work with traditional format
+   - Both history systems operate independently with their own limits
+
+5. **Improved Automatic Pruning** - Enhanced `capture_irc_message` and `add_to_history` to:
+   - Check bot-specific configuration before applying default limits
+   - Automatically prune when limits are exceeded
+   - Maintain chronological ordering during pruning
+
+6. **Multi-User Support Enhanced** - Both history systems support:
+   - Per-user history isolation
+   - Independent history limits per user
+   - Configurable storage modes (per_user or per_channel)
+
+**Testing:**
+
+- **New Comprehensive Tests** (14 tests in `test_enhanced_chat_history_structure.rb`):
+  - Configurable history window size verification
+  - Bot-specific history limits
+  - Backward compatibility with traditional history
+  - History pruning for both systems
+  - Multi-user history isolation
+  - Independent history limits
+  - Empty history handling
+  - Message structure consistency
+
+- **Updated Existing Tests**:
+  - Fixed `test_capture_irc_message_max_length_enforcement` to use new `@max_irc_message_history`
+  - Fixed integration test to use correct max length variable
+
+**Test Coverage:**
+- All acceptance criteria verified through unit tests
+- Backward compatibility tested and confirmed
+- Configuration parsing tested
+- Pruning functionality verified
+- Multi-user scenarios validated
+
+### File List
+
+**Modified Files:**
+- `bot_manager.rb` - Enhanced chat history structure:
+  - Added `@max_irc_message_history` instance variable (default: 20)
+  - Updated `capture_irc_message` to use bot-specific `max_irc_message_history` config
+  - Updated `add_to_history` to use bot-specific `max_history_length` config
+  - Added `prune_irc_message_history` method for IRC history pruning
+  - Added `prune_chat_history` method for traditional history pruning
+  - Added XML parsing for `max_history_length` and `max_irc_message_history` in `read_bots`
+
+- `test/test_irc_message_capture.rb` - Updated to use `@max_irc_message_history` instead of `@max_history_length * 2`
+
+- `test/test_irc_message_capture_integration.rb` - Updated to use `@max_irc_message_history`
+
+**New Files Created:**
+- `test/test_enhanced_chat_history_structure.rb` - Comprehensive unit tests for Story 2I.2 (14 tests covering all acceptance criteria)
 
 ---
 
