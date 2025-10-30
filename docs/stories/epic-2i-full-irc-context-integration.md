@@ -307,13 +307,106 @@ All acceptance criteria have been implemented and verified through comprehensive
 **Brief Description**: Modify `get_chat_context` and `assemble_prompt` to include complete conversation context. Format all messages clearly for LLM consumption, showing full conversation flow with all participants.
 
 **Acceptance Criteria**:
-- [ ] `get_chat_context` returns complete conversation thread (all messages)
-- [ ] Message formatting clearly identifies speakers: "User alice: ...", "Bot: ..."
-- [ ] Chronological order of messages preserved in context
-- [ ] LLM prompt includes full conversation context
-- [ ] Configurable message filtering (which message types to include)
-- [ ] Context length management (truncate oldest messages if needed)
-- [ ] Integration tests verify full conversation context in LLM prompts
+- [x] `get_chat_context` returns complete conversation thread (all messages)
+- [x] Message formatting clearly identifies speakers: "User alice: ...", "Bot: ..."
+- [x] Chronological order of messages preserved in context
+- [x] LLM prompt includes full conversation context
+- [x] Configurable message filtering (which message types to include)
+- [x] Context length management (truncate oldest messages if needed)
+- [x] Integration tests verify full conversation context in LLM prompts
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Full Stack Developer (James) - Story 2I.3 Implementation
+
+### Completion Notes
+
+**Story 2I.3: Update Context Assembly for Full Conversation - COMPLETED**
+
+All acceptance criteria have been implemented and verified through comprehensive testing.
+
+**Implementation Summary:**
+
+1. **Enhanced `get_chat_context` Method** - Completely redesigned to return full conversation context from IRC message history:
+   - Retrieves messages from IRC history instead of (or as fallback to) traditional chat history
+   - Supports both `:per_user` and `:per_channel` storage modes
+   - In per_user mode: merges messages from both user and bot, sorted chronologically
+   - In per_channel mode: retrieves all messages from the channel
+   - Maintains backward compatibility - falls back to traditional format when no IRC history exists
+
+2. **Clear Speaker Identification** - Messages formatted with explicit speaker labels:
+   - `"User {nickname}:"` for user messages
+   - `"Bot:"` for bot LLM responses and command responses
+   - `"System:"` for system messages
+   - Optional timestamp formatting with `include_timestamps` option
+
+3. **Chronological Order Preservation** - Messages sorted by timestamp to maintain conversation flow:
+   - Merges user and bot messages in per_user mode using timestamp sorting
+   - Preserves message order from capture time
+   - Ensures conversation context reflects actual IRC conversation timeline
+
+4. **Configurable Message Filtering** - Added flexible filtering options:
+   - `include_types` parameter accepts array of message types (`:user_message`, `:bot_llm_response`, `:bot_command_response`, `:system_message`)
+   - Default includes user messages, LLM responses, and command responses (excludes system messages)
+   - Allows fine-grained control over which message types appear in context
+
+5. **Context Length Management** - Added intelligent truncation:
+   - `max_context_length` parameter limits total context size in characters
+   - Truncates oldest messages when limit exceeded
+   - Attempts to truncate at message boundaries (after newlines) to avoid cutting messages mid-sentence
+   - Adds truncation marker: `"... (earlier messages truncated) ..."` when truncation occurs
+
+6. **Current Message Exclusion** - Prevents duplication:
+   - `exclude_message` parameter allows excluding the current message from context
+   - Prevents duplicate inclusion when current message is already captured by global handler
+   - Updated all `get_chat_context` calls in LLM response handlers to exclude current message
+
+7. **Integration with `assemble_prompt`** - Verified compatibility:
+   - `assemble_prompt` already properly includes chat context via `Chat History:` section
+   - New formatted context integrates seamlessly with existing prompt assembly
+   - Full conversation flow now visible to LLM in generated prompts
+
+**Testing:**
+
+- **New Comprehensive Tests** (11 tests in `test_full_conversation_context.rb`):
+  - Complete conversation thread retrieval
+  - Speaker identification formatting
+  - Chronological order preservation
+  - Full conversation in LLM prompts
+  - Configurable message filtering
+  - Context length management and truncation
+  - Current message exclusion
+  - Backward compatibility with traditional history
+  - Per-channel mode support
+  - Multi-user conversation support
+  - Optional timestamp formatting
+
+**Key Features:**
+
+- **Message Merging**: In per_user mode, automatically merges messages from user and bot for complete conversation view
+- **Flexible Filtering**: Programmatic control over which message types appear in context
+- **Smart Truncation**: Intelligent truncation that respects message boundaries
+- **No Breaking Changes**: Maintains full backward compatibility with existing code
+- **Performance Optimized**: Efficient sorting and filtering using Ruby array operations
+
+### File List
+
+**Modified Files:**
+- `bot_manager.rb` - Enhanced `get_chat_context` method:
+  - Returns complete conversation thread from IRC message history
+  - Supports message type filtering via `include_types` parameter
+  - Supports context length management via `max_context_length` parameter
+  - Supports timestamp inclusion via `include_timestamps` parameter
+  - Supports current message exclusion via `exclude_message` parameter
+  - Handles both per_user and per_channel storage modes
+  - Merges user and bot messages in per_user mode with chronological sorting
+  - Formats messages with clear speaker identification
+  - Updated LLM response handler to exclude current message from context
+
+**New Files Created:**
+- `test/test_full_conversation_context.rb` - Comprehensive unit tests for Story 2I.3 (11 tests covering all acceptance criteria)
 
 ---
 

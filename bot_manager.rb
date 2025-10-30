@@ -149,13 +149,100 @@ class BotManager
     end
   end
 
-  def get_chat_context(bot_name, user_id)
-    history = @user_chat_histories[bot_name][user_id] || []
-    return '' if history.empty?
-    context_parts = history.map do |exchange|
-      "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+  # Get chat context for LLM prompts
+  #
+  # Returns complete conversation thread from IRC message history, formatted for LLM consumption.
+  # Supports configurable message filtering and context length management.
+  #
+  # @param bot_name [String] The bot name
+  # @param user_id [String] The user ID to get context for
+  # @param options [Hash] Configuration options
+  # @option options [Array<Symbol>] :include_types Message types to include (default: [:user_message, :bot_llm_response, :bot_command_response])
+  # @option options [Integer] :max_context_length Maximum context length in characters (nil = no limit)
+  # @option options [Boolean] :include_timestamps Include timestamps in formatted messages (default: false)
+  # @option options [String] :exclude_message Content of message to exclude (typically the current message being processed)
+  # @return [String] Formatted conversation context
+  def get_chat_context(bot_name, user_id, options = {})
+    # Default options
+    include_types = options.fetch(:include_types, [:user_message, :bot_llm_response, :bot_command_response])
+    max_context_length = options.fetch(:max_context_length, nil)
+    include_timestamps = options.fetch(:include_timestamps, false)
+    exclude_message = options[:exclude_message]
+    
+    # Get IRC message history
+    # In per_user mode: merge messages from both user and bot (bot messages stored under bot_name)
+    # In per_channel mode: get messages from channel
+    irc_history = []
+    if @message_storage_mode == :per_channel
+      channel_key = "##{bot_name}"
+      irc_history = get_irc_message_history(bot_name, channel_key)
+    else
+      # per_user mode: merge user messages and bot messages
+      user_history = get_irc_message_history(bot_name, user_id)
+      bot_history = get_irc_message_history(bot_name, bot_name)
+      # Merge and sort by timestamp to maintain chronological order
+      irc_history = (user_history + bot_history).sort_by { |msg| msg[:timestamp] }
     end
-    context_parts.join("\n\n")
+    
+    # Filter by message type if specified
+    filtered_history = irc_history.select { |msg| include_types.include?(msg[:type]) }
+    
+    # Exclude the current message if specified (to avoid duplication in prompt)
+    if exclude_message
+      filtered_history = filtered_history.reject { |msg| msg[:content] == exclude_message }
+    end
+    
+    # If no IRC history, fall back to traditional chat history for backward compatibility
+    if filtered_history.empty?
+      history = @user_chat_histories[bot_name][user_id] || []
+      return '' if history.empty?
+      context_parts = history.map do |exchange|
+        "User: #{exchange[:user]}\nAssistant: #{exchange[:assistant]}"
+      end
+      context = context_parts.join("\n\n")
+      
+      # Apply length management if specified
+      if max_context_length && context.length > max_context_length
+        # Truncate from the beginning (oldest messages)
+        context = context[-max_context_length..-1]
+      end
+      
+      return context
+    end
+    
+    # Format messages with clear speaker identification
+    formatted_messages = filtered_history.map do |msg|
+      speaker = case msg[:type]
+                when :user_message
+                  "User #{msg[:user]}:"
+                when :bot_llm_response, :bot_command_response
+                  "Bot:"
+                when :system_message
+                  "System:"
+                else
+                  "#{msg[:user]}:"
+                end
+      
+      timestamp_str = include_timestamps ? " [#{msg[:timestamp].strftime('%H:%M:%S')}]" : ""
+      "#{speaker}#{timestamp_str} #{msg[:content]}"
+    end
+    
+    context = formatted_messages.join("\n")
+    
+    # Apply context length management if specified
+    if max_context_length && context.length > max_context_length
+      # Truncate from the beginning (oldest messages)
+      # Try to truncate at message boundaries if possible
+      truncated = context[-max_context_length..-1]
+      # Find first newline to avoid cutting in the middle of a message
+      first_newline = truncated.index("\n")
+      if first_newline
+        truncated = truncated[first_newline + 1..-1]
+      end
+      context = "... (earlier messages truncated) ...\n" + truncated
+    end
+    
+    context
   end
 
   def clear_user_history(bot_name, user_id)
@@ -1085,7 +1172,7 @@ class BotManager
               # Update the OllamaClient's system prompt
               bots_ref[bot_name]['chat_ai'].update_system_prompt(current_system_prompt)
             end
-            chat_context = get_chat_context.call(bot_name, user_id)
+            chat_context = get_chat_context.call(bot_name, user_id, exclude_message: m.message)
 
             # Get RAG + CAG enhanced context if enabled
             enhanced_context = nil
