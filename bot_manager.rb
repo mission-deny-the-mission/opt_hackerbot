@@ -36,10 +36,18 @@ class BotManager
     # Set default offline mode
     @rag_config[:offline_mode] ||= 'auto'  # Default to auto-detect
     @rag_config[:enable_rag] = rag_config.fetch(:enable_rag, true)  # Default to enabled
+    
+    # Explicit context can work independently of RAG (similarity search)
+    # Explicit context uses direct lookups via knowledge sources, not vector similarity
+    @enable_explicit_context = rag_config.fetch(:enable_explicit_context, nil)  # nil = auto-detect: true if RAG enabled
+    @knowledge_source_manager = nil
 
-    # Initialize RAG manager if enabled
+    # Initialize RAG manager if enabled (includes knowledge sources if enabled)
     if @enable_rag
       initialize_rag_manager
+    elsif explicit_context_enabled?
+      # Initialize knowledge sources only if explicit context enabled without RAG
+      initialize_knowledge_sources_only
     end
   end
 
@@ -137,6 +145,77 @@ class BotManager
     else
       Print.info "✓ RAGOnlyManager setup successful"
     end
+    
+    # Store knowledge source manager reference for explicit context access
+    @knowledge_source_manager = @rag_manager.knowledge_source_manager if @rag_manager
+  end
+
+  # Initialize knowledge sources only (without RAG similarity search)
+  # Used when explicit context is enabled but RAG is disabled
+  def initialize_knowledge_sources_only
+    Print.info "Initializing Knowledge Sources (without RAG)..."
+    
+    require_relative './knowledge_bases/knowledge_source_manager.rb'
+    
+    config = {
+      enable_knowledge_sources: true,
+      knowledge_sources_config: @rag_config.fetch(:knowledge_sources_config, []),
+      knowledge_base_name: @rag_config.fetch(:knowledge_base_name, 'cybersecurity')
+    }
+    
+    @knowledge_source_manager = KnowledgeSourceManager.new(config)
+    
+    sources_config = @rag_config[:knowledge_sources_config] || default_knowledge_sources_config
+    unless @knowledge_source_manager.initialize_sources(sources_config)
+      Print.err "Failed to initialize Knowledge Source Manager"
+      @knowledge_source_manager = nil
+      return false
+    end
+    
+    Print.info "✓ Knowledge Source Manager initialized successfully (explicit context enabled)"
+    true
+  end
+  
+  # Default knowledge sources config for explicit context only mode
+  def default_knowledge_sources_config
+    [
+      {
+        type: 'mitre_attack',
+        name: 'mitre_attack',
+        enabled: true,
+        priority: 1
+      },
+      {
+        type: 'man_pages',
+        name: 'man_pages',
+        enabled: true,
+        priority: 2,
+        config: {
+          man_page_paths: ['/usr/share/man', '/usr/local/share/man'],
+          sections: [1, 8],
+          cache_enabled: true
+        }
+      },
+      {
+        type: 'markdown_files',
+        name: 'markdown_files',
+        enabled: true,
+        priority: 3,
+        config: {
+          directory_paths: ['docs', 'knowledge_bases'],
+          file_patterns: ['*.md', '*.markdown'],
+          cache_enabled: true
+        }
+      }
+    ]
+  end
+  
+  # Check if explicit context is enabled
+  def explicit_context_enabled?
+    return true if @enable_explicit_context == true
+    return false if @enable_explicit_context == false
+    # Auto-detect: enabled if RAG is enabled (for backward compatibility)
+    @enable_rag
   end
 
   def add_to_history(bot_name, user_id, user_message, assistant_response)
@@ -401,11 +480,33 @@ class BotManager
     end
   end
 
-  def get_enhanced_context(bot_name, user_message)
+  def get_enhanced_context(bot_name, user_message, attack_index: nil)
+    # Check if bot has explicit context enabled (per-bot override)
+    bot_explicit_context_enabled = get_bot_explicit_context_enabled(bot_name)
+    
+    # Check for explicit knowledge retrieval if attack_index provided and explicit context enabled
+    if attack_index && bot_explicit_context_enabled
+      explicit_context = retrieve_explicit_knowledge(bot_name, attack_index)
+      if explicit_context && explicit_context[:has_explicit]
+        Print.info "Using explicit knowledge retrieval for attack #{attack_index}"
+        
+        # Check if RAG similarity search is also available
+        bot_rag_enabled = get_bot_rag_enabled(bot_name)
+        if bot_rag_enabled && @rag_manager
+          # Both explicit and RAG available - combine them
+          return combine_explicit_and_rag_context(bot_name, user_message, explicit_context, attack_index: attack_index)
+        else
+          # Only explicit context available - return formatted explicit context only
+          return format_explicit_only_context(explicit_context, attack_index: attack_index)
+        end
+      end
+    end
+
+    # Continue with RAG similarity search if enabled
     return nil unless @enable_rag && @rag_manager
 
     # Check if bot has specific RAG configuration
-    rag_enabled = @bots.dig(bot_name, 'rag_enabled')
+    rag_enabled = get_bot_rag_enabled(bot_name)
     return nil if rag_enabled == false
 
     # Get bot-specific context preferences
@@ -454,6 +555,652 @@ class BotManager
     entities = @rag_cag_manager.extract_entities(user_message, entity_types)
     Print.debug "Extracted #{entities&.length || 0} entities from message"
     entities
+  end
+
+  # Retrieve explicit knowledge items from context_config for a specific attack
+  #
+  # @param bot_name [String] The bot name
+  # @param attack_index [Integer] The attack index
+  # @return [Hash, nil] Returns hash with explicit_context, explicit_sources, has_explicit, or nil if no context_config
+  def retrieve_explicit_knowledge(bot_name, attack_index)
+    # Validate attack_index
+    attacks = @bots.dig(bot_name, 'attacks')
+    return nil unless attacks && attack_index >= 0 && attack_index < attacks.length
+
+    attack = attacks[attack_index]
+    context_config = attack['context_config'] || attack[:context_config]
+    
+    # Return nil if no context_config or empty
+    return nil unless context_config
+    return nil if context_config.empty?
+    
+    # Handle both string and symbol keys
+    man_pages = context_config[:man_pages] || context_config['man_pages']
+    documents = context_config[:documents] || context_config['documents']
+    mitre_techniques = context_config[:mitre_techniques] || context_config['mitre_techniques']
+    
+    # Check if context_config has any non-empty arrays
+    has_man_pages = man_pages && !man_pages.empty?
+    has_documents = documents && !documents.empty?
+    has_mitre_techniques = mitre_techniques && !mitre_techniques.empty?
+    
+    return nil unless has_man_pages || has_documents || has_mitre_techniques
+
+    explicit_items = []
+    explicit_sources = []
+    not_found_items = []
+
+    # Retrieve man pages
+    if has_man_pages
+      man_page_results = retrieve_man_pages(man_pages)
+      man_page_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(man_page_results[:not_found])
+    end
+
+    # Retrieve documents
+    if has_documents
+      document_results = retrieve_documents(documents)
+      document_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(document_results[:not_found])
+    end
+
+    # Retrieve MITRE techniques
+    if has_mitre_techniques
+      mitre_results = retrieve_mitre_techniques(mitre_techniques)
+      mitre_results[:found].each { |item| explicit_items << item; explicit_sources << item[:metadata][:source] }
+      not_found_items.concat(mitre_results[:not_found])
+    end
+
+    # Log warnings for items not found
+    not_found_items.each do |item|
+      Print.warn "Explicit knowledge item not found: #{item}"
+    end
+
+    # Log summary
+    Print.info "Retrieved #{explicit_items.length}/#{explicit_items.length + not_found_items.length} explicit knowledge items"
+
+    {
+      explicit_context: explicit_items,
+      explicit_sources: explicit_sources,
+      has_explicit: !explicit_items.empty?
+    }
+  end
+
+  # Retrieve man pages via knowledge source
+  #
+  # @param man_page_names [Array<String>] Array of man page names
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of names)
+  def retrieve_man_pages(man_page_names)
+    # Use knowledge source manager from RAG manager if available, otherwise use standalone
+    ksm = @rag_manager ? @rag_manager.knowledge_source_manager : @knowledge_source_manager
+    return { found: [], not_found: [] } unless ksm
+
+    found_items = []
+    not_found_items = []
+
+    # Get man page knowledge source from knowledge source manager
+    man_page_source = find_knowledge_source(ksm, 'man_pages')
+
+    if man_page_source.nil?
+      # Fallback: create instance on-demand if not found in manager
+      require_relative './knowledge_bases/sources/man_pages/man_page_knowledge.rb'
+      man_page_source = ManPageKnowledgeSource.new({})
+    end
+
+    man_page_names.each do |command_name|
+      result = man_page_source.get_man_page_by_name(command_name)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "man page '#{command_name}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Retrieve documents via knowledge source
+  #
+  # @param document_paths [Array<String>] Array of document paths
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of paths)
+  def retrieve_documents(document_paths)
+    # Use knowledge source manager from RAG manager if available, otherwise use standalone
+    ksm = @rag_manager ? @rag_manager.knowledge_source_manager : @knowledge_source_manager
+    return { found: [], not_found: [] } unless ksm
+
+    found_items = []
+    not_found_items = []
+
+    # Get markdown knowledge source from knowledge source manager
+    markdown_source = find_knowledge_source(ksm, 'markdown_files')
+
+    if markdown_source.nil?
+      # Fallback: create instance on-demand if not found in manager
+      require_relative './knowledge_bases/sources/markdown_files/markdown_knowledge.rb'
+      markdown_source = MarkdownKnowledgeSource.new({})
+    end
+
+    document_paths.each do |file_path|
+      result = markdown_source.get_document_by_path(file_path)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "document '#{file_path}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Retrieve MITRE techniques via knowledge source
+  #
+  # @param technique_ids [Array<String>] Array of MITRE technique IDs
+  # @return [Hash] Hash with :found (array of RAG documents) and :not_found (array of IDs)
+  def retrieve_mitre_techniques(technique_ids)
+    found_items = []
+    not_found_items = []
+
+    require_relative './knowledge_bases/mitre_attack_knowledge.rb'
+
+    technique_ids.each do |technique_id|
+      result = MITREAttackKnowledge.get_technique_by_id(technique_id)
+      if result && result[:found]
+        found_items << result[:rag_document]
+      else
+        not_found_items << "MITRE technique '#{technique_id}'"
+      end
+    end
+
+    { found: found_items, not_found: not_found_items }
+  end
+
+  # Find a knowledge source by type from knowledge source manager
+  #
+  # @param ksm [KnowledgeSourceManager] The knowledge source manager
+  # @param source_type [String] The source type ('man_pages', 'markdown_files', etc.)
+  # @return [Object, nil] The knowledge source instance or nil if not found
+  def find_knowledge_source(ksm, source_type)
+    return nil unless ksm
+
+    # Ensure knowledge source classes are loaded
+    require_relative './knowledge_bases/sources/man_pages/man_page_knowledge.rb'
+    require_relative './knowledge_bases/sources/markdown_files/markdown_knowledge.rb'
+
+    # Access sources via instance variable or public method if available
+    sources = ksm.instance_variable_get(:@sources) if ksm.instance_variable_defined?(:@sources)
+    return nil unless sources
+
+    # Look for source by type (case-insensitive)
+    sources.values.find do |source|
+      source_type_matches = case source_type.downcase
+                           when 'man_pages', 'manpage', 'man'
+                             source.is_a?(ManPageKnowledgeSource)
+                           when 'markdown_files', 'markdown', 'md'
+                             source.is_a?(MarkdownKnowledgeSource)
+                           else
+                             false
+                           end
+      source_type_matches
+    end
+  end
+
+  # Combine explicit knowledge with RAG similarity search results
+  #
+  # @param bot_name [String] The bot name
+  # @param user_message [String] The user message
+  # @param explicit_context [Hash] The explicit context hash
+  # @param attack_index [Integer] The attack index for reading context config
+  # @return [Hash] Enhanced context with both explicit and similarity search results
+  def combine_explicit_and_rag_context(bot_name, user_message, explicit_context, attack_index: nil)
+    # Determine combination mode from context config or use default
+    combine_mode = get_combination_mode(bot_name, attack_index)
+    
+    # Format explicit knowledge items with length management
+    formatting_options = {
+      max_length: get_max_context_length,
+      truncation_strategy: :proportional
+    }
+    formatted_explicit = format_explicit_knowledge(explicit_context[:explicit_context], formatting_options)
+
+    # Get RAG similarity search results based on combination mode
+    rag_context = nil
+    if combine_mode != :explicit_only
+      # Get bot-specific context preferences for similarity search
+      context_options = {}
+      if @bots.dig(bot_name, 'rag_config')
+        context_options = {
+          max_results: @bots.dig(bot_name, 'rag_config', 'max_results') || 5,
+          custom_collection: @bots.dig(bot_name, 'rag_config', 'collection_name')
+        }
+      else
+        context_options = {
+          max_results: 5,
+          custom_collection: @rag_config[:knowledge_base_name] || 'cybersecurity'
+        }
+      end
+
+      rag_context = @rag_manager.get_enhanced_context(user_message, context_options)
+    end
+    
+    enhanced_context = {
+      original_query: user_message,
+      rag_context: rag_context&.dig(:rag_context),
+      explicit_context: explicit_context[:explicit_context],
+      explicit_sources: explicit_context[:explicit_sources],
+      has_explicit: true,
+      combine_mode: combine_mode,
+      combined_context: '',
+      sources: explicit_context[:explicit_sources] + (rag_context&.dig(:sources) || []),
+      timestamp: Time.now
+    }
+
+    # Combine formatted explicit context with similarity search results based on mode
+    combined_context = build_combined_context(formatted_explicit, rag_context, combine_mode)
+    
+    # Apply final length management to combined context
+    max_length = get_max_context_length
+    if max_length && combined_context.length > max_length
+      combined_context = apply_combined_length_management(combined_context, formatted_explicit, rag_context, max_length, combine_mode)
+    end
+    
+    enhanced_context[:combined_context] = combined_context
+
+    # Store sections separately for debugging
+    enhanced_context[:explicit_section] = formatted_explicit
+    enhanced_context[:similarity_section] = rag_context&.dig(:combined_context) || ''
+    enhanced_context[:sections_present] = []
+    enhanced_context[:sections_present] << 'explicit' unless formatted_explicit.strip.empty?
+    enhanced_context[:sections_present] << 'similarity' if rag_context && rag_context[:combined_context] && !rag_context[:combined_context].strip.empty?
+
+    enhanced_context
+  end
+  
+  # Format explicit context only (without RAG similarity search)
+  #
+  # @param explicit_context [Hash] The explicit context hash
+  # @param attack_index [Integer] The attack index for reading context config
+  # @return [Hash] Enhanced context with only explicit knowledge
+  def format_explicit_only_context(explicit_context, attack_index: nil)
+    # Format explicit knowledge items with length management
+    formatting_options = {
+      max_length: get_max_context_length,
+      truncation_strategy: :proportional
+    }
+    formatted_explicit = format_explicit_knowledge(explicit_context[:explicit_context], formatting_options)
+    
+    enhanced_context = {
+      original_query: nil,  # Not available in explicit-only mode
+      rag_context: nil,
+      explicit_context: explicit_context[:explicit_context],
+      explicit_sources: explicit_context[:explicit_sources],
+      has_explicit: true,
+      combine_mode: :explicit_only,
+      combined_context: formatted_explicit,
+      sources: explicit_context[:explicit_sources],
+      timestamp: Time.now
+    }
+    
+    # Store sections separately for debugging
+    enhanced_context[:explicit_section] = formatted_explicit
+    enhanced_context[:similarity_section] = ''
+    enhanced_context[:sections_present] = formatted_explicit.strip.empty? ? [] : ['explicit']
+    
+    enhanced_context
+  end
+  
+  # Get whether RAG is enabled for a specific bot
+  #
+  # @param bot_name [String] The bot name
+  # @return [Boolean, nil] True if enabled, false if disabled, nil if using global setting
+  def get_bot_rag_enabled(bot_name)
+    bot_rag_enabled = @bots.dig(bot_name, 'rag_enabled')
+    return bot_rag_enabled unless bot_rag_enabled.nil?
+    # Use global setting if not specified per-bot
+    @enable_rag
+  end
+  
+  # Get whether explicit context is enabled for a specific bot
+  #
+  # @param bot_name [String] The bot name
+  # @return [Boolean] True if enabled, false otherwise
+  def get_bot_explicit_context_enabled(bot_name)
+    bot_explicit_context_enabled = @bots.dig(bot_name, 'explicit_context_enabled')
+    return bot_explicit_context_enabled unless bot_explicit_context_enabled.nil?
+    # Use global setting if not specified per-bot
+    explicit_context_enabled?
+  end
+
+  # Get combination mode from context config or return default
+  #
+  # @param bot_name [String] The bot name
+  # @param attack_index [Integer] The attack index
+  # @return [Symbol] Combination mode (:explicit_only, :explicit_first, :combined, :similarity_fallback)
+  def get_combination_mode(bot_name, attack_index)
+    return :explicit_first unless attack_index
+
+    attacks = @bots.dig(bot_name, 'attacks')
+    return :explicit_first unless attacks && attack_index >= 0 && attack_index < attacks.length
+
+    attack = attacks[attack_index]
+    context_config = attack['context_config'] || attack[:context_config]
+    return :explicit_first unless context_config
+
+    # Get combine_mode from context_config
+    combine_mode_str = context_config[:combine_mode] || context_config['combine_mode']
+    return :explicit_first unless combine_mode_str
+
+    # Normalize to symbol
+    mode = combine_mode_str.to_s.downcase.to_sym
+    valid_modes = [:explicit_only, :explicit_first, :combined, :similarity_fallback]
+    
+    if valid_modes.include?(mode)
+      mode
+    else
+      Print.warn "Invalid combination mode '#{combine_mode_str}', using default 'explicit_first'"
+      :explicit_first
+    end
+  end
+
+  # Build combined context string based on combination mode
+  #
+  # @param formatted_explicit [String] Formatted explicit context
+  # @param rag_context [Hash, nil] RAG similarity search results
+  # @param combine_mode [Symbol] Combination mode
+  # @return [String] Combined formatted context
+  def build_combined_context(formatted_explicit, rag_context, combine_mode)
+    has_explicit = formatted_explicit && !formatted_explicit.strip.empty?
+    has_similarity = rag_context && rag_context[:combined_context] && !rag_context[:combined_context].strip.empty?
+
+    case combine_mode
+    when :explicit_only
+      # Use only explicit items, ignore similarity
+      formatted_explicit || ''
+    when :explicit_first
+      # Use explicit items, fall back to similarity if explicit empty
+      if has_explicit
+        formatted_explicit
+      elsif has_similarity
+        rag_context[:combined_context]
+      else
+        ''
+      end
+    when :combined
+      # Use both explicit and similarity
+      if has_explicit && has_similarity
+        "#{formatted_explicit}\n\n---\n\nSimilarity Search Results:\n#{rag_context[:combined_context]}"
+      elsif has_explicit
+        formatted_explicit
+      elsif has_similarity
+        rag_context[:combined_context]
+      else
+        ''
+      end
+    when :similarity_fallback
+      # Use similarity if explicit not available
+      if has_explicit
+        formatted_explicit
+      elsif has_similarity
+        rag_context[:combined_context]
+      else
+        ''
+      end
+    else
+      # Default: explicit_first behavior
+      if has_explicit
+        formatted_explicit
+      elsif has_similarity
+        rag_context[:combined_context]
+      else
+        ''
+      end
+    end
+  end
+
+  # Apply length management to combined context
+  #
+  # @param combined_context [String] The combined context string
+  # @param formatted_explicit [String] The formatted explicit section
+  # @param rag_context [Hash, nil] The RAG similarity search results
+  # @param max_length [Integer] Maximum context length
+  # @param combine_mode [Symbol] Combination mode
+  # @return [String] Length-managed combined context
+  def apply_combined_length_management(combined_context, formatted_explicit, rag_context, max_length, combine_mode)
+    return combined_context if combined_context.length <= max_length
+
+    has_explicit = formatted_explicit && !formatted_explicit.strip.empty?
+    has_similarity = rag_context && rag_context[:combined_context] && !rag_context[:combined_context].strip.empty?
+
+    case combine_mode
+    when :combined
+      # Allocate space proportionally (60% explicit, 40% similarity)
+      explicit_max = (max_length * 0.6).to_i
+      similarity_max = (max_length * 0.4).to_i
+      
+      truncated_explicit = if has_explicit && formatted_explicit.length > explicit_max
+        truncate_formatted_context(formatted_explicit, explicit_max, :proportional)
+      else
+        formatted_explicit
+      end
+      
+      truncated_similarity = if has_similarity && rag_context[:combined_context].length > similarity_max
+        similarity_content = rag_context[:combined_context]
+        truncated = similarity_content[0, similarity_max - 50] # Reserve space for truncation indicator
+        last_newline = truncated.rindex("\n")
+        truncated = similarity_content[0, last_newline] if last_newline && last_newline > similarity_max * 0.5
+        truncated + "\n\n[Similarity search results truncated...]"
+      else
+        rag_context[:combined_context]
+      end
+      
+      combined = "#{truncated_explicit}\n\n---\n\nSimilarity Search Results:\n#{truncated_similarity}"
+      Print.info "Combined context allocated: explicit=#{truncated_explicit.length}, similarity=#{truncated_similarity.length}, total=#{combined.length} (max: #{max_length})"
+      combined
+    else
+      # For other modes, use simple truncation
+      truncate_formatted_context(combined_context, max_length, :proportional)
+    end
+  end
+
+  # Format explicit knowledge items grouped by type with section headers
+  #
+  # @param explicit_items [Array<Hash>] Array of RAG documents
+  # @param options [Hash] Formatting options
+  # @option options [Integer] :max_length Maximum character length for formatted context
+  # @option options [Symbol] :truncation_strategy Truncation strategy (:proportional, :last_items, :longest_items)
+  # @return [String] Formatted context string grouped by type
+  def format_explicit_knowledge(explicit_items, options = {})
+    return '' if explicit_items.nil? || explicit_items.empty?
+
+    # Group items by source_type
+    grouped_items = {
+      'man_page' => [],
+      'markdown' => [],
+      'mitre_attack' => []
+    }
+
+    explicit_items.each do |item|
+      metadata = item[:metadata] || {}
+      source_type = metadata[:source_type]
+      
+      # Normalize source type
+      normalized_type = case source_type
+                        when 'man_page', 'manpage', 'man'
+                          'man_page'
+                        when 'markdown', 'md', 'document'
+                          'markdown'
+                        when 'mitre_attack', 'mitre', 'attack_pattern', 'sub_technique'
+                          'mitre_attack'
+                        else
+                          # Unknown type, try to infer from source
+                          source_str = (metadata[:source] || '').to_s.downcase
+                          if source_str.include?('man page') || source_str.include?('man')
+                            'man_page'
+                          elsif source_str.include?('mitre') || source_str.include?('attack')
+                            'mitre_attack'
+                          else
+                            'markdown' # Default to markdown for unknown types
+                          end
+                        end
+      
+      grouped_items[normalized_type] << item if grouped_items.key?(normalized_type)
+    end
+
+    # Format each group with section headers
+    formatted_sections = []
+
+    # Format Man Pages Section
+    if !grouped_items['man_page'].empty?
+      man_page_section = format_man_pages_section(grouped_items['man_page'])
+      formatted_sections << man_page_section if man_page_section && !man_page_section.strip.empty?
+    end
+
+    # Format Documents Section
+    if !grouped_items['markdown'].empty?
+      document_section = format_documents_section(grouped_items['markdown'])
+      formatted_sections << document_section if document_section && !document_section.strip.empty?
+    end
+
+    # Format MITRE Techniques Section
+    if !grouped_items['mitre_attack'].empty?
+      mitre_section = format_mitre_techniques_section(grouped_items['mitre_attack'])
+      formatted_sections << mitre_section if mitre_section && !mitre_section.strip.empty?
+    end
+
+    # Combine all sections with header
+    return '' if formatted_sections.empty?
+
+    combined = "Explicit Knowledge Sources:\n\n" + formatted_sections.join("\n\n")
+
+    # Apply length management if needed
+    max_length = options[:max_length] || get_max_context_length
+    if max_length && combined.length > max_length
+      combined = truncate_formatted_context(combined, max_length, options[:truncation_strategy])
+    end
+
+    combined
+  end
+
+  # Format man pages section with source attribution
+  #
+  # @param man_page_items [Array<Hash>] Array of man page RAG documents
+  # @return [String] Formatted man pages section or empty string
+  def format_man_pages_section(man_page_items)
+    return '' if man_page_items.nil? || man_page_items.empty?
+
+    formatted_items = []
+    man_page_items.each do |item|
+      metadata = item[:metadata] || {}
+      content = item[:content] || ''
+      command_name = metadata[:command_name] || metadata[:source] || 'unknown'
+      
+      # Format source attribution
+      source = "man page '#{command_name}'"
+      formatted_item = "Source: #{source}\n\n#{content}"
+      formatted_items << formatted_item
+    end
+
+    "--- Man Pages ---\n" + formatted_items.join("\n\n")
+  end
+
+  # Format documents section with source attribution
+  #
+  # @param document_items [Array<Hash>] Array of document RAG documents
+  # @return [String] Formatted documents section or empty string
+  def format_documents_section(document_items)
+    return '' if document_items.nil? || document_items.empty?
+
+    formatted_items = []
+    document_items.each do |item|
+      metadata = item[:metadata] || {}
+      content = item[:content] || ''
+      file_path = metadata[:file_path] || metadata[:source] || 'unknown'
+      
+      # Extract filename from path
+      filename = file_path.to_s.split('/').last || file_path
+      
+      # Format source attribution
+      source = "document '#{filename}'"
+      formatted_item = "Source: #{source}\n\n#{content}"
+      formatted_items << formatted_item
+    end
+
+    "--- Documents ---\n" + formatted_items.join("\n\n")
+  end
+
+  # Format MITRE techniques section with structured information
+  #
+  # @param mitre_items [Array<Hash>] Array of MITRE technique RAG documents
+  # @return [String] Formatted MITRE techniques section or empty string
+  def format_mitre_techniques_section(mitre_items)
+    return '' if mitre_items.nil? || mitre_items.empty?
+
+    formatted_items = []
+    mitre_items.each do |item|
+      metadata = item[:metadata] || {}
+      content = item[:content] || ''
+      technique_id = metadata[:technique_id] || metadata[:id] || 'unknown'
+      technique_name = metadata[:technique_name] || metadata[:name] || ''
+      tactic = metadata[:tactic] || ''
+      
+      # Format source attribution and structured information
+      source = "MITRE ATT&CK #{technique_id}"
+      formatted_item = "Source: #{source}"
+      
+      # Add structured fields if available
+      if !technique_name.empty?
+        formatted_item += "\nTechnique: #{technique_name}"
+      end
+      if !tactic.empty?
+        formatted_item += "\nTactic: #{tactic}"
+      end
+      
+      formatted_item += "\n\n#{content}"
+      formatted_items << formatted_item
+    end
+
+    "--- MITRE ATT&CK Techniques ---\n" + formatted_items.join("\n\n")
+  end
+
+  # Truncate formatted context if it exceeds max_length
+  #
+  # @param formatted_context [String] The formatted context string
+  # @param max_length [Integer] Maximum character length
+  # @param strategy [Symbol] Truncation strategy (:proportional, :last_items, :longest_items)
+  # @return [String] Truncated formatted context
+  def truncate_formatted_context(formatted_context, max_length, strategy = :proportional)
+    return formatted_context if formatted_context.length <= max_length
+
+    # For now, implement simple truncation that preserves headers
+    # TODO: Implement more sophisticated truncation strategies
+    if formatted_context.length > max_length
+      # Keep header and truncate content proportionally
+      # Reserve space for header and truncation indicator
+      reserved_space = 100
+      max_content_length = max_length - reserved_space
+      
+      # Try to truncate at section boundaries
+      truncated = formatted_context[0, max_content_length]
+      
+      # Find last section separator before truncation point
+      last_separator = truncated.rindex("\n\n---")
+      if last_separator && last_separator > max_content_length * 0.5
+        truncated = formatted_context[0, last_separator]
+      end
+      
+      truncated += "\n\n[Content truncated to fit context length limit...]"
+      
+      Print.warn "Formatted context truncated from #{formatted_context.length} to #{truncated.length} characters (max: #{max_length})"
+      return truncated
+    end
+
+    formatted_context
+  end
+
+  # Get maximum context length from RAG config
+  #
+  # @return [Integer] Maximum context length or default
+  def get_max_context_length
+    @rag_config.fetch(:max_context_length, 4000)
   end
 
   def read_bots
@@ -518,6 +1265,17 @@ class BotManager
               attack_data['system_prompt'] = system_prompt
             end
           end
+          
+          # Parse context_config for this attack if specified
+          # Note: We use the original attack node (which already has namespaces removed)
+          context_config = parse_context_config(attack)
+          if context_config
+            attack_data['context_config'] = context_config
+          elsif attack_data.key?('context_config')
+            # Remove context_config key if Nori parsed an empty element (creates nil value)
+            attack_data.delete('context_config')
+          end
+          
           @bots[bot_name]['attacks'].push attack_data
         end
         @bots[bot_name]['current_attack'] = 0
@@ -627,6 +1385,7 @@ class BotManager
           # Parse individual RAG and CAG enabling (allowing independent control)
           rag_enabled_node = hackerbot.at_xpath('rag_enabled')&.text
           cag_enabled_node = hackerbot.at_xpath('cag_enabled')&.text
+          explicit_context_enabled_node = hackerbot.at_xpath('explicit_context_enabled')&.text
 
           # Use global settings as defaults, but allow per-bot override
           @bots[bot_name]['rag_enabled'] = if rag_enabled_node
@@ -639,6 +1398,13 @@ class BotManager
             cag_enabled_node.downcase == 'true'
           else
             @rag_config[:enable_cag]  # Use global setting
+          end
+          
+          # Parse explicit context enabled (works independently of RAG)
+          @bots[bot_name]['explicit_context_enabled'] = if explicit_context_enabled_node
+            explicit_context_enabled_node.downcase == 'true'
+          else
+            nil  # Use global setting (auto-detect: true if RAG enabled, for backward compatibility)
           end
 
           # Parse RAG configuration
@@ -676,6 +1442,23 @@ class BotManager
             @bots[bot_name]['knowledge_sources'] = parse_knowledge_sources(knowledge_sources_node)
             # Update global RAG/CAG config with bot-specific knowledge sources
             @rag_config[:knowledge_sources_config] = @bots[bot_name]['knowledge_sources']
+          end
+        else
+          # If rag_cag_enabled is false, check if explicit_context_enabled is set independently
+          explicit_context_enabled_node = hackerbot.at_xpath('explicit_context_enabled')&.text
+          if explicit_context_enabled_node
+            @bots[bot_name]['explicit_context_enabled'] = explicit_context_enabled_node.downcase == 'true'
+          end
+        end
+        
+        # Parse explicit context enabled independently (can work without RAG/CAG)
+        # This allows explicit context to be enabled even when RAG is disabled
+        if @bots[bot_name]['explicit_context_enabled'].nil?
+          explicit_context_enabled_node = hackerbot.at_xpath('explicit_context_enabled')&.text
+          @bots[bot_name]['explicit_context_enabled'] = if explicit_context_enabled_node
+            explicit_context_enabled_node.downcase == 'true'
+          else
+            nil  # Use global setting (auto-detect based on RAG for backward compatibility)
           end
         end
 
@@ -839,6 +1622,131 @@ class BotManager
     end
 
     markdown_files
+  end
+
+  # Parse context_config element from attack XML
+  # Supports both comma-separated and individual element formats
+  # Includes validation with warnings (non-blocking)
+  def parse_context_config(attack_node)
+    context_config = {}
+    
+    # Check if context_config element exists
+    context_config_node = attack_node.at_xpath('context_config')
+    return nil unless context_config_node
+    
+    # Check if it's an empty or self-closing element (no children and no meaningful text)
+    # If it has no child elements and no text content (or only whitespace), treat as missing
+    has_element_children = context_config_node.children.any? { |c| c.element? }
+    
+    # Also check if any of the expected sub-elements exist (man_pages, documents, mitre_techniques)
+    has_any_sub_elements = context_config_node.at_xpath('man_pages') || 
+                          context_config_node.at_xpath('documents') || 
+                          context_config_node.at_xpath('mitre_techniques')
+    
+    return nil unless has_element_children || has_any_sub_elements
+    
+    # Parse man_pages element
+    man_pages_node = context_config_node.at_xpath('man_pages')
+    if man_pages_node
+      # Check if it contains individual <page> elements
+      page_elements = man_pages_node.xpath('page')
+      if page_elements.any?
+        # Individual <page> elements format
+        man_pages = page_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = man_pages_node.text.strip
+        man_pages = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate and deduplicate
+      original_count = man_pages.length
+      man_pages = man_pages.uniq
+      if original_count > man_pages.length
+        Print.debug "Warning: Duplicate man page entries detected and removed"
+      end
+      
+      context_config[:man_pages] = man_pages unless man_pages.empty?
+    end
+    
+    # Parse documents element
+    documents_node = context_config_node.at_xpath('documents')
+    if documents_node
+      # Check if it contains individual <doc> elements
+      doc_elements = documents_node.xpath('doc')
+      if doc_elements.any?
+        # Individual <doc> elements format
+        documents = doc_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = documents_node.text.strip
+        documents = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate document paths (warn on suspicious paths but don't fail)
+      documents.each do |doc_path|
+        if doc_path.start_with?('/') && !doc_path.start_with?('/home', '/usr', '/opt')
+          Print.debug "Warning: Document path '#{doc_path}' starts with root directory"
+        elsif doc_path.include?('..')
+          Print.debug "Warning: Document path '#{doc_path}' contains parent directory reference"
+        end
+      end
+      
+      # Deduplicate
+      original_count = documents.length
+      documents = documents.uniq
+      if original_count > documents.length
+        Print.debug "Warning: Duplicate document entries detected and removed"
+      end
+      
+      context_config[:documents] = documents unless documents.empty?
+    end
+    
+    # Parse mitre_techniques element
+    mitre_techniques_node = context_config_node.at_xpath('mitre_techniques')
+    if mitre_techniques_node
+      # Check if it contains individual <technique> elements
+      technique_elements = mitre_techniques_node.xpath('technique')
+      if technique_elements.any?
+        # Individual <technique> elements format
+        mitre_techniques = technique_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = mitre_techniques_node.text.strip
+        mitre_techniques = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate MITRE technique IDs (format: T#### or T####.###)
+      mitre_techniques.each do |technique_id|
+        unless technique_id.match?(/\AT\d{4}(\.\d{3})?\z/)
+          Print.debug "Warning: Invalid MITRE technique ID format: '#{technique_id}' (expected T#### or T####.###)"
+        end
+      end
+      
+      # Deduplicate
+      original_count = mitre_techniques.length
+      mitre_techniques = mitre_techniques.uniq
+      if original_count > mitre_techniques.length
+        Print.debug "Warning: Duplicate MITRE technique entries detected and removed"
+      end
+      
+      context_config[:mitre_techniques] = mitre_techniques unless mitre_techniques.empty?
+    end
+    
+    # Parse combine_mode element (optional)
+    combine_mode_node = context_config_node.at_xpath('combine_mode')
+    if combine_mode_node
+      combine_mode = combine_mode_node.text.strip.downcase
+      valid_modes = ['explicit_only', 'explicit_first', 'combined', 'similarity_fallback']
+      if valid_modes.include?(combine_mode)
+        context_config[:combine_mode] = combine_mode
+      else
+        Print.warn "Invalid combine_mode '#{combine_mode}' in context_config (valid: #{valid_modes.join(', ')}). Using default 'explicit_first'."
+      end
+    end
+    
+    # Return nil if context_config is empty (all sub-elements were empty or missing)
+    context_config.empty? ? nil : context_config
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
@@ -1208,7 +2116,7 @@ class BotManager
             # Get RAG + CAG enhanced context if enabled
             enhanced_context = nil
             if bots_ref[bot_name]['rag_cag_enabled'] != false
-              enhanced_context = get_enhanced_context.call(bot_name, m.message)
+              enhanced_context = get_enhanced_context.call(bot_name, m.message, attack_index: current_attack)
             end
 
             prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
