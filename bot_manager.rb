@@ -1276,6 +1276,15 @@ class BotManager
             attack_data.delete('context_config')
           end
           
+          # Parse vm_context for this attack if specified
+          vm_context = parse_vm_context(attack)
+          if vm_context
+            attack_data['vm_context'] = vm_context
+          elsif attack_data.key?('vm_context')
+            # Remove vm_context key if Nori parsed an empty element
+            attack_data.delete('vm_context')
+          end
+          
           @bots[bot_name]['attacks'].push attack_data
         end
         @bots[bot_name]['current_attack'] = 0
@@ -1747,6 +1756,71 @@ class BotManager
     
     # Return nil if context_config is empty (all sub-elements were empty or missing)
     context_config.empty? ? nil : context_config
+  end
+
+  # Parse vm_context element from attack XML
+  # Supports bash_history, commands, and files configuration
+  def parse_vm_context(attack_node)
+    vm_context = {}
+    
+    # Check if vm_context element exists
+    vm_context_node = attack_node.at_xpath('vm_context')
+    return nil unless vm_context_node
+    
+    # Check if it's an empty or self-closing element
+    has_element_children = vm_context_node.children.any? { |c| c.element? }
+    has_any_sub_elements = vm_context_node.at_xpath('bash_history') || 
+                          vm_context_node.at_xpath('commands') || 
+                          vm_context_node.at_xpath('files')
+    
+    return nil unless has_element_children || has_any_sub_elements
+    
+    # Parse bash_history element with attributes
+    bash_history_node = vm_context_node.at_xpath('bash_history')
+    if bash_history_node
+      bash_history = {}
+      path = bash_history_node['path'] || '~/.bash_history'
+      bash_history[:path] = path unless path.empty?
+      
+      # Parse limit attribute (convert to integer if present)
+      if bash_history_node['limit'] && !bash_history_node['limit'].empty?
+        limit_value = bash_history_node['limit'].to_i
+        bash_history[:limit] = limit_value if limit_value > 0
+      end
+      
+      # Parse user attribute
+      if bash_history_node['user'] && !bash_history_node['user'].empty?
+        bash_history[:user] = bash_history_node['user']
+      end
+      
+      # Only add bash_history if it has at least a path
+      vm_context[:bash_history] = bash_history unless bash_history.empty?
+    end
+    
+    # Parse commands element
+    commands_node = vm_context_node.at_xpath('commands')
+    if commands_node
+      commands = []
+      commands_node.xpath('command').each do |cmd_node|
+        cmd_text = cmd_node.text.to_s.strip
+        commands << cmd_text unless cmd_text.empty?
+      end
+      vm_context[:commands] = commands unless commands.empty?
+    end
+    
+    # Parse files element
+    files_node = vm_context_node.at_xpath('files')
+    if files_node
+      files = []
+      files_node.xpath('file').each do |file_node|
+        path = file_node['path']
+        files << path if path && !path.to_s.strip.empty?
+      end
+      vm_context[:files] = files unless files.empty?
+    end
+    
+    # Return nil if vm_context is empty (all sub-elements were empty or missing)
+    vm_context.empty? ? nil : vm_context
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)

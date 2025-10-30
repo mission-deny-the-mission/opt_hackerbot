@@ -174,6 +174,56 @@
         <correct_answer_response>Wonderful! You've completed a comprehensive cybersecurity training program!</correct_answer_response>
       </quiz>
     </attack>
+
+    <!-- Stage 7: VM Context Configuration - Demonstrates VM Context Fetching -->
+    <attack>
+      <prompt>Stage 7: Advanced Monitoring - VM Context Analysis. This stage demonstrates fetching context from student VMs including bash history, system state, and configuration files.</prompt>
+      <context_config>
+        <man_pages>ps,netstat,whoami</man_pages>
+      </context_config>
+      <!-- VM Context Configuration: Fetch bash history, execute commands, and read files from student VM -->
+      <vm_context>
+        <!-- Bash history with custom path, user, and line limit -->
+        <bash_history path="~/.bash_history" limit="50" user="student"/>
+        <!-- Commands to execute on the student VM -->
+        <commands>
+          <command>ps aux</command>
+          <command>netstat -tuln</command>
+          <command>whoami</command>
+        </commands>
+        <!-- Files to read from the student VM -->
+        <files>
+          <file path="/etc/passwd"/>
+          <file path="./config.txt"/>
+        </files>
+      </vm_context>
+      <quiz>
+        <question>What information can be gathered from analyzing bash history?</question>
+        <answer>command usage patterns and user behavior</answer>
+        <correct_answer_response>Correct! Bash history reveals command patterns that can indicate attack techniques!</correct_answer_response>
+      </quiz>
+    </attack>
+
+    <!-- Stage 8: Minimal VM Context - Demonstrates Partial Configuration -->
+    <attack>
+      <prompt>Stage 8: Selective Monitoring - This stage demonstrates minimal VM context configuration with only bash history.</prompt>
+      <!-- Only fetch bash history, no commands or files -->
+      <vm_context>
+        <bash_history path="~/.zsh_history" limit="100"/>
+      </vm_context>
+    </attack>
+
+    <!-- Stage 9: Commands Only VM Context -->
+    <attack>
+      <prompt>Stage 9: Command-based Monitoring - Execute specific commands on student VM to gather system state.</prompt>
+      <vm_context>
+        <commands>
+          <command>ps aux | grep -v grep</command>
+          <command>ss -tuln</command>
+          <command>cat /proc/version</command>
+        </commands>
+      </vm_context>
+    </attack>
   </attacks>
 
   <!-- Knowledge Sources Configuration -->
