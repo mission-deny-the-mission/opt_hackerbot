@@ -518,6 +518,17 @@ class BotManager
               attack_data['system_prompt'] = system_prompt
             end
           end
+          
+          # Parse context_config for this attack if specified
+          # Note: We use the original attack node (which already has namespaces removed)
+          context_config = parse_context_config(attack)
+          if context_config
+            attack_data['context_config'] = context_config
+          elsif attack_data.key?('context_config')
+            # Remove context_config key if Nori parsed an empty element (creates nil value)
+            attack_data.delete('context_config')
+          end
+          
           @bots[bot_name]['attacks'].push attack_data
         end
         @bots[bot_name]['current_attack'] = 0
@@ -839,6 +850,119 @@ class BotManager
     end
 
     markdown_files
+  end
+
+  # Parse context_config element from attack XML
+  # Supports both comma-separated and individual element formats
+  # Includes validation with warnings (non-blocking)
+  def parse_context_config(attack_node)
+    context_config = {}
+    
+    # Check if context_config element exists
+    context_config_node = attack_node.at_xpath('context_config')
+    return nil unless context_config_node
+    
+    # Check if it's an empty or self-closing element (no children and no meaningful text)
+    # If it has no child elements and no text content (or only whitespace), treat as missing
+    has_element_children = context_config_node.children.any? { |c| c.element? }
+    
+    # Also check if any of the expected sub-elements exist (man_pages, documents, mitre_techniques)
+    has_any_sub_elements = context_config_node.at_xpath('man_pages') || 
+                          context_config_node.at_xpath('documents') || 
+                          context_config_node.at_xpath('mitre_techniques')
+    
+    return nil unless has_element_children || has_any_sub_elements
+    
+    # Parse man_pages element
+    man_pages_node = context_config_node.at_xpath('man_pages')
+    if man_pages_node
+      # Check if it contains individual <page> elements
+      page_elements = man_pages_node.xpath('page')
+      if page_elements.any?
+        # Individual <page> elements format
+        man_pages = page_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = man_pages_node.text.strip
+        man_pages = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate and deduplicate
+      original_count = man_pages.length
+      man_pages = man_pages.uniq
+      if original_count > man_pages.length
+        Print.debug "Warning: Duplicate man page entries detected and removed"
+      end
+      
+      context_config[:man_pages] = man_pages unless man_pages.empty?
+    end
+    
+    # Parse documents element
+    documents_node = context_config_node.at_xpath('documents')
+    if documents_node
+      # Check if it contains individual <doc> elements
+      doc_elements = documents_node.xpath('doc')
+      if doc_elements.any?
+        # Individual <doc> elements format
+        documents = doc_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = documents_node.text.strip
+        documents = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate document paths (warn on suspicious paths but don't fail)
+      documents.each do |doc_path|
+        if doc_path.start_with?('/') && !doc_path.start_with?('/home', '/usr', '/opt')
+          Print.debug "Warning: Document path '#{doc_path}' starts with root directory"
+        elsif doc_path.include?('..')
+          Print.debug "Warning: Document path '#{doc_path}' contains parent directory reference"
+        end
+      end
+      
+      # Deduplicate
+      original_count = documents.length
+      documents = documents.uniq
+      if original_count > documents.length
+        Print.debug "Warning: Duplicate document entries detected and removed"
+      end
+      
+      context_config[:documents] = documents unless documents.empty?
+    end
+    
+    # Parse mitre_techniques element
+    mitre_techniques_node = context_config_node.at_xpath('mitre_techniques')
+    if mitre_techniques_node
+      # Check if it contains individual <technique> elements
+      technique_elements = mitre_techniques_node.xpath('technique')
+      if technique_elements.any?
+        # Individual <technique> elements format
+        mitre_techniques = technique_elements.map { |e| e.text.strip }.reject(&:empty?)
+      else
+        # Comma-separated format
+        text_content = mitre_techniques_node.text.strip
+        mitre_techniques = text_content.split(',').map(&:strip).reject(&:empty?)
+      end
+      
+      # Validate MITRE technique IDs (format: T#### or T####.###)
+      mitre_techniques.each do |technique_id|
+        unless technique_id.match?(/\AT\d{4}(\.\d{3})?\z/)
+          Print.debug "Warning: Invalid MITRE technique ID format: '#{technique_id}' (expected T#### or T####.###)"
+        end
+      end
+      
+      # Deduplicate
+      original_count = mitre_techniques.length
+      mitre_techniques = mitre_techniques.uniq
+      if original_count > mitre_techniques.length
+        Print.debug "Warning: Duplicate MITRE technique entries detected and removed"
+      end
+      
+      context_config[:mitre_techniques] = mitre_techniques unless mitre_techniques.empty?
+    end
+    
+    # Return nil if context_config is empty (all sub-elements were empty or missing)
+    context_config.empty? ? nil : context_config
   end
 
   def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)

@@ -135,6 +135,17 @@ I'm here to help you learn gently:
   <attacks>
     <attack>
       <prompt>Let's start with the absolute fundamentals. What is cybersecurity and why is it so important in our digital world? Understanding the "why" helps us appreciate the "how" and "what" of protecting systems.</prompt>
+      <!-- Example: Context configuration for explicit knowledge selection -->
+      <context_config>
+        <!-- Comma-separated format for man pages -->
+        <man_pages>ls,cat,grep</man_pages>
+        <!-- Individual elements format for documents -->
+        <documents>
+          <doc>docs/network_security_best_practices.md</doc>
+        </documents>
+        <!-- Comma-separated format for MITRE techniques -->
+        <mitre_techniques>T1071.001</mitre_techniques>
+      </context_config>
       <quiz>
         <question>What are the three main goals of cybersecurity (often called the CIA triad)?</question>
         <answer>Confidentiality, Integrity, Availability</answer>
