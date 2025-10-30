@@ -35,6 +35,7 @@ Hackerbot is a sophisticated Ruby-based IRC bot framework for cybersecurity trai
 - **RAG Knowledge System** (Epic 1): Validated and optimized vector-based retrieval system (CAG system removed for maintainability)
 - **Full IRC Context Integration** (Epic 2I): Comprehensive message capture and full conversation history in LLM context
 - **Stage-Aware Context Injection** (Epic 3): Per-attack explicit knowledge selection with identifier-based lookups
+- **VM Context Fetching** (Epic 4): SSH-based runtime state retrieval from student machines (bash history, command outputs, files)
 - **Offline-First Design**: Complete operation in air-gapped environments for secure training scenarios
 - **Modular Plugin Architecture**: Extensible system for LLM providers, knowledge sources, and bot personalities
 - **Nix Development Environment**: Reproducible builds and consistent development across platforms
@@ -123,6 +124,12 @@ graph TB
         MAN_PAGES[Unix/Linux<br/>Man Pages]
     end
     
+    subgraph "VM Context Layer"
+        VM_CONTEXT_MGR[VM Context Manager<br/>Epic 4]
+        SSH_INFRA[SSH Infrastructure]
+        STUDENT_VMS[Student VMs]
+    end
+    
     subgraph "Configuration Layer"
         XML_CONFIG[XML Configuration<br/>System]
         ENV_VARS[Environment<br/>Variables]
@@ -140,6 +147,7 @@ graph TB
     BOT_MANAGER --> RAG_MANAGER
     BOT_MANAGER --> CHAT_HISTORY
     BOT_MANAGER --> CONTEXT_ENHANCEMENT
+    BOT_MANAGER --> VM_CONTEXT_MGR
     
     LLM_FACTORY --> OLLAMA
     LLM_FACTORY --> OPENAI
@@ -150,6 +158,9 @@ graph TB
     VECTOR_DB --> MITRE_FRAMEWORK
     VECTOR_DB --> DOCUMENTATION
     VECTOR_DB --> MAN_PAGES
+    
+    VM_CONTEXT_MGR --> SSH_INFRA
+    SSH_INFRA --> STUDENT_VMS
     
     BOT_MANAGER --> XML_CONFIG
     HACKERBOT --> ENV_VARS
@@ -227,7 +238,27 @@ hackerbot.rb -> BotManager.new -> start_bots
 **Architecture**: RAG-only approach for maintainability, with identifier-based lookups for stage-aware context injection
 **Note**: CAG system was removed in Epic 1 - decision made to focus on RAG-only approach for better maintainability
 
-#### 5. Knowledge Management System
+#### 5. VM Context Manager (vm_context_manager.rb)
+**Purpose**: SSH-based runtime state retrieval from student VMs (Epic 4)
+**Responsibilities**:
+- Execute SSH commands on student machines and capture output
+- Read files from student VMs via SSH
+- Retrieve bash history from student machines
+- Handle SSH connection failures and timeouts gracefully
+- Apply variable substitution in SSH configurations
+
+**Key Features**:
+- Reuses existing SSH infrastructure from `get_shell` configuration
+- Support for bash history fetching with configurable paths, limits, and users
+- Command execution with timeout protection (default 15 seconds)
+- File reading for both absolute and relative paths
+- Error handling with graceful degradation (continues operation on failures)
+- Variable substitution support (`{{chat_ip_address}}` pattern)
+
+**Design Pattern**: Service class with command execution abstraction
+**Security**: SSH operations use trusted commands from XML configuration only
+
+#### 6. Knowledge Management System
 **Components**:
 - **RAG System** (`rag/`): Vector-based document retrieval using ChromaDB
 - **Knowledge Sources** (`knowledge_bases/`): MITRE ATT&CK, documentation, man pages
@@ -254,7 +285,7 @@ hackerbot.rb -> BotManager.new -> start_bots
 - RAG system parameters (RAG-only approach)
 - Knowledge source specifications
 
-**Enhanced Configuration (Epic 2I, Epic 3)**:
+**Enhanced Configuration (Epic 2I, Epic 3, Epic 4)**:
 - **Message History**: Configurable history window sizes (`max_history_length`, `max_irc_message_history`)
 - **Message Type Filtering**: Control which message types appear in context (`message_type_filter`)
 - **Stage-Aware Context** (`context_config`): Per-attack explicit knowledge selection:
@@ -262,6 +293,11 @@ hackerbot.rb -> BotManager.new -> start_bots
   - `<documents>`: Specify documents by file path
   - `<mitre_techniques>`: Specify MITRE techniques by ID
   - Combination modes: explicit-only, similarity-only, hybrid
+- **VM Context Fetching** (`vm_context`): Per-attack SSH-based runtime state retrieval:
+  - `<bash_history>`: Specify history file path, limit, and user
+  - `<commands>`: Execute commands on student VMs and capture output
+  - `<files>`: Read files from student VMs
+  - Enable/disable flags at bot-level (`vm_context_enabled`) and attack-level
 
 ### Component Interactions
 
@@ -272,16 +308,24 @@ sequenceDiagram
     participant BotManager
     participant LLMFactory
     participant RAGManager
+    participant VMContextManager
     participant LLMProvider
     participant KnowledgeBase
+    participant StudentVM
     
     User->>IRC: Message
     IRC->>BotManager: Route event (capture message)
     BotManager->>BotManager: Get full chat context
+    BotManager->>BotManager: Check VM context config
+    BotManager->>VMContextManager: Fetch VM context (if configured)
+    VMContextManager->>StudentVM: Execute SSH commands
+    StudentVM-->>VMContextManager: Return bash history, outputs, files
+    VMContextManager-->>BotManager: VM context data
     BotManager->>RAGManager: Get enhanced context
     RAGManager->>KnowledgeBase: Retrieve knowledge (explicit + similarity)
     KnowledgeBase-->>RAGManager: Return context
     RAGManager-->>BotManager: Enhanced context
+    BotManager->>BotManager: Assemble prompt (chat + VM + RAG)
     BotManager->>LLMFactory: Create/get LLM client
     LLMFactory-->>BotManager: LLM client instance
     BotManager->>LLMProvider: Generate response
@@ -306,6 +350,21 @@ flowchart TD
     ROUTE --> CHAT_CONTEXT[Get Full Chat Context<br/>Epic 2I: All Messages]
     CHAT_CONTEXT --> ATTACK_STAGE[Get Current Attack Stage]
     
+    ATTACK_STAGE --> CHECK_VM_CONTEXT{Attack has<br/>vm_context?}
+    CHECK_VM_CONTEXT -->|Yes| FETCH_VM[Fetch VM Context<br/>Epic 4: SSH Operations]
+    CHECK_VM_CONTEXT -->|No| CHECK_CONFIG
+    
+    FETCH_VM --> BASH_HIST[Bash History]
+    FETCH_VM --> COMMANDS[Execute Commands]
+    FETCH_VM --> FILES[Read Files]
+    
+    BASH_HIST --> VM_ASSEMBLE[Assemble VM Context]
+    COMMANDS --> VM_ASSEMBLE
+    FILES --> VM_ASSEMBLE
+    
+    VM_ASSEMBLE --> CHECK_CONFIG
+    CHECK_VM_CONTEXT -->|No| CHECK_CONFIG
+    
     ATTACK_STAGE --> CHECK_CONFIG{Attack has<br/>context_config?}
     CHECK_CONFIG -->|Yes| EXPLICIT[Explicit Knowledge Retrieval<br/>Epic 3: Identifier-Based]
     CHECK_CONFIG -->|No| RAG_ONLY[RAG Similarity Search]
@@ -320,7 +379,7 @@ flowchart TD
     RAG_ONLY --> COMBINE
     
     COMBINE --> ENHANCE[Format Enhanced Context<br/>with Source Attribution]
-    ENHANCE --> PROMPT[Assemble Prompt<br/>Chat + Knowledge]
+    ENHANCE --> PROMPT[Assemble Prompt<br/>Chat + VM + Knowledge]
     PROMPT --> LLM[LLM Provider]
     LLM --> RESPONSE[Generate Response]
     RESPONSE --> STORE[Store in Message History<br/>Epic 2I: Comprehensive]
@@ -332,6 +391,7 @@ flowchart TD
         ENV[Environment]
         CONFIG --> ROUTE
         CONFIG --> EXPLICIT
+        CONFIG --> FETCH_VM
         ENV --> LLM
     end
 ```
@@ -366,7 +426,7 @@ flowchart TD
 
 #### Knowledge Enhancement Model
 ```ruby
-# Enhanced context structure (RAG-only, Epic 3: Stage-aware)
+# Enhanced context structure (RAG-only, Epic 3: Stage-aware, Epic 4: VM context)
 {
   query: "user question",
   rag_context: "retrieved documents",
@@ -375,6 +435,7 @@ flowchart TD
     documents: [{"attack-guide.md" => "content..."}],
     mitre_techniques: [{"T1003" => "content..."}]
   },
+  vm_context: "VM State:\nBash History:\n...\nCommand Outputs:\n...\nFiles:\n...", # Epic 4
   combined_context: "merged enhanced context with source attribution",
   metadata: {
     sources: ["mitre_attack", "documentation", "man_pages"],
@@ -573,6 +634,20 @@ OFFLINE_MODE="auto"
         <mitre_techniques>T1595.001,T1046</mitre_techniques>
         <combination_mode>explicit_hybrid</combination_mode>
       </context_config>
+      
+      <!-- VM Context Fetching Configuration (Epic 4) -->
+      <vm_context>
+        <bash_history path="~/.bash_history" limit="50" user="student"/>
+        <commands>
+          <command>ps aux</command>
+          <command>netstat -tuln</command>
+          <command>whoami</command>
+        </commands>
+        <files>
+          <file path="/etc/passwd"/>
+          <file path="./config.txt"/>
+        </files>
+      </vm_context>
     </attack>
   </attacks>
 </hackerbot>
@@ -824,6 +899,13 @@ class RAGManager
   def similarity_search(query, limit = 5)
 end
 
+# VM Context Interface (Epic 4)
+class VMContextManager
+  def execute_command(ssh_config, command, variables = {})
+  def read_file(ssh_config, file_path, variables = {})
+  def read_bash_history(ssh_config, user = nil, limit = nil, variables = {})
+end
+
 # Bot Management Interface
 class BotManager
   def create_bot(name, config)
@@ -895,14 +977,12 @@ end
 - **Epic 1 - RAG System Validation**: Comprehensive RAG test suite with ≥80% coverage, performance validation, RAG-only architectural decision
 - **Epic 2I - Full IRC Context Integration**: Complete message capture, enhanced chat history structure, full conversation context in LLM prompts
 - **Epic 3 - Stage-Aware Context Injection**: Per-attack explicit knowledge selection, identifier-based lookups, configurable context formatting
+- **Epic 4 - VM Context Fetching**: SSH-based runtime state retrieval from student machines (bash history, command outputs, files) with per-attack configuration
 
 #### Current Enhancements
 - **Performance Optimization**: Ongoing response time improvements
 - **Testing Infrastructure**: Expansion of automated test suite coverage
 - **Documentation Enhancement**: Complete API documentation and guides
-
-#### Planned Feature Additions
-- **VM Context Fetching** (Epic 4): SSH-based context from student machines (bash history, command outputs, files)
 - **Enhanced Personality System**: More sophisticated bot personalities
 - **Advanced Scenarios**: Complex multi-step attack scenarios
 - **Progress Tracking**: Detailed learning progress analytics
@@ -967,9 +1047,10 @@ The Hackerbot system architecture represents a sophisticated approach to AI-powe
 3. **RAG Knowledge System**: Validated and optimized vector-based knowledge retrieval system
 4. **Full Conversation Context**: Comprehensive IRC message capture providing complete conversation history to LLM
 5. **Stage-Aware Context Injection**: Precise control over knowledge sources per attack stage
-6. **Offline-First Operation**: Complete functionality in secure, isolated environments
-7. **Extensible Plugin Architecture**: Easy addition of new providers, knowledge sources, and features
-8. **Security-Focused Design**: Built for the unique requirements of cybersecurity training
+6. **VM Context Awareness**: Runtime state retrieval from student machines providing real-time system context
+7. **Offline-First Operation**: Complete functionality in secure, isolated environments
+8. **Extensible Plugin Architecture**: Easy addition of new providers, knowledge sources, and features
+9. **Security-Focused Design**: Built for the unique requirements of cybersecurity training
 
 ### Strategic Position
 
