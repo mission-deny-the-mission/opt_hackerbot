@@ -4,6 +4,7 @@ require 'cinch'
 require_relative './print.rb'
 require_relative './providers/llm_client_factory.rb'
 require_relative './rag_manager.rb'
+require_relative './vm_context_manager.rb'
 
 class BotManager
   def initialize(irc_server_ip_address, llm_provider = 'ollama', ollama_host = 'localhost', ollama_port = 11434, ollama_model = 'gemma3:1b', openai_api_key = nil, openai_base_url = nil, vllm_host = 'localhost', vllm_port = 8000, sglang_host = 'localhost', sglang_port = 30000, enable_rag = false, rag_config = {})
@@ -1823,30 +1824,181 @@ class BotManager
     vm_context.empty? ? nil : vm_context
   end
 
-  def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
-    if enhanced_context && enhanced_context[:combined_context] && !enhanced_context[:combined_context].strip.empty?
-      # Include RAG + CAG enhanced context
-      if context.empty? && chat_context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nUser: #{user_message}\nAssistant:"
-      elsif context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
-      elsif chat_context.empty?
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
-      else
-        "#{system_prompt}\n\nEnhanced Context:\n#{enhanced_context[:combined_context]}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
-      end
+  # Fetch VM context from student machine via SSH
+  #
+  # @param bot_name [String] Bot name
+  # @param attack_index [Integer] Current attack index
+  # @param variables [Hash] Optional variables for SSH command substitution (e.g., { chat_ip_address: '192.168.1.1' })
+  # @return [String, nil] Formatted VM context string or nil if no config/error
+  def fetch_vm_context(bot_name, attack_index, variables = {})
+    return nil unless @bots[bot_name] && @bots[bot_name]['attacks']
+    return nil unless attack_index >= 0 && attack_index < @bots[bot_name]['attacks'].length
+    
+    # Get VM context config from attack
+    vm_context_config = @bots[bot_name]['attacks'][attack_index]['vm_context']
+    return nil unless vm_context_config
+    
+    # Get SSH config (per-attack or fallback to global)
+    ssh_config = nil
+    if @bots[bot_name]['attacks'][attack_index].key?('get_shell')
+      ssh_config = { 'get_shell' => @bots[bot_name]['attacks'][attack_index]['get_shell'] }
+    elsif @bots[bot_name].key?('get_shell')
+      ssh_config = { 'get_shell' => @bots[bot_name]['get_shell'] }
     else
-      # Original prompt assembly without enhanced context
-      if context.empty? && chat_context.empty?
-        "#{system_prompt}\n\nUser: #{user_message}\nAssistant:"
-      elsif context.empty?
-        "#{system_prompt}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
-      elsif chat_context.empty?
-        "#{system_prompt}\n\nContext: #{context}\n\nUser: #{user_message}\nAssistant:"
-      else
-        "#{system_prompt}\n\nContext: #{context}\n\nChat History:\n#{chat_context}\n\nUser: #{user_message}\nAssistant:"
+      Print.warn("No SSH config found for bot '#{bot_name}' attack #{attack_index}")
+      return nil
+    end
+    
+    # Initialize VM context manager
+    vm_manager = VMContextManager.new
+    
+    # Initialize VM context data structure
+    vm_context_data = {
+      bash_history: nil,
+      commands: [],
+      files: []
+    }
+    
+    # Fetch bash history if configured
+    if vm_context_config[:bash_history]
+      begin
+        bash_history_config = vm_context_config[:bash_history]
+        path = bash_history_config[:path] || '~/.bash_history'
+        limit = bash_history_config[:limit]
+        user = bash_history_config[:user]
+        
+        history_content = vm_manager.read_bash_history(ssh_config, user, limit, variables)
+        
+        if history_content && !history_content.strip.empty?
+          vm_context_data[:bash_history] = {
+            content: history_content,
+            path: path,
+            limit: limit,
+            user: user
+          }
+        end
+      rescue => e
+        Print.warn("Failed to fetch bash history for bot '#{bot_name}' attack #{attack_index}: #{e.message}")
       end
     end
+    
+    # Execute commands if configured
+    if vm_context_config[:commands] && vm_context_config[:commands].is_a?(Array)
+      vm_context_config[:commands].each do |command|
+        next if command.nil? || command.strip.empty?
+        
+        begin
+          output = vm_manager.execute_command(ssh_config, command, variables)
+          
+          if output && !output.strip.empty?
+            vm_context_data[:commands] << {
+              command: command,
+              output: output
+            }
+          end
+        rescue => e
+          Print.warn("Failed to execute command '#{command}' for bot '#{bot_name}' attack #{attack_index}: #{e.message}")
+          # Continue with other commands
+        end
+      end
+    end
+    
+    # Read files if configured
+    if vm_context_config[:files] && vm_context_config[:files].is_a?(Array)
+      vm_context_config[:files].each do |file_path|
+        next if file_path.nil? || file_path.strip.empty?
+        
+        begin
+          content = vm_manager.read_file(ssh_config, file_path, variables)
+          
+          if content && !content.strip.empty?
+            vm_context_data[:files] << {
+              path: file_path,
+              content: content
+            }
+          end
+        rescue => e
+          Print.warn("Failed to read file '#{file_path}' for bot '#{bot_name}' attack #{attack_index}: #{e.message}")
+          # Continue with other files
+        end
+      end
+    end
+    
+    # Assemble and return formatted VM context
+    assemble_vm_context(vm_context_data)
+  rescue => e
+    Print.warn("Failed to fetch VM context for bot '#{bot_name}' attack #{attack_index}: #{e.message}")
+    nil
+  end
+  
+  # Assemble VM context data into formatted string for LLM consumption
+  #
+  # @param vm_context_data [Hash] VM context data structure with bash_history, commands, and files
+  # @return [String, nil] Formatted VM context string or nil if no data
+  def assemble_vm_context(vm_context_data)
+    return nil unless vm_context_data
+    
+    sections = []
+    
+    # Add bash history section
+    if vm_context_data[:bash_history] && vm_context_data[:bash_history][:content]
+      bh = vm_context_data[:bash_history]
+      limit_str = bh[:limit] ? "last #{bh[:limit]} commands from " : ""
+      user_str = bh[:user] ? "user #{bh[:user]} " : ""
+      sections << "Bash History (#{limit_str}#{user_str}#{bh[:path]}):"
+      sections << bh[:content]
+    end
+    
+    # Add command outputs section
+    if vm_context_data[:commands] && !vm_context_data[:commands].empty?
+      sections << "Command Outputs:"
+      vm_context_data[:commands].each do |cmd_data|
+        sections << "[Command: #{cmd_data[:command]}]"
+        sections << cmd_data[:output]
+        sections << ""  # Empty line between commands
+      end
+    end
+    
+    # Add files section
+    if vm_context_data[:files] && !vm_context_data[:files].empty?
+      sections << "Files:"
+      vm_context_data[:files].each do |file_data|
+        sections << "[File: #{file_data[:path]}]"
+        sections << file_data[:content]
+        sections << ""  # Empty line between files
+      end
+    end
+    
+    return nil if sections.empty?
+    
+    # Combine into formatted string with VM State header
+    "VM State:\n#{sections.join("\n")}"
+  end
+
+  def assemble_prompt(system_prompt, context, chat_context, user_message, enhanced_context = nil)
+    sections = [system_prompt]
+    
+    # Add context (attack prompt)
+    sections << "Context: #{context}" unless context.empty?
+    
+    # Add VM context if present
+    if enhanced_context && enhanced_context[:vm_context] && !enhanced_context[:vm_context].strip.empty?
+      sections << enhanced_context[:vm_context]
+    end
+    
+    # Add RAG + CAG enhanced context if present
+    if enhanced_context && enhanced_context[:combined_context] && !enhanced_context[:combined_context].strip.empty?
+      sections << "Enhanced Context:\n#{enhanced_context[:combined_context]}"
+    end
+    
+    # Add chat history
+    sections << "Chat History:\n#{chat_context}" unless chat_context.empty?
+    
+    # Add user message and assistant prompt
+    sections << "User: #{user_message}"
+    sections << "Assistant:"
+    
+    sections.join("\n\n")
   end
 
   def parse_personalities(bot_name, personalities_node)
@@ -2191,6 +2343,20 @@ class BotManager
             enhanced_context = nil
             if bots_ref[bot_name]['rag_cag_enabled'] != false
               enhanced_context = get_enhanced_context.call(bot_name, m.message, attack_index: current_attack)
+            end
+            
+            # Fetch VM context if attack has VM context configuration
+            begin
+              variables = { chat_ip_address: m.user.host.to_s }
+              vm_context = fetch_vm_context(bot_name, current_attack, variables)
+              if vm_context && !vm_context.strip.empty?
+                # Initialize enhanced_context if it doesn't exist
+                enhanced_context ||= {}
+                enhanced_context[:vm_context] = vm_context
+              end
+            rescue => e
+              Print.warn("Failed to fetch VM context during message handling: #{e.message}")
+              # Continue without VM context
             end
 
             prompt = assemble_prompt.call(current_system_prompt, attack_context, chat_context, m.message, enhanced_context)
