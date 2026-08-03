@@ -120,6 +120,11 @@ class BotManager
       rag_settings[:rag_settings] = rag_settings[:rag_settings].merge(@rag_config[:rag][:rag_settings] || {})
     end
 
+    # Retain the resolved service settings so per-bot RAG managers can clone
+    # them (same vector DB, same knowledge sources, but a bot-specific
+    # embedding service and collection when configured).
+    @rag_service_settings = rag_settings
+
     config = {
       enable_rag: @rag_config[:enable_rag],
       max_context_length: @rag_config.fetch(:max_context_length, 4000),
@@ -151,44 +156,131 @@ class BotManager
   # When using OpenAI-compatible providers (including LiteLLM), use the OpenAI embedding client
   # When using Ollama, use the Ollama embedding client
   def determine_embedding_service_config
-    case @llm_provider.downcase
+    embedding_service_config_for(
+      provider: @llm_provider,
+      host: @ollama_host,
+      port: @ollama_port,
+      vllm_host: @vllm_host,
+      vllm_port: @vllm_port,
+      sglang_host: @sglang_host,
+      sglang_port: @sglang_port,
+      openai_base_url: @openai_base_url,
+      openai_api_key: @openai_api_key,
+      model: @embedding_model
+    )
+  end
+
+  # Build an embedding service config for a specific provider/host/port/model.
+  # Used for the global RAG manager and for per-bot RAG managers (which can
+  # override the embedding service via <embedding_provider>/<embedding_host>/
+  # <embedding_port>/<embedding_model> in the bot XML).
+  def embedding_service_config_for(provider:, model: nil, host: nil, port: nil,
+                                   vllm_host: nil, vllm_port: nil, sglang_host: nil, sglang_port: nil,
+                                   openai_base_url: nil, openai_api_key: nil)
+    case provider.to_s.downcase
     when 'openai'
       {
         provider: 'openai',
-        base_url: @openai_base_url,
-        api_key: @openai_api_key || 'no-key-needed',
-        model: @embedding_model || 'text-embedding-ada-002'
+        base_url: openai_base_url,
+        api_key: openai_api_key || 'no-key-needed',
+        model: model || 'text-embedding-ada-002'
       }
     when 'ollama'
       {
         provider: 'ollama',
-        host: @ollama_host,
-        port: @ollama_port,
-        model: @embedding_model || 'nomic-embed-text'
+        host: host || @ollama_host,
+        port: port || @ollama_port,
+        model: model || 'nomic-embed-text'
       }
     when 'vllm'
       {
         provider: 'openai',
-        base_url: "http://#{@vllm_host}:#{@vllm_port}/v1",
+        base_url: "http://#{vllm_host || @vllm_host}:#{vllm_port || @vllm_port}/v1",
         api_key: 'no-key-needed',
-        model: @embedding_model || 'text-embedding-ada-002'
+        model: model || 'text-embedding-ada-002'
       }
     when 'sglang'
       {
         provider: 'openai',
-        base_url: "http://#{@sglang_host}:#{@sglang_port}/v1",
+        base_url: "http://#{sglang_host || @sglang_host}:#{sglang_port || @sglang_port}/v1",
         api_key: 'no-key-needed',
-        model: @embedding_model || 'text-embedding-ada-002'
+        model: model || 'text-embedding-ada-002'
       }
     else
       # Default to Ollama for unknown providers
       {
         provider: 'ollama',
-        host: @ollama_host,
-        port: @ollama_port,
-        model: @embedding_model || 'nomic-embed-text'
+        host: host || @ollama_host,
+        port: port || @ollama_port,
+        model: model || 'nomic-embed-text'
       }
     end
+  end
+
+  # Per-bot RAG configuration (parsed from <rag_cag_config> in the bot XML).
+  # NOTE: the parser stores this under 'rag_cag_config'; older code read
+  # 'rag_config' which never matched, silently disabling per-bot settings.
+  def bot_rag_config(bot_name)
+    @bots.dig(bot_name, 'rag_cag_config') || {}
+  end
+
+  # Return the RAG manager to use for a bot:
+  # - the global manager when the bot has no per-bot embedding override, or
+  # - a lazily-created per-bot RAGOnlyManager using the bot's embedding
+  #   service and collection (knowledge sources are re-embedded with the
+  #   bot's embedding model into a bot-specific collection).
+  # Falls back to the global manager if per-bot setup fails.
+  def bot_rag_manager(bot_name)
+    return @rag_manager unless @enable_rag && @rag_manager
+    return @rag_manager unless @rag_service_settings
+
+    emb = @bots.dig(bot_name, 'embedding_config')
+    return @rag_manager if emb.nil? || emb.empty?
+
+    cached = @bots.dig(bot_name, 'rag_manager')
+    return cached if cached
+
+    bot_emb_service = embedding_service_config_for(
+      provider: emb['provider'] || @llm_provider,
+      model: emb['model'],
+      host: emb['host'],
+      port: emb['port']
+    )
+    # Same service as the global manager -> nothing to gain from a second manager
+    return @rag_manager if bot_emb_service == @rag_service_settings[:embedding_service]
+
+    Print.info "Creating per-bot RAG manager for #{bot_name} with embedding service: #{bot_emb_service.inspect}"
+    bot_settings = @rag_service_settings.dup
+    bot_settings[:embedding_service] = bot_emb_service
+    bot_settings[:rag_settings] = (@rag_service_settings[:rag_settings] || {}).dup
+
+    collection = bot_rag_config(bot_name)['collection_name'] ||
+                 "#{@rag_config[:knowledge_base_name] || 'cybersecurity'}_#{bot_name}"
+
+    bot_config = {
+      enable_rag: true,
+      max_context_length: @rag_config.fetch(:max_context_length, 4000),
+      knowledge_base_name: collection,
+      enable_caching: @rag_config.fetch(:enable_caching, true),
+      auto_initialization: true,
+      enable_knowledge_sources: @rag_config.fetch(:enable_knowledge_sources, true),
+      knowledge_sources_config: @rag_config.fetch(:knowledge_sources_config, []),
+      max_results: bot_rag_config(bot_name)['max_rag_results'] || @rag_config.fetch(:max_results, 5),
+      similarity_threshold: @rag_config.fetch(:similarity_threshold, 0.7)
+    }
+
+    bot_mgr = RAGOnlyManager.new(bot_settings, bot_config)
+    if bot_mgr.setup
+      @bots[bot_name]['rag_manager'] = bot_mgr
+      Print.info "✓ Per-bot RAG manager ready for #{bot_name} (collection: #{collection})"
+      bot_mgr
+    else
+      Print.err "Per-bot RAG manager setup failed for #{bot_name}, falling back to global"
+      @rag_manager
+    end
+  rescue => e
+    Print.err "Error creating per-bot RAG manager for #{bot_name}: #{e.message}. Falling back to global."
+    @rag_manager
   end
 
   # Initialize knowledge sources only (without RAG similarity search)
@@ -548,34 +640,42 @@ class BotManager
 
     # Continue with RAG similarity search if enabled and no explicit context was found
     unless enhanced_context
-      if @enable_rag && @rag_manager
+      rag_mgr = bot_rag_manager(bot_name)
+      if @enable_rag && rag_mgr
         # Check if bot has specific RAG configuration
         rag_enabled = get_bot_rag_enabled(bot_name)
         unless rag_enabled == false
           # Get bot-specific context preferences
           context_options = {}
+          bot_rag_cfg = bot_rag_config(bot_name)
           Print.info "Getting enhanced context for bot: #{bot_name}"
-          Print.info "Bot has rag_config: #{@bots.dig(bot_name, 'rag_config') ? 'YES' : 'NO'}"
+          Print.info "Bot has rag_cag_config: #{bot_rag_cfg.empty? ? 'NO' : 'YES'}"
           Print.info "Bot rag_enabled: #{rag_enabled}"
 
-          if @bots.dig(bot_name, 'rag_config')
+          default_collection = if rag_mgr.equal?(@rag_manager)
+            @rag_config[:knowledge_base_name] || 'cybersecurity'
+          else
+            rag_mgr.knowledge_base_name
+          end
+
+          if !bot_rag_cfg.empty?
             context_options = {
-              max_results: @bots.dig(bot_name, 'rag_config', 'max_results') || 5,
-              custom_collection: @bots.dig(bot_name, 'rag_config', 'collection_name')
+              max_results: bot_rag_cfg['max_rag_results'] || 5,
+              custom_collection: bot_rag_cfg['collection_name'] || default_collection
             }
             Print.info "Using bot-specific config, custom_collection: #{context_options[:custom_collection].inspect}"
           else
             # Use global settings if no bot-specific config
             context_options = {
               max_results: 5,
-              custom_collection: @rag_config[:knowledge_base_name] || 'cybersecurity'
+              custom_collection: default_collection
             }
             Print.info "Using global config fallback, custom_collection: #{context_options[:custom_collection].inspect}"
             Print.info "@rag_config[:knowledge_base_name]: #{@rag_config[:knowledge_base_name].inspect}"
           end
 
           # Get enhanced context from RAG manager
-          enhanced_context = @rag_manager.get_enhanced_context(user_message, context_options)
+          enhanced_context = rag_mgr.get_enhanced_context(user_message, context_options)
           Print.debug "Enhanced context length: #{enhanced_context&.dig(:combined_context)&.length || 0} characters"
         end
       end
@@ -837,21 +937,30 @@ class BotManager
     # Get RAG similarity search results based on combination mode
     rag_context = nil
     if combine_mode != :explicit_only
-      # Get bot-specific context preferences for similarity search
-      context_options = {}
-      if @bots.dig(bot_name, 'rag_config')
-        context_options = {
-          max_results: @bots.dig(bot_name, 'rag_config', 'max_results') || 5,
-          custom_collection: @bots.dig(bot_name, 'rag_config', 'collection_name')
-        }
-      else
-        context_options = {
-          max_results: 5,
-          custom_collection: @rag_config[:knowledge_base_name] || 'cybersecurity'
-        }
-      end
+      rag_mgr = bot_rag_manager(bot_name)
+      if rag_mgr
+        # Get bot-specific context preferences for similarity search
+        context_options = {}
+        bot_rag_cfg = bot_rag_config(bot_name)
+        default_collection = if rag_mgr.equal?(@rag_manager)
+          @rag_config[:knowledge_base_name] || 'cybersecurity'
+        else
+          rag_mgr.knowledge_base_name
+        end
+        if !bot_rag_cfg.empty?
+          context_options = {
+            max_results: bot_rag_cfg['max_rag_results'] || 5,
+            custom_collection: bot_rag_cfg['collection_name'] || default_collection
+          }
+        else
+          context_options = {
+            max_results: 5,
+            custom_collection: default_collection
+          }
+        end
 
-      rag_context = @rag_manager.get_enhanced_context(user_message, context_options)
+        rag_context = rag_mgr.get_enhanced_context(user_message, context_options)
+      end
     end
     
     enhanced_context = {
@@ -1326,12 +1435,12 @@ class BotManager
       begin
         doc = Nokogiri::XML(File.read(file))
         if doc.errors.any?
+          Print.err "Failed to read hackerbot file (#{file}):"
           Print.err doc.errors
         end
-      rescue
-        Print.err "Failed to read hackerbot file (#{file})"
-        print "Failed to read hackerbot file (#{file})"
-        exit
+      rescue => e
+        Print.err "Failed to read hackerbot file (#{file}): #{e.message}"
+        next
       end
 
       # remove xml namespaces for ease of processing
@@ -1430,7 +1539,20 @@ class BotManager
         vllm_port_config = (hackerbot.at_xpath('vllm_port')&.text || @vllm_port.to_s).to_i
         sglang_host_config = hackerbot.at_xpath('sglang_host')&.text || @sglang_host
         sglang_port_config = (hackerbot.at_xpath('sglang_port')&.text || @sglang_port.to_s).to_i
-        embedding_model_config = hackerbot.at_xpath('embedding_model')&.text || nil
+        # Per-bot embedding service override (optional). When set, this bot gets
+        # its own RAG manager + collection so the embedding model matches the
+        # vector space of the documents it queries. Only explicitly-set values
+        # are kept; unspecified fields fall back to the global service.
+        embedding_model_config = hackerbot.at_xpath('embedding_model')&.text
+        embedding_provider_config = hackerbot.at_xpath('embedding_provider')&.text
+        embedding_host_config = hackerbot.at_xpath('embedding_host')&.text
+        embedding_port_config = (hackerbot.at_xpath('embedding_port')&.text || '').to_i
+        @bots[bot_name]['embedding_config'] = {
+          'provider' => embedding_provider_config,
+          'model' => embedding_model_config,
+          'host' => embedding_host_config,
+          'port' => (embedding_port_config unless embedding_port_config == 0)
+        }.reject { |_, v| v.nil? || v == '' }
 
         system_prompt = hackerbot.at_xpath('system_prompt')&.text || DEFAULT_SYSTEM_PROMPT
 
@@ -1509,9 +1631,18 @@ class BotManager
           )
         end
 
-        # Parse RAG + CAG configuration if enabled
+        # Parse RAG + CAG configuration if enabled.
+        # Default: enabled (matches the `!= false` check at the call sites);
+        # @enable_rag_cag was never assigned, which silently disabled all
+        # per-bot RAG settings (collection_name, max_rag_results, etc).
         rag_cag_enabled = hackerbot.at_xpath('rag_cag_enabled')&.text
-        @bots[bot_name]['rag_cag_enabled'] = rag_cag_enabled ? (rag_cag_enabled.downcase == 'true') : @enable_rag_cag
+        @bots[bot_name]['rag_cag_enabled'] = if rag_cag_enabled
+          rag_cag_enabled.downcase == 'true'
+        elsif @enable_rag_cag.nil?
+          true
+        else
+          @enable_rag_cag
+        end
 
         if @bots[bot_name]['rag_cag_enabled']
           # Parse individual RAG and CAG enabling (allowing independent control)
@@ -1544,7 +1675,7 @@ class BotManager
           if rag_config_node
             @bots[bot_name]['rag_cag_config'] ||= {}
             @bots[bot_name]['rag_cag_config']['max_rag_results'] = (rag_config_node.at_xpath('max_rag_results')&.text || '5').to_i
-            @bots[bot_name]['rag_cag_config']['include_rag_context'] = !(rag_config_node.at_xpath('include_rag_context')&.text.downcase == 'false')
+            @bots[bot_name]['rag_cag_config']['include_rag_context'] = !(rag_config_node.at_xpath('include_rag_context')&.text&.downcase == 'false')
             @bots[bot_name]['rag_cag_config']['collection_name'] = rag_config_node.at_xpath('collection_name')&.text
           end
 
@@ -1554,7 +1685,7 @@ class BotManager
             @bots[bot_name]['rag_cag_config'] ||= {}
             @bots[bot_name]['rag_cag_config']['max_cag_depth'] = (cag_config_node.at_xpath('max_cag_depth')&.text || '2').to_i
             @bots[bot_name]['rag_cag_config']['max_cag_nodes'] = (cag_config_node.at_xpath('max_cag_nodes')&.text || '10').to_i
-            @bots[bot_name]['rag_cag_config']['include_cag_context'] = !(cag_config_node.at_xpath('include_cag_context')&.text.downcase == 'false')
+            @bots[bot_name]['rag_cag_config']['include_cag_context'] = !(cag_config_node.at_xpath('include_cag_context')&.text&.downcase == 'false')
           end
 
           # Parse entity extraction configuration

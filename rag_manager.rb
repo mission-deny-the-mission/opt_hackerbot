@@ -8,6 +8,11 @@ class RAGOnlyManager
   # Public accessors
   attr_reader :initialized, :rag_manager, :knowledge_source_manager
 
+  # The collection name this manager embeds into / queries by default
+  def knowledge_base_name
+    @config[:knowledge_base_name]
+  end
+
   def initialize(rag_config, config = {})
     @rag_config = rag_config
     @config = {

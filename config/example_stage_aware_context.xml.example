@@ -27,6 +27,26 @@
   <rag_enabled>true</rag_enabled>
   <cag_enabled>true</cag_enabled>
 
+  <!-- Per-bot embedding service override (optional).
+       When set, this bot gets its own RAG manager + collection so documents
+       are embedded with THIS embedding model (mixing embedding models within
+       one collection produces meaningless similarity scores).
+       Any subset may be specified; unspecified fields fall back to the
+       global embedding service (HB2_EMBEDDING_MODEL / --embedding-model). -->
+  <embedding_provider>ollama</embedding_provider>
+  <embedding_host>localhost</embedding_host>
+  <embedding_port>11434</embedding_port>
+  <embedding_model>nomic-embed-text</embedding_model>
+
+  <!-- Per-bot RAG tuning: collection name + max results (optional).
+       Without a custom collection, the bot uses <knowledge_base_name>_<bot name>. -->
+  <rag_cag_config>
+    <rag>
+      <max_rag_results>5</max_rag_results>
+      <collection_name>stage_aware_bot_collection</collection_name>
+    </rag>
+  </rag_cag_config>
+
   <system_prompt>You are a cybersecurity training assistant that provides progressive learning experiences. Start with basic concepts and gradually introduce more advanced topics.</system_prompt>
 
   <messages>
